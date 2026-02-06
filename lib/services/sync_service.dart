@@ -15,11 +15,19 @@ class SyncService extends ChangeNotifier {
   String? _initError;
   DateTime? _lastSyncAt;
   SyncResult? _lastResult;
+  bool _isSyncing = false;
+  double? _syncProgress;
+  int? _totalItems;
+  int? _syncedItems;
 
   String? get initError => _initError;
   bool get isReady => _initialized;
   DateTime? get lastSyncAt => _lastSyncAt;
   SyncResult? get lastResult => _lastResult;
+  bool get isSyncing => _isSyncing;
+  double? get syncProgress => _syncProgress;
+  int? get totalItems => _totalItems;
+  int? get syncedItems => _syncedItems;
 
   Future<bool> initialize() async {
     if (_initialized) {
@@ -38,11 +46,17 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<SyncResult> syncPending() async {
+    _isSyncing = true;
+    _syncProgress = null;
+    _syncedItems = 0;
+    notifyListeners();
+
     final ready = await initialize();
     if (!ready) {
       final result = SyncResult.failed('Firebase not configured.');
       _lastSyncAt = DateTime.now();
       _lastResult = result;
+      _isSyncing = false;
       notifyListeners();
       return result;
     }
@@ -50,6 +64,10 @@ class SyncService extends ChangeNotifier {
     final firestore = FirebaseFirestore.instance;
     final pendingTrips = await _database.getPendingTrips();
     final pendingReports = await _database.getPendingReports();
+
+    _totalItems = pendingTrips.length + pendingReports.length;
+    _syncedItems = 0;
+    notifyListeners();
 
     final batch = firestore.batch();
 
@@ -92,18 +110,25 @@ class SyncService extends ChangeNotifier {
             report.copyWith(syncStatus: SyncStatus.synced),
           ),
       ]);
+
+      _syncedItems = _totalItems;
+      _syncProgress = 1.0;
+      notifyListeners();
+
       final result = SyncResult.success(
         tripsSynced: pendingTrips.length,
         reportsSynced: pendingReports.length,
       );
       _lastSyncAt = DateTime.now();
       _lastResult = result;
+      _isSyncing = false;
       notifyListeners();
       return result;
     } catch (error) {
       final result = SyncResult.failed(error.toString());
       _lastSyncAt = DateTime.now();
       _lastResult = result;
+      _isSyncing = false;
       notifyListeners();
       return result;
     }

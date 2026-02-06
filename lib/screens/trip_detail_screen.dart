@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/trip.dart';
 import '../widgets/section_header.dart';
+import '../widgets/split_button.dart';
 
 class TripDetailScreen extends StatelessWidget {
   const TripDetailScreen({super.key, required this.trip});
@@ -20,20 +21,51 @@ class TripDetailScreen extends StatelessWidget {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(trip.routeName ?? 'Trip Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              // TODO: Share trip summary
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(trip.routeName ?? 'Trip Details')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          // Share Actions
+          SplitButton(
+            label: 'Share',
+            icon: Icons.share,
+            size: SplitButtonSize.medium,
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Sharing trip summary...')),
+              );
+            },
+            menuItems: [
+              SplitButtonMenuItem(
+                label: 'Export as PDF',
+                icon: Icons.picture_as_pdf,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Exporting as PDF...')),
+                  );
+                },
+              ),
+              SplitButtonMenuItem(
+                label: 'Export as CSV',
+                icon: Icons.table_chart,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Exporting as CSV...')),
+                  );
+                },
+              ),
+              SplitButtonMenuItem(
+                label: 'Share via email',
+                icon: Icons.email,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Opening email...')),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           // Risk Score Card
           Card(
             color: _getRiskColor(trip.riskScore, colorScheme),
