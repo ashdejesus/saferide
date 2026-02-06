@@ -2,11 +2,11 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 class SensorService {
   Stream<UserAccelerometerEvent> userAccelerometerStream() {
-    return userAccelerometerEvents;
+    return userAccelerometerEventStream();
   }
 
   Stream<GyroscopeEvent> gyroscopeStream() {
-    return gyroscopeEvents;
+    return gyroscopeEventStream();
   }
 }
 

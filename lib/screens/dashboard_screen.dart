@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../data/app_database.dart';
-import '../services/sync_service.dart';
 import '../state/trip_controller.dart';
-import '../state/trip_controller.dart' show UnsafeEventType;
 import '../widgets/stat_card.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_action_sheet.dart';
@@ -17,8 +14,6 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<TripController>();
-    final sync = context.watch<SyncService>();
-    final database = context.read<AppDatabase>();
     final colorScheme = Theme.of(context).colorScheme;
 
     return Stack(
@@ -27,8 +22,7 @@ class DashboardScreen extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,35 +35,48 @@ class DashboardScreen extends StatelessWidget {
                     _TripStatusPill(isTracking: controller.isTracking),
                   ],
                 ),
-                FilledButton.tonalIcon(
-                  onPressed: () async {
-                    final result = await sync.syncPending();
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(result.message)));
-                  },
-                  icon: const Icon(Icons.sync),
-                  label: const Text('Sync'),
-                ),
               ],
             ),
-            const SizedBox(height: 16),
-            _SyncStatusBanner(database: database, sync: sync),
             const SizedBox(height: 20),
             Card(
+              elevation: controller.isTracking ? 6 : 2,
+              color: controller.isTracking
+                  ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                  : colorScheme.surfaceContainerHighest,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      controller.isTracking
-                          ? 'Trip in progress'
-                          : 'Ready to start a trip',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      children: [
+                        if (controller.isTracking)
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.directions_run,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        if (controller.isTracking) const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            controller.isTracking
+                                ? 'Trip in progress'
+                                : 'Ready to start a trip',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () => TripActionSheet.show(context),
                       icon: Icon(
@@ -81,16 +88,47 @@ class DashboardScreen extends StatelessWidget {
                         controller.isTracking ? 'End Trip' : 'Start Trip',
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.speed, color: colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${controller.currentSpeed.toStringAsFixed(1)} m/s',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
+                    if (!controller.isTracking) const SizedBox(height: 16),
+                    if (controller.isTracking) const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.speed, color: colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Current Speed',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: colorScheme.onSurface
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                ),
+                                Text(
+                                  '${controller.currentSpeed.toStringAsFixed(1)} m/s',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.primary,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -212,61 +250,6 @@ class _TripStatusPill extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SyncStatusBanner extends StatelessWidget {
-  const _SyncStatusBanner({required this.database, required this.sync});
-
-  final AppDatabase database;
-  final SyncService sync;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<PendingCounts>(
-      future: database.getPendingCounts(),
-      builder: (context, snapshot) {
-        final counts =
-            snapshot.data ?? const PendingCounts(trips: 0, reports: 0);
-        final lastSyncText = sync.lastSyncAt == null
-            ? 'Not synced yet'
-            : 'Last sync ${_formatTime(sync.lastSyncAt!)}';
-        final pendingText = counts.total == 0
-            ? 'All data synced'
-            : '${counts.total} pending (${counts.trips} trips, ${counts.reports} reports)';
-        final statusIcon = sync.lastResult?.success == false
-            ? Icons.cloud_off
-            : Icons.cloud_done;
-
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(statusIcon),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        pendingText,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        lastSyncText,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

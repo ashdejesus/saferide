@@ -17,27 +17,61 @@ class TripMiniHud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isHighSpeed = speed > 20;
+    
     return Card(
-      elevation: 0,
+      elevation: 8,
+      shadowColor: isHighSpeed
+          ? colorScheme.error.withValues(alpha: 0.4)
+          : Colors.black.withValues(alpha: 0.2),
       color: colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.speed, color: colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(
-              '${speed.toStringAsFixed(1)} m/s',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(width: 16),
-            _HudStat(label: 'S', value: speedingCount),
-            const SizedBox(width: 8),
-            _HudStat(label: 'B', value: brakingCount),
-            const SizedBox(width: 8),
-            _HudStat(label: 'T', value: turningCount),
-          ],
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: isHighSpeed
+              ? Border.all(
+                  color: colorScheme.error.withValues(alpha: 0.3),
+                  width: 2,
+                )
+              : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.speed,
+                color: isHighSpeed ? colorScheme.error : colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${speed.toStringAsFixed(1)} m/s',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: isHighSpeed ? colorScheme.error : null,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  if (isHighSpeed)
+                    Text(
+                      'High Speed',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: colorScheme.error,
+                          ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              _HudStat(label: 'S', value: speedingCount),
+              const SizedBox(width: 8),
+              _HudStat(label: 'B', value: brakingCount),
+              const SizedBox(width: 8),
+              _HudStat(label: 'T', value: turningCount),
+            ],
+          ),
         ),
       ),
     );

@@ -86,12 +86,6 @@ class TripDetailScreen extends StatelessWidget {
                     value:
                         '${_formatTime(trip.startTime)} - ${trip.endTime != null ? _formatTime(trip.endTime!) : 'Ongoing'}',
                   ),
-                  const Divider(height: 24),
-                  _InfoRow(
-                    icon: Icons.cloud_sync,
-                    label: 'Sync Status',
-                    value: trip.syncStatus.label,
-                  ),
                 ],
               ),
             ),

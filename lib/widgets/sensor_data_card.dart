@@ -18,40 +18,70 @@ class SensorDataCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.sensors, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('Sensor Data', style: textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _SensorReading(
-              icon: Icons.speed,
-              label: 'Acceleration',
-              value: '${acceleration.toStringAsFixed(2)} m/s²',
-              color: _getAccelColor(acceleration, colorScheme),
-            ),
-            const SizedBox(height: 12),
-            _SensorReading(
-              icon: Icons.trending_up,
-              label: 'Avg Acceleration',
-              value: '${averageAcceleration.toStringAsFixed(2)} m/s²',
-              color: _getAccelColor(averageAcceleration, colorScheme),
-            ),
-            const SizedBox(height: 12),
-            _SensorReading(
-              icon: Icons.rotate_right,
-              label: 'Turn Rate',
-              value: '${turnRate.toStringAsFixed(2)} rad/s',
-              color: _getTurnColor(turnRate, colorScheme),
-            ),
-          ],
+      elevation: 4,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surfaceContainerHighest,
+              colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.sensors,
+                      color: colorScheme.onPrimaryContainer,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Live Sensor Data',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _SensorReading(
+                icon: Icons.speed,
+                label: 'Acceleration',
+                value: '${acceleration.toStringAsFixed(2)} m/s²',
+                color: _getAccelColor(acceleration, colorScheme),
+              ),
+              const SizedBox(height: 12),
+              _SensorReading(
+                icon: Icons.trending_up,
+                label: 'Avg Acceleration',
+                value: '${averageAcceleration.toStringAsFixed(2)} m/s²',
+                color: _getAccelColor(averageAcceleration, colorScheme),
+              ),
+              const SizedBox(height: 12),
+              _SensorReading(
+                icon: Icons.rotate_right,
+                label: 'Turn Rate',
+                value: '${turnRate.toStringAsFixed(2)} rad/s',
+                color: _getTurnColor(turnRate, colorScheme),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -80,7 +110,6 @@ class SensorDataCard extends StatelessWidget {
 
 class _SensorReading extends StatelessWidget {
   const _SensorReading({
-    super.key,
     required this.icon,
     required this.label,
     required this.value,

@@ -82,7 +82,9 @@ class TripActionSheet {
                     }
                   }
                 },
-                icon: Icon(controller.isTracking ? Icons.stop : Icons.play_arrow),
+                icon: Icon(
+                  controller.isTracking ? Icons.stop : Icons.play_arrow,
+                ),
                 label: Text(controller.isTracking ? 'End Trip' : 'Start Trip'),
               ),
             ],
