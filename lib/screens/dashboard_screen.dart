@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/trip_controller.dart';
+import 'settings_screen.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_action_sheet.dart';
@@ -18,7 +19,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _controller;
 
   @override
@@ -38,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final controller = context.watch<TripController>();
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -56,7 +58,10 @@ class _DashboardScreenState extends State<DashboardScreen>
           padding: const EdgeInsets.all(20),
           children: [
             for (var i = 0; i < items.length; i++)
-              _StaggeredItem(index: i, animation: _controller, child: items[i]),
+              Padding(
+                padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
+                child: _StaggeredItem(index: i, animation: _controller, child: items[i]),
+              ),
           ],
         ),
         if (controller.isTracking)
@@ -79,13 +84,25 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('SafeRide', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            _TripStatusPill(isTracking: controller.isTracking),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'SafeRide',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              _TripStatusPill(isTracking: controller.isTracking),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Settings',
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          icon: const Icon(Icons.settings),
         ),
       ],
     );
@@ -332,6 +349,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       ],
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
 
 class _StaggeredItem extends StatelessWidget {

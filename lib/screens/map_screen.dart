@@ -17,7 +17,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _animationController;
 
   @override
@@ -37,6 +37,7 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final controller = context.watch<TripController>();
 
     final routePoints = controller.routePoints
@@ -73,6 +74,9 @@ class _MapScreenState extends State<MapScreen>
       ],
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
 
 class _MapStatusCard extends StatelessWidget {

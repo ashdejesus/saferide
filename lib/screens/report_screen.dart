@@ -13,7 +13,7 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final _formKey = GlobalKey<FormState>();
   String _category = _categories.first;
   double _severity = 3;
@@ -49,6 +49,7 @@ class _ReportScreenState extends State<ReportScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final controller = context.watch<TripController>();
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -127,6 +128,9 @@ class _ReportScreenState extends State<ReportScreen>
       ],
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
 
 class _IntroCard extends StatelessWidget {

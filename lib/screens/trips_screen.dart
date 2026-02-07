@@ -18,8 +18,10 @@ class TripsScreen extends StatefulWidget {
 }
 
 class _TripsScreenState extends State<TripsScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _animationController;
+  late Future<List<Trip>> _tripsFuture;
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -38,10 +40,15 @@ class _TripsScreenState extends State<TripsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final database = context.read<AppDatabase>();
+    super.build(context);
+    if (!_initialized) {
+      final database = context.read<AppDatabase>();
+      _tripsFuture = database.getTrips();
+      _initialized = true;
+    }
 
     return FutureBuilder<List<Trip>>(
-      future: database.getTrips(),
+      future: _tripsFuture,
       builder: (context, snapshot) {
         final trips = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
@@ -80,6 +87,9 @@ class _TripsScreenState extends State<TripsScreen>
       },
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
 
 class _TripCard extends StatelessWidget {

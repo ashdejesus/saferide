@@ -1,0 +1,99 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helpers
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Validate common fields
+    function isString(field) {
+      return field is string;
+    }
+
+    function isTimestampNowOrNull(field) {
+      // Require server to set timestamps: client may omit them (null), server will set via Cloud Function or server SDK
+      return field == null || field == request.time;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Create: user can create their own doc, but cannot set `role` (or may only set to 'user').
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && (request.resource.data.role == null || request.resource.data.role == 'user')
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'isAnonymous', 'createdAt', 'updatedAt', 'profile', 'role']);
+
+      // Update: owner can update profile fields but cannot escalate role; admins can update everything.
+      allow update: if isAdmin()
+        || (isOwner(userId)
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.keys().hasOnly(resource.data.keys().union(['email','isAnonymous','updatedAt','profile'])));
+
+      // Delete allowed for owner or admin
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Trips collection
+    match /trips/{tripId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAny(['userId', 'startedAt', 'endedAt', 'routeName', 'metadata', 'createdAt', 'updatedAt'])
+        && isString(request.resource.data.userId)
+        && isTimestampNowOrNull(request.resource.data.createdAt);
+
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Incidents collection
+    match /incidents/{incidentId} {
+      allow read: if isAuthenticated() && (resource.data.reportedBy == request.auth.uid || isAdmin());
+
+      allow create: if isAuthenticated()
+        && request.resource.data.reportedBy == request.auth.uid
+        && request.resource.data.keys().hasAny(['reportedBy', 'description', 'location', 'createdAt', 'metadata'])
+        && isString(request.resource.data.reportedBy)
+        && isTimestampNowOrNull(request.resource.data.createdAt);
+
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.reportedBy == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Analytics - read for authenticated users, write only for admins
+    match /analytics/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Settings - admin only
+    match /settings/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Reports - admin only
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}
