@@ -8,7 +8,11 @@ ThemeData buildSafeRideTheme() {
     dynamicSchemeVariant: DynamicSchemeVariant.expressive,
   );
 
-  final base = ThemeData(useMaterial3: true, colorScheme: colorScheme, fontFamily: GoogleFonts.robotoFlex().fontFamily);
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    fontFamily: GoogleFonts.robotoFlex().fontFamily,
+  );
   final expressiveTextTheme = GoogleFonts.robotoFlexTextTheme(base.textTheme);
 
   return base.copyWith(

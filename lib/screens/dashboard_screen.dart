@@ -60,7 +60,11 @@ class _DashboardScreenState extends State<DashboardScreen>
             for (var i = 0; i < items.length; i++)
               Padding(
                 padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
-                child: _StaggeredItem(index: i, animation: _controller, child: items[i]),
+                child: _StaggeredItem(
+                  index: i,
+                  animation: _controller,
+                  child: items[i],
+                ),
               ),
           ],
         ),

@@ -32,10 +32,18 @@ class SettingsScreen extends StatelessWidget {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Sign out'),
-                          content: const Text('Are you sure you want to sign out?'),
+                          content: const Text(
+                            'Are you sure you want to sign out?',
+                          ),
                           actions: [
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Sign out')),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text('Sign out'),
+                            ),
                           ],
                         ),
                       );
