@@ -41,7 +41,6 @@ class LocationService {
         distanceFilter: 5,
         intervalDuration: const Duration(seconds: 2),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationChannelId: 'saferide_location',
           notificationTitle: 'SafeRide trip running',
           notificationText: 'Collecting driving data in the background.',
           enableWakeLock: true,
@@ -52,7 +51,7 @@ class LocationService {
         ),
       );
     } else if (Platform.isIOS) {
-      locationSettings = const AppleSettings(
+      locationSettings = AppleSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5,
         activityType: ActivityType.automotiveNavigation,
