@@ -41,12 +41,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>processing</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SafeRide needs location to record trip routes and compute risk scores.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SafeRide needs continuous location access to keep recording trips even in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SafeRide needs continuous location access to keep recording trips even in the background.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>SafeRide uses motion sensors to detect unsafe driving events.</string>
 </dict>

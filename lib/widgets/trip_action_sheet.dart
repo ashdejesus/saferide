@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../state/trip_controller.dart';
@@ -75,8 +76,16 @@ class TripActionSheet {
                     if (!context.mounted) return;
                     if (!started) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Location permission is required.'),
+                        SnackBar(
+                          content: const Text(
+                            'Allow background location access so SafeRide can keep tracking trips.',
+                          ),
+                          action: SnackBarAction(
+                            label: 'Settings',
+                            onPressed: () {
+                              Geolocator.openAppSettings();
+                            },
+                          ),
                         ),
                       );
                     }

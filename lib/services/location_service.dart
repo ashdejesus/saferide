@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
@@ -7,21 +9,60 @@ class LocationService {
       permission = await Geolocator.requestPermission();
     }
 
+    if (permission == LocationPermission.whileInUse) {
+      final backgroundPermission = await Geolocator.requestPermission();
+      if (backgroundPermission == LocationPermission.always) {
+        permission = backgroundPermission;
+      }
+    }
+
     if (permission == LocationPermission.deniedForever ||
         permission == LocationPermission.denied) {
       return false;
     }
 
-    return true;
+    if (permission != LocationPermission.always) {
+      return false;
+    }
+
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    return serviceEnabled;
   }
 
   Stream<Position> positionStream() {
-    return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 5,
-      ),
+    LocationSettings locationSettings = const LocationSettings(
+      accuracy: LocationAccuracy.best,
+      distanceFilter: 5,
     );
+
+    if (Platform.isAndroid) {
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 2),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationChannelId: 'saferide_location',
+          notificationTitle: 'SafeRide trip running',
+          notificationText: 'Collecting driving data in the background.',
+          enableWakeLock: true,
+          notificationIcon: AndroidResource(
+            name: 'ic_launcher',
+            defType: 'mipmap',
+          ),
+        ),
+      );
+    } else if (Platform.isIOS) {
+      locationSettings = const AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+        activityType: ActivityType.automotiveNavigation,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    }
+
+    return Geolocator.getPositionStream(locationSettings: locationSettings);
   }
 
   Future<Position> currentPosition() {
