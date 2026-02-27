@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../data/app_database.dart';
 import '../models/trip.dart';
+import '../state/trip_controller.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_action_sheet.dart';
@@ -22,6 +23,7 @@ class _TripsScreenState extends State<TripsScreen>
   late final AnimationController _animationController;
   late Future<List<Trip>> _tripsFuture;
   bool _initialized = false;
+  int _lastTripHistoryVersion = -1;
 
   @override
   void initState() {
@@ -41,10 +43,16 @@ class _TripsScreenState extends State<TripsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final tripController = context.watch<TripController>();
     if (!_initialized) {
       final database = context.read<AppDatabase>();
       _tripsFuture = database.getTrips();
+      _lastTripHistoryVersion = tripController.tripHistoryVersion;
       _initialized = true;
+    } else if (_lastTripHistoryVersion != tripController.tripHistoryVersion) {
+      final database = context.read<AppDatabase>();
+      _tripsFuture = database.getTrips();
+      _lastTripHistoryVersion = tripController.tripHistoryVersion;
     }
 
     return FutureBuilder<List<Trip>>(

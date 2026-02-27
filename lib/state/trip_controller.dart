@@ -49,6 +49,8 @@ class TripController extends ChangeNotifier {
   StreamSubscription<Position>? _positionSub;
   StreamSubscription<UserAccelerometerEvent>? _accelSub;
   StreamSubscription<GyroscopeEvent>? _gyroSub;
+  Timer? _bufferTimer;
+  int _tripHistoryVersion = 0;
 
   Trip? get activeTrip => _activeTrip;
   bool get isTracking => _isTracking;
@@ -65,6 +67,7 @@ class TripController extends ChangeNotifier {
   double get currentAcceleration => _currentAcceleration;
   double get currentTurnRate => _currentTurnRate;
   double get averageAcceleration => _accelWindow.average;
+  int get tripHistoryVersion => _tripHistoryVersion;
 
   Future<bool> startTrip({String? routeName}) async {
     final hasPermission = await _locationService.ensurePermission();
@@ -93,6 +96,8 @@ class TripController extends ChangeNotifier {
       startLat: position.latitude,
       startLng: position.longitude,
       routeName: routeName,
+      routePoints: List.of(_routePoints),
+      syncStatus: SyncStatus.pending,
     );
 
     _speedingCount = 0;
@@ -103,6 +108,7 @@ class TripController extends ChangeNotifier {
     _isTracking = true;
 
     _listenToSensors();
+    _startBuffering();
     notifyListeners();
     return true;
   }
@@ -115,6 +121,7 @@ class TripController extends ChangeNotifier {
     await _positionSub?.cancel();
     await _accelSub?.cancel();
     await _gyroSub?.cancel();
+    _stopBuffering();
 
     final endPosition = _currentPosition;
     final riskScore = computeRiskScore(
@@ -141,6 +148,7 @@ class TripController extends ChangeNotifier {
     _activeTrip = null;
     _isTracking = false;
     _currentSpeed = 0;
+    _tripHistoryVersion++;
     notifyListeners();
   }
 
@@ -164,6 +172,7 @@ class TripController extends ChangeNotifier {
 
     await _database.insertReport(report);
     _reportSeveritySum += severity;
+    unawaited(_persistActiveTripSnapshot());
     notifyListeners();
   }
 
@@ -181,6 +190,10 @@ class TripController extends ChangeNotifier {
     _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
     if (_routePoints.length > 200) {
       _routePoints.removeAt(0);
+    }
+
+    if (_routePoints.length % 5 == 0) {
+      unawaited(_persistActiveTripSnapshot());
     }
 
     if (_currentSpeed > 20) {
@@ -237,6 +250,47 @@ class TripController extends ChangeNotifier {
       return true;
     }
     return DateTime.now().difference(lastEvent) > const Duration(seconds: 2);
+  }
+
+  void _startBuffering() {
+    _stopBuffering();
+    _bufferTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      unawaited(_persistActiveTripSnapshot());
+    });
+  }
+
+  void _stopBuffering() {
+    _bufferTimer?.cancel();
+    _bufferTimer = null;
+  }
+
+  Future<void> _persistActiveTripSnapshot() async {
+    final activeTrip = _activeTrip;
+    if (!_isTracking || activeTrip == null || activeTrip.id == null) {
+      return;
+    }
+
+    final bufferedTrip = activeTrip.copyWith(
+      endLat: _currentPosition?.latitude,
+      endLng: _currentPosition?.longitude,
+      speedingCount: _speedingCount,
+      brakingCount: _brakingCount,
+      turningCount: _turningCount,
+      routePoints: List.of(_routePoints),
+      syncStatus: SyncStatus.pending,
+    );
+
+    await _database.updateTrip(bufferedTrip);
+    _activeTrip = bufferedTrip;
+  }
+
+  @override
+  void dispose() {
+    _stopBuffering();
+    _positionSub?.cancel();
+    _accelSub?.cancel();
+    _gyroSub?.cancel();
+    super.dispose();
   }
 }
 

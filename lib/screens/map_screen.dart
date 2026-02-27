@@ -146,7 +146,7 @@ class _MapStatusCard extends StatelessWidget {
   }
 }
 
-class _MapCard extends StatelessWidget {
+class _MapCard extends StatefulWidget {
   const _MapCard({
     required this.isTracking,
     required this.routePoints,
@@ -158,13 +158,44 @@ class _MapCard extends StatelessWidget {
   final TripController controller;
 
   @override
+  State<_MapCard> createState() => _MapCardState();
+}
+
+class _MapCardState extends State<_MapCard> {
+  late final MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MapCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final points = widget.routePoints;
+    if (!widget.isTracking || points.isEmpty) {
+      return;
+    }
+
+    if (points.length != oldWidget.routePoints.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _mapController.move(points.last, _mapController.camera.zoom);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: 360,
       child: Card(
         clipBehavior: Clip.antiAlias,
-        child: routePoints.isEmpty
+        child: widget.routePoints.isEmpty
             ? EmptyState(
                 icon: Icons.map,
                 title: 'No active trip',
@@ -176,8 +207,9 @@ class _MapCard extends StatelessWidget {
             : Stack(
                 children: [
                   FlutterMap(
+                    mapController: _mapController,
                     options: MapOptions(
-                      initialCenter: routePoints.last,
+                      initialCenter: widget.routePoints.last,
                       initialZoom: 15,
                     ),
                     children: [
@@ -189,7 +221,7 @@ class _MapCard extends StatelessWidget {
                       PolylineLayer(
                         polylines: [
                           Polyline(
-                            points: routePoints,
+                            points: widget.routePoints,
                             strokeWidth: 4,
                             color: colorScheme.primary,
                           ),
@@ -198,7 +230,7 @@ class _MapCard extends StatelessWidget {
                       MarkerLayer(
                         markers: [
                           Marker(
-                            point: routePoints.last,
+                            point: widget.routePoints.last,
                             width: 40,
                             height: 40,
                             child: Icon(
@@ -211,7 +243,7 @@ class _MapCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (isTracking)
+                  if (widget.isTracking)
                     Positioned(
                       top: 12,
                       left: 12,
@@ -225,16 +257,16 @@ class _MapCard extends StatelessWidget {
                         backgroundColor: colorScheme.secondaryContainer,
                       ),
                     ),
-                  if (controller.isTracking)
+                  if (widget.controller.isTracking)
                     Positioned(
                       bottom: 12,
                       left: 12,
                       right: 12,
                       child: TripMiniHud(
-                        speed: controller.currentSpeed,
-                        speedingCount: controller.speedingCount,
-                        brakingCount: controller.brakingCount,
-                        turningCount: controller.turningCount,
+                        speed: widget.controller.currentSpeed,
+                        speedingCount: widget.controller.speedingCount,
+                        brakingCount: widget.controller.brakingCount,
+                        turningCount: widget.controller.turningCount,
                       ),
                     ),
                 ],
