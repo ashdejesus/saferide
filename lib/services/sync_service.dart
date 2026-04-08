@@ -83,12 +83,16 @@ class SyncService extends ChangeNotifier {
     final batch = firestore.batch();
 
     for (final trip in pendingTrips) {
-      final docId = trip.id?.toString() ?? trip.startTime.millisecondsSinceEpoch.toString();
+      final docId =
+          trip.id?.toString() ??
+          trip.startTime.millisecondsSinceEpoch.toString();
       final doc = firestore.collection('trips').doc(docId);
       batch.set(doc, {
         'userId': user.uid,
         'startedAt': Timestamp.fromDate(trip.startTime),
-        'endedAt': trip.endTime == null ? null : Timestamp.fromDate(trip.endTime!),
+        'endedAt': trip.endTime == null
+            ? null
+            : Timestamp.fromDate(trip.endTime!),
         'routeName': trip.routeName,
         'metadata': {
           'riskScore': trip.riskScore,
@@ -107,7 +111,9 @@ class SyncService extends ChangeNotifier {
     }
 
     for (final report in pendingReports) {
-      final docId = report.id?.toString() ?? report.createdAt.millisecondsSinceEpoch.toString();
+      final docId =
+          report.id?.toString() ??
+          report.createdAt.millisecondsSinceEpoch.toString();
       final doc = firestore.collection('incidents').doc(docId);
       batch.set(doc, {
         'reportedBy': user.uid,
