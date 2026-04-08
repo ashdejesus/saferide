@@ -28,7 +28,6 @@ class SplitButton extends StatefulWidget {
 class _SplitButtonState extends State<SplitButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _menuController;
-  bool _isMenuOpen = false;
 
   @override
   void initState() {
@@ -45,17 +44,6 @@ class _SplitButtonState extends State<SplitButton>
     super.dispose();
   }
 
-  void _toggleMenu() {
-    setState(() {
-      _isMenuOpen = !_isMenuOpen;
-      if (_isMenuOpen) {
-        _menuController.forward();
-      } else {
-        _menuController.reverse();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -66,16 +54,10 @@ class _SplitButtonState extends State<SplitButton>
 
     return MenuAnchor(
       onOpen: () {
-        setState(() {
-          _isMenuOpen = true;
-          _menuController.forward();
-        });
+        _menuController.forward();
       },
       onClose: () {
-        setState(() {
-          _isMenuOpen = false;
-          _menuController.reverse();
-        });
+        _menuController.reverse();
       },
       alignmentOffset: const Offset(0, 4),
       menuChildren: widget.menuItems

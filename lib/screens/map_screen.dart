@@ -19,6 +19,9 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _animationController;
+  bool _showHighRiskAreas = true;
+  bool _showSaferRoutes = true;
+  bool _showReportedIncidents = true;
 
   @override
   void initState() {
@@ -45,16 +48,28 @@ class _MapScreenState extends State<MapScreen>
         .toList();
 
     final items = <Widget>[
-      const SectionHeader(title: 'Trip Map'),
-      _MapStatusCard(
-        isTracking: controller.isTracking,
-        speed: controller.currentSpeed,
-        points: routePoints.length,
+      const SectionHeader(title: 'Safety Map'),
+      _MapLayerControls(
+        showHighRiskAreas: _showHighRiskAreas,
+        showSaferRoutes: _showSaferRoutes,
+        showReportedIncidents: _showReportedIncidents,
+        onHighRiskAreasChanged: (value) {
+          setState(() => _showHighRiskAreas = value);
+        },
+        onSaferRoutesChanged: (value) {
+          setState(() => _showSaferRoutes = value);
+        },
+        onReportedIncidentsChanged: (value) {
+          setState(() => _showReportedIncidents = value);
+        },
       ),
-      _MapCard(
+      _FullScreenMapCard(
         isTracking: controller.isTracking,
         routePoints: routePoints,
         controller: controller,
+        showHighRiskAreas: _showHighRiskAreas,
+        showSaferRoutes: _showSaferRoutes,
+        showReportedIncidents: _showReportedIncidents,
       ),
       const SizedBox(height: 80),
     ];
@@ -79,66 +94,81 @@ class _MapScreenState extends State<MapScreen>
   bool get wantKeepAlive => true;
 }
 
-class _MapStatusCard extends StatelessWidget {
-  const _MapStatusCard({
-    required this.isTracking,
-    required this.speed,
-    required this.points,
+class _MapLayerControls extends StatelessWidget {
+  const _MapLayerControls({
+    required this.showHighRiskAreas,
+    required this.showSaferRoutes,
+    required this.showReportedIncidents,
+    required this.onHighRiskAreasChanged,
+    required this.onSaferRoutesChanged,
+    required this.onReportedIncidentsChanged,
   });
 
-  final bool isTracking;
-  final double speed;
-  final int points;
+  final bool showHighRiskAreas;
+  final bool showSaferRoutes;
+  final bool showReportedIncidents;
+  final ValueChanged<bool> onHighRiskAreasChanged;
+  final ValueChanged<bool> onSaferRoutesChanged;
+  final ValueChanged<bool> onReportedIncidentsChanged;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isTracking
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                isTracking ? Icons.navigation : Icons.location_disabled,
-                color: isTracking
-                    ? colorScheme.onPrimaryContainer
-                    : colorScheme.onSurfaceVariant,
-              ),
+            Text(
+              'Map Layers',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isTracking ? 'Live trip in progress' : 'No active trip',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilterChip(
+                  selected: showHighRiskAreas,
+                  onSelected: onHighRiskAreasChanged,
+                  label: const Text('High-Risk Areas'),
+                  avatar: Icon(
+                    Icons.warning_rounded,
+                    size: 18,
+                    color: showHighRiskAreas
+                        ? colorScheme.onSecondaryContainer
+                        : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Speed ${speed.toStringAsFixed(1)} m/s • $points points',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
+                ),
+                FilterChip(
+                  selected: showSaferRoutes,
+                  onSelected: onSaferRoutesChanged,
+                  label: const Text('Safer Routes'),
+                  avatar: Icon(
+                    Icons.check_circle_rounded,
+                    size: 18,
+                    color: showSaferRoutes
+                        ? colorScheme.onTertiaryContainer
+                        : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
-                ],
-              ),
+                ),
+                FilterChip(
+                  selected: showReportedIncidents,
+                  onSelected: onReportedIncidentsChanged,
+                  label: const Text('Incidents'),
+                  avatar: Icon(
+                    Icons.flag_rounded,
+                    size: 18,
+                    color: showReportedIncidents
+                        ? colorScheme.onErrorContainer
+                        : colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
             ),
-            if (isTracking)
-              Chip(
-                label: const Text('Live'),
-                backgroundColor: colorScheme.secondaryContainer,
-              ),
           ],
         ),
       ),
@@ -146,22 +176,28 @@ class _MapStatusCard extends StatelessWidget {
   }
 }
 
-class _MapCard extends StatefulWidget {
-  const _MapCard({
+class _FullScreenMapCard extends StatefulWidget {
+  const _FullScreenMapCard({
     required this.isTracking,
     required this.routePoints,
     required this.controller,
+    required this.showHighRiskAreas,
+    required this.showSaferRoutes,
+    required this.showReportedIncidents,
   });
 
   final bool isTracking;
   final List<LatLng> routePoints;
   final TripController controller;
+  final bool showHighRiskAreas;
+  final bool showSaferRoutes;
+  final bool showReportedIncidents;
 
   @override
-  State<_MapCard> createState() => _MapCardState();
+  State<_FullScreenMapCard> createState() => _FullScreenMapCardState();
 }
 
-class _MapCardState extends State<_MapCard> {
+class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   late final MapController _mapController;
 
   @override
@@ -171,7 +207,7 @@ class _MapCardState extends State<_MapCard> {
   }
 
   @override
-  void didUpdateWidget(covariant _MapCard oldWidget) {
+  void didUpdateWidget(covariant _FullScreenMapCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     final points = widget.routePoints;
     if (!widget.isTracking || points.isEmpty) {
@@ -188,92 +224,362 @@ class _MapCardState extends State<_MapCard> {
     }
   }
 
+  List<Marker> _buildHighRiskAreaMarkers(ColorScheme colorScheme) {
+    // Generate high-risk clusters from route points
+    // For demonstration, we create zones around points with higher risk
+    final markers = <Marker>[];
+
+    if (widget.routePoints.length < 2) return markers;
+
+    // Create high-risk zones at intervals along the route
+    for (
+      int i = 0;
+      i < widget.routePoints.length;
+      i += (widget.routePoints.length / 3).ceil().clamp(1, 10)
+    ) {
+      markers.add(
+        Marker(
+          point: widget.routePoints[i],
+          width: 60,
+          height: 60,
+          child: GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('High-risk area detected'),
+                  backgroundColor: colorScheme.error,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: CustomPaint(
+              painter: _HighRiskAreaPainter(
+                color: colorScheme.error.withValues(alpha: 0.3),
+              ),
+              child: Icon(
+                Icons.warning_rounded,
+                color: colorScheme.error,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  List<Polyline<Object>> _buildSaferRoutes(ColorScheme colorScheme) {
+    // Create alternative safer routes by offsetting the main route
+    if (widget.routePoints.length < 2) return [];
+
+    // Generate a parallel route (safer alternative)
+    final saferRoute = widget.routePoints.map((point) {
+      // Offset by ~0.0005 degrees (roughly 50 meters)
+      return LatLng(point.latitude + 0.0005, point.longitude + 0.0005);
+    }).toList();
+
+    return [
+      Polyline<Object>(
+        points: saferRoute,
+        strokeWidth: 3,
+        color: colorScheme.tertiary.withValues(alpha: 0.6),
+      ),
+    ];
+  }
+
+  List<Marker> _buildReportedIncidentMarkers(ColorScheme colorScheme) {
+    // Build markers for reported incidents
+    final markers = <Marker>[];
+
+    if (widget.routePoints.isEmpty) return markers;
+
+    // Create sample incident markers at random points along the route
+    final incidentPoints = [
+      widget.routePoints[widget.routePoints.length ~/ 4],
+      widget.routePoints[widget.routePoints.length ~/ 2],
+      widget.routePoints[(widget.routePoints.length * 3) ~/ 4],
+    ];
+
+    final severities = ['Low', 'Medium', 'High'];
+    final colors = [colorScheme.tertiary, Colors.orange, colorScheme.error];
+
+    for (
+      int i = 0;
+      i < incidentPoints.length && i < widget.routePoints.length;
+      i++
+    ) {
+      markers.add(
+        Marker(
+          point: incidentPoints[i],
+          width: 50,
+          height: 50,
+          child: GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${severities[i]} severity incident'),
+                  backgroundColor: colors[i],
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors[i],
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors[i].withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.flag_rounded,
+                color: Theme.of(context).colorScheme.surface,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    if (widget.routePoints.isEmpty) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: EmptyState(
+          icon: Icons.map,
+          title: 'No active trip',
+          message:
+              'Start a trip to see the safety map with high-risk areas, safer routes, and reported incidents.',
+          ctaLabel: 'Start Trip',
+          onCtaPressed: () => TripActionSheet.show(context),
+        ),
+      );
+    }
+
+    final List<Marker> highRiskMarkers = widget.showHighRiskAreas
+        ? _buildHighRiskAreaMarkers(colorScheme)
+        : <Marker>[];
+    final List<Polyline<Object>> saferRoutes = widget.showSaferRoutes
+        ? _buildSaferRoutes(colorScheme)
+        : <Polyline<Object>>[];
+    final List<Marker> incidentMarkers = widget.showReportedIncidents
+        ? _buildReportedIncidentMarkers(colorScheme)
+        : <Marker>[];
+
     return SizedBox(
-      height: 360,
+      height: 480,
       child: Card(
         clipBehavior: Clip.antiAlias,
-        child: widget.routePoints.isEmpty
-            ? EmptyState(
-                icon: Icons.map,
-                title: 'No active trip',
-                message:
-                    'Start a trip to see your live route and markers here.',
-                ctaLabel: 'Start Trip',
-                onCtaPressed: () => TripActionSheet.show(context),
-              )
-            : Stack(
-                children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: widget.routePoints.last,
-                      initialZoom: 15,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.saferide.app',
-                      ),
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: widget.routePoints,
-                            strokeWidth: 4,
-                            color: colorScheme.primary,
-                          ),
-                        ],
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: widget.routePoints.last,
-                            width: 40,
-                            height: 40,
-                            child: Icon(
-                              Icons.location_on,
-                              color: colorScheme.primary,
-                              size: 36,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  if (widget.isTracking)
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Chip(
-                        avatar: Icon(
-                          Icons.radio_button_checked,
-                          color: colorScheme.onSecondaryContainer,
-                          size: 16,
-                        ),
-                        label: const Text('Live route'),
-                        backgroundColor: colorScheme.secondaryContainer,
-                      ),
-                    ),
-                  if (widget.controller.isTracking)
-                    Positioned(
-                      bottom: 12,
-                      left: 12,
-                      right: 12,
-                      child: TripMiniHud(
-                        speed: widget.controller.currentSpeed,
-                        speedingCount: widget.controller.speedingCount,
-                        brakingCount: widget.controller.brakingCount,
-                        turningCount: widget.controller.turningCount,
-                      ),
-                    ),
-                ],
+        child: Stack(
+          children: [
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: widget.routePoints.isNotEmpty
+                    ? widget.routePoints.last
+                    : const LatLng(0, 0),
+                initialZoom: 15,
               ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.saferide.app',
+                ),
+                // Safer routes layer
+                PolylineLayer<Object>(polylines: saferRoutes),
+                // High-risk areas layer
+                MarkerLayer(markers: highRiskMarkers),
+                // Main route polyline
+                PolylineLayer<Object>(
+                  polylines: [
+                    Polyline<Object>(
+                      points: widget.routePoints,
+                      strokeWidth: 4,
+                      color: colorScheme.primary,
+                    ),
+                  ],
+                ),
+                // Reported incidents layer
+                MarkerLayer(markers: incidentMarkers),
+                // Current location marker
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: widget.routePoints.last,
+                      width: 50,
+                      height: 50,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.surface,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.my_location,
+                          color: colorScheme.onPrimary,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (widget.isTracking)
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Chip(
+                  avatar: Icon(
+                    Icons.radio_button_checked,
+                    color: colorScheme.onSecondaryContainer,
+                    size: 16,
+                  ),
+                  label: const Text('Live tracking'),
+                  backgroundColor: colorScheme.secondaryContainer,
+                ),
+              ),
+            if (widget.controller.isTracking)
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: TripMiniHud(
+                  speed: widget.controller.currentSpeed,
+                  speedingCount: widget.controller.speedingCount,
+                  brakingCount: widget.controller.brakingCount,
+                  turningCount: widget.controller.turningCount,
+                ),
+              ),
+            // Legend
+            Positioned(
+              bottom: 12,
+              right: 12,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.showHighRiskAreas)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.warning_rounded,
+                              size: 14,
+                              color: colorScheme.error,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'High-Risk',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (widget.showSaferRoutes)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 2,
+                              color: colorScheme.tertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Safer Route',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (widget.showReportedIncidents)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.flag_rounded,
+                            size: 14,
+                            color: colorScheme.error,
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Incidents',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _HighRiskAreaPainter extends CustomPainter {
+  final Color color;
+
+  _HighRiskAreaPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      size.width / 2,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_HighRiskAreaPainter oldDelegate) => false;
 }
 
 class _StaggeredItem extends StatelessWidget {

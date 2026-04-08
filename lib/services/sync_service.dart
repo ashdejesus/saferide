@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../data/app_database.dart';
 import '../models/sync_status.dart';
@@ -61,6 +62,16 @@ class SyncService extends ChangeNotifier {
       return result;
     }
 
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      final result = SyncResult.failed('Sign in to sync to Firestore.');
+      _lastSyncAt = DateTime.now();
+      _lastResult = result;
+      _isSyncing = false;
+      notifyListeners();
+      return result;
+    }
+
     final firestore = FirebaseFirestore.instance;
     final pendingTrips = await _database.getPendingTrips();
     final pendingReports = await _database.getPendingReports();
@@ -72,31 +83,41 @@ class SyncService extends ChangeNotifier {
     final batch = firestore.batch();
 
     for (final trip in pendingTrips) {
-      final doc = firestore.collection('trips').doc();
+      final docId = trip.id?.toString() ?? trip.startTime.millisecondsSinceEpoch.toString();
+      final doc = firestore.collection('trips').doc(docId);
       batch.set(doc, {
-        'startTime': trip.startTime.toIso8601String(),
-        'endTime': trip.endTime?.toIso8601String(),
-        'startLat': trip.startLat,
-        'startLng': trip.startLng,
-        'endLat': trip.endLat,
-        'endLng': trip.endLng,
+        'userId': user.uid,
+        'startedAt': Timestamp.fromDate(trip.startTime),
+        'endedAt': trip.endTime == null ? null : Timestamp.fromDate(trip.endTime!),
         'routeName': trip.routeName,
-        'riskScore': trip.riskScore,
-        'speedingCount': trip.speedingCount,
-        'brakingCount': trip.brakingCount,
-        'turningCount': trip.turningCount,
-        'routePoints': trip.routePoints,
+        'metadata': {
+          'riskScore': trip.riskScore,
+          'speedingCount': trip.speedingCount,
+          'brakingCount': trip.brakingCount,
+          'turningCount': trip.turningCount,
+          'routePoints': trip.routePoints,
+          'startLat': trip.startLat,
+          'startLng': trip.startLng,
+          'endLat': trip.endLat,
+          'endLng': trip.endLng,
+        },
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     }
 
     for (final report in pendingReports) {
-      final doc = firestore.collection('reports').doc();
+      final docId = report.id?.toString() ?? report.createdAt.millisecondsSinceEpoch.toString();
+      final doc = firestore.collection('incidents').doc(docId);
       batch.set(doc, {
-        'tripId': report.tripId,
-        'category': report.category,
-        'severity': report.severity,
+        'reportedBy': user.uid,
         'description': report.description,
-        'createdAt': report.createdAt.toIso8601String(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'metadata': {
+          'tripId': report.tripId,
+          'category': report.category,
+          'severity': report.severity,
+        },
       });
     }
 

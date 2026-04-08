@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../widgets/section_header.dart';
 
@@ -91,20 +93,7 @@ class _RatingsScreenState extends State<RatingsScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () {
-                      // TODO: Submit ratings
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Thank you for your feedback!'),
-                        ),
-                      );
-                      setState(() {
-                        _driverRating = 3;
-                        _vehicleRating = 3;
-                        _routeRating = 3;
-                        _feedbackController.clear();
-                      });
-                    },
+                    onPressed: () async => _submitRatings(context),
                     icon: const Icon(Icons.send),
                     label: const Text('Submit Feedback'),
                   ),
@@ -138,6 +127,51 @@ class _RatingsScreenState extends State<RatingsScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _submitRatings(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to submit feedback.')),
+      );
+      return;
+    }
+
+    final overallScore = (_driverRating + _vehicleRating + _routeRating) / 3;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('ratings')
+          .add({
+            'userId': user.uid,
+            'isAnonymous': user.isAnonymous,
+            'driverRating': _driverRating,
+            'vehicleRating': _vehicleRating,
+            'routeRating': _routeRating,
+            'overallScore': overallScore,
+            'feedback': _feedbackController.text.trim(),
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thank you for your feedback!')),
+      );
+      setState(() {
+        _driverRating = 3;
+        _vehicleRating = 3;
+        _routeRating = 3;
+        _feedbackController.clear();
+      });
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to save feedback: $error')),
+      );
+    }
   }
 }
 

@@ -136,7 +136,6 @@ class _WavyPainter extends CustomPainter {
 
     final path = Path();
     final waveHeight = size.height * 0.3;
-    final waveLength = size.width / 4;
 
     path.moveTo(0, size.height / 2);
 
@@ -349,7 +348,6 @@ class ProgressButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final progressSize = _getProgressSize();
 
     if (isLoading) {

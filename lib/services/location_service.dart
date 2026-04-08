@@ -65,8 +65,37 @@ class LocationService {
   }
 
   Future<Position> currentPosition() {
-    return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.best,
+    LocationSettings locationSettings = const LocationSettings(
+      accuracy: LocationAccuracy.best,
+      distanceFilter: 5,
     );
+
+    if (Platform.isAndroid) {
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 2),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'SafeRide trip running',
+          notificationText: 'Collecting driving data in the background.',
+          enableWakeLock: true,
+          notificationIcon: AndroidResource(
+            name: 'ic_launcher',
+            defType: 'mipmap',
+          ),
+        ),
+      );
+    } else if (Platform.isIOS) {
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+        activityType: ActivityType.automotiveNavigation,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    }
+
+    return Geolocator.getCurrentPosition(locationSettings: locationSettings);
   }
 }

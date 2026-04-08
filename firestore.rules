@@ -48,6 +48,25 @@ service cloud.firestore {
 
       // Delete allowed for owner or admin
       allow delete: if isOwner(userId) || isAdmin();
+
+      // Ratings saved by the signed-in user, including anonymous accounts.
+      match /ratings/{ratingId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'userId',
+            'isAnonymous',
+            'driverRating',
+            'vehicleRating',
+            'routeRating',
+            'overallScore',
+            'feedback',
+            'createdAt'
+          ])
+          && isTimestampNowOrNull(request.resource.data.createdAt);
+        allow update, delete: if isOwner(userId) || isAdmin();
+      }
     }
 
     // Trips collection

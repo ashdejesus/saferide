@@ -43,13 +43,15 @@ class AuthService {
     if (user == null) return;
     final users = FirebaseFirestore.instance.collection('users');
     final doc = users.doc(user.uid);
+    final snapshot = await doc.get();
 
     final data = {
       'uid': user.uid,
       'email': user.email,
       'isAnonymous': user.isAnonymous,
-      'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      if (!snapshot.exists) 'createdAt': FieldValue.serverTimestamp(),
+      'role': 'user',
       // placeholder for future inputs
       'profile': {},
     };
