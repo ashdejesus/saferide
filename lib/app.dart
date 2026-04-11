@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,6 +35,33 @@ class SafeRideApp extends StatefulWidget {
 
 class _SafeRideAppState extends State<SafeRideApp> {
   int _selectedIndex = 0;
+  StreamSubscription<User?>? _authSubscription;
+  String _controllerScopeKey = 'signed_out';
+
+  @override
+  void initState() {
+    super.initState();
+    _handleAuthChanged(widget.auth.currentUser);
+    _authSubscription = widget.auth.authStateChanges().listen(_handleAuthChanged);
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _handleAuthChanged(User? user) {
+    widget.database.configureForUser(uid: user?.uid, isAnonymous: user?.isAnonymous ?? false);
+    final nextScope = user == null
+        ? 'signed_out'
+        : (user.isAnonymous ? 'anon_${user.uid}' : 'user_${user.uid}');
+    if (_controllerScopeKey != nextScope && mounted) {
+      setState(() {
+        _controllerScopeKey = nextScope;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,13 +71,14 @@ class _SafeRideAppState extends State<SafeRideApp> {
         Provider<AuthService>.value(value: widget.auth),
         ChangeNotifierProvider.value(value: widget.sync),
         ChangeNotifierProvider(
+          key: ValueKey(_controllerScopeKey),
           create: (context) => TripController(database: widget.database),
         ),
       ],
       child: MaterialApp(
         title: 'SafeRide',
         theme: buildSafeRideTheme(),
-        home: StreamBuilder(
+        home: StreamBuilder<User?>(
           stream: widget.auth.authStateChanges(),
           initialData: widget.auth.currentUser,
           builder: (context, snapshot) {

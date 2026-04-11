@@ -39,6 +39,33 @@ class AuthService {
     return cred;
   }
 
+  Future<UserCredential> upgradeAnonymousAccountWithEmail(
+    String email,
+    String password,
+  ) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No signed-in user to upgrade.',
+      );
+    }
+    if (!user.isAnonymous) {
+      throw FirebaseAuthException(
+        code: 'not-anonymous-user',
+        message: 'Only anonymous users can be upgraded.',
+      );
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    final linked = await user.linkWithCredential(credential);
+    await _createOrUpdateUserDoc(linked.user);
+    return linked;
+  }
+
   Future<void> _createOrUpdateUserDoc(User? user) async {
     if (user == null) return;
     final users = FirebaseFirestore.instance.collection('users');

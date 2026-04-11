@@ -72,6 +72,17 @@ class SyncService extends ChangeNotifier {
       return result;
     }
 
+    if (user.isAnonymous) {
+      final result = SyncResult.failed(
+        'Register your guest account before syncing trips.',
+      );
+      _lastSyncAt = DateTime.now();
+      _lastResult = result;
+      _isSyncing = false;
+      notifyListeners();
+      return result;
+    }
+
     final firestore = FirebaseFirestore.instance;
     final pendingTrips = await _database.getPendingTrips();
     final pendingReports = await _database.getPendingReports();

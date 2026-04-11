@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_database.dart';
@@ -113,92 +114,98 @@ class _TripCard extends StatelessWidget {
     final badge = _RiskBadge.fromScore(context, trip.riskScore);
 
     final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TripDetailScreen(trip: trip),
+    return OpenContainer<void>(
+      transitionType: ContainerTransitionType.fadeThrough,
+      transitionDuration: const Duration(milliseconds: 420),
+      openBuilder: (context, _) => TripDetailScreen(trip: trip),
+      closedElevation: 0,
+      openElevation: 0,
+      closedColor: Colors.transparent,
+      openColor: colorScheme.surface,
+      closedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      closedBuilder: (context, openContainer) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: InkWell(
+            onTap: openContainer,
+            borderRadius: BorderRadius.circular(28),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.route,
+                          color: colorScheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          trip.routeName ??
+                              'Trip on ${start.toLocal().toString().split(' ').first}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      if (duration != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${duration.inMinutes} min',
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Risk score: ${trip.riskScore.toStringAsFixed(0)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _MetricChip(label: 'Speed ${trip.speedingCount}'),
+                      _MetricChip(label: 'Brake ${trip.brakingCount}'),
+                      _MetricChip(label: 'Turn ${trip.turningCount}'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      badge,
+                      const Spacer(),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(28),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.route,
-                      color: colorScheme.primary,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      trip.routeName ??
-                          'Trip on ${start.toLocal().toString().split(' ').first}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  if (duration != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${duration.inMinutes} min',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Risk score: ${trip.riskScore.toStringAsFixed(0)}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _MetricChip(label: 'Speed ${trip.speedingCount}'),
-                  _MetricChip(label: 'Brake ${trip.brakingCount}'),
-                  _MetricChip(label: 'Turn ${trip.turningCount}'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  badge,
-                  const Spacer(),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

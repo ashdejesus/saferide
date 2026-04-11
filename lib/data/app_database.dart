@@ -7,25 +7,55 @@ import '../models/sync_status.dart';
 import '../models/trip.dart';
 
 class AppDatabase {
-  static const _databaseName = 'saferide.db';
+  static const _databaseBaseName = 'saferide';
   static const _databaseVersion = 1;
 
   Database? _database;
+  String _activeStorageKey = 'signed_out';
+  String? _openedStorageKey;
+
+  void configureForUser({required String? uid, required bool isAnonymous}) {
+    final key = _storageKeyForUser(uid: uid, isAnonymous: isAnonymous);
+    _activeStorageKey = key;
+  }
+
+  String _storageKeyForUser({required String? uid, required bool isAnonymous}) {
+    if (uid == null || uid.isEmpty) {
+      return 'signed_out';
+    }
+    return isAnonymous ? 'anon_$uid' : 'user_$uid';
+  }
+
+  String _databaseFileNameForScope(String storageKey) {
+    if (storageKey == 'signed_out') {
+      return 'saferide.db';
+    }
+    return '${_databaseBaseName}_$storageKey.db';
+  }
 
   Future<Database> get database async {
     final existing = _database;
-    if (existing != null) {
+    if (existing != null && _openedStorageKey == _activeStorageKey) {
       return existing;
     }
 
+    if (existing != null && _openedStorageKey != _activeStorageKey) {
+      await existing.close();
+      _database = null;
+    }
+
     final documentsDirectory = await getApplicationDocumentsDirectory();
-    final dbPath = path.join(documentsDirectory.path, _databaseName);
+    final dbPath = path.join(
+      documentsDirectory.path,
+      _databaseFileNameForScope(_activeStorageKey),
+    );
 
     _database = await openDatabase(
       dbPath,
       version: _databaseVersion,
       onCreate: _onCreate,
     );
+    _openedStorageKey = _activeStorageKey;
 
     return _database!;
   }
