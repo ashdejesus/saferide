@@ -122,7 +122,9 @@ class _TripCard extends StatelessWidget {
       openElevation: 0,
       closedColor: Colors.transparent,
       openColor: colorScheme.surface,
-      closedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      closedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+      ),
       closedBuilder: (context, openContainer) {
         return Card(
           margin: const EdgeInsets.only(bottom: 12),

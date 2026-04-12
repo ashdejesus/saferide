@@ -4,9 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../state/trip_controller.dart';
-import '../widgets/empty_state.dart';
 import '../widgets/section_header.dart';
-import '../widgets/trip_action_sheet.dart';
 import '../widgets/trip_mini_hud.dart';
 
 class MapScreen extends StatefulWidget {
@@ -112,6 +110,9 @@ class _MapLayerControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
+      elevation: 2,
+      color: colorScheme.surface.withValues(alpha: 0.92),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -125,10 +126,10 @@ class _MapLayerControls extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 8,
+              spacing: 10,
               runSpacing: 8,
               children: [
-                FilterChip(
+                _LayerFilterChip(
                   selected: showHighRiskAreas,
                   onSelected: onHighRiskAreasChanged,
                   label: const Text('High-Risk Areas'),
@@ -140,7 +141,7 @@ class _MapLayerControls extends StatelessWidget {
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
-                FilterChip(
+                _LayerFilterChip(
                   selected: showSaferRoutes,
                   onSelected: onSaferRoutesChanged,
                   label: const Text('Safer Routes'),
@@ -152,7 +153,7 @@ class _MapLayerControls extends StatelessWidget {
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
-                FilterChip(
+                _LayerFilterChip(
                   selected: showReportedIncidents,
                   onSelected: onReportedIncidentsChanged,
                   label: const Text('Incidents'),
@@ -169,6 +170,56 @@ class _MapLayerControls extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LayerFilterChip extends StatelessWidget {
+  const _LayerFilterChip({
+    required this.selected,
+    required this.onSelected,
+    required this.label,
+    required this.avatar,
+  });
+
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+  final Widget label;
+  final Widget avatar;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
+    final selectedColor = colorScheme.secondaryContainer;
+    final baseColor = colorScheme.surfaceContainerHigh;
+
+    return FilterChip(
+      selected: selected,
+      onSelected: onSelected,
+      label: label,
+      avatar: avatar,
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+      avatarBoxConstraints: const BoxConstraints.tightFor(width: 18, height: 18),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      side: BorderSide(
+        color: selected
+            ? colorScheme.secondary.withValues(alpha: 0.45)
+            : colorScheme.outlineVariant,
+      ),
+      color: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return selectedColor;
+        }
+        if (states.contains(WidgetState.hovered) ||
+            states.contains(WidgetState.focused)) {
+          return hoveredColor;
+        }
+        return baseColor;
+      }),
     );
   }
 }
@@ -203,6 +254,14 @@ class _FullScreenMapCard extends StatefulWidget {
 class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   late final MapController _mapController;
 
+  static const List<LatLng> _previewRoutePoints = [
+    LatLng(14.6038, 120.9885),
+    LatLng(14.6052, 120.9920),
+    LatLng(14.6070, 120.9951),
+    LatLng(14.6089, 120.9986),
+    LatLng(14.6105, 121.0013),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -227,22 +286,25 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     }
   }
 
-  List<Marker> _buildHighRiskAreaMarkers(ColorScheme colorScheme) {
+  List<Marker> _buildHighRiskAreaMarkers(
+    ColorScheme colorScheme,
+    List<LatLng> routePoints,
+  ) {
     // Generate high-risk clusters from route points
     // For demonstration, we create zones around points with higher risk
     final markers = <Marker>[];
 
-    if (widget.routePoints.length < 2) return markers;
+    if (routePoints.length < 2) return markers;
 
     // Create high-risk zones at intervals along the route
     for (
       int i = 0;
-      i < widget.routePoints.length;
-      i += (widget.routePoints.length / 3).ceil().clamp(1, 10)
+      i < routePoints.length;
+      i += (routePoints.length / 3).ceil().clamp(1, 10)
     ) {
       markers.add(
         Marker(
-          point: widget.routePoints[i],
+          point: routePoints[i],
           width: 60,
           height: 60,
           child: GestureDetector(
@@ -273,12 +335,15 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return markers;
   }
 
-  List<Polyline<Object>> _buildSaferRoutes(ColorScheme colorScheme) {
+  List<Polyline<Object>> _buildSaferRoutes(
+    ColorScheme colorScheme,
+    List<LatLng> routePoints,
+  ) {
     // Create alternative safer routes by offsetting the main route
-    if (widget.routePoints.length < 2) return [];
+    if (routePoints.length < 2) return [];
 
     // Generate a parallel route (safer alternative)
-    final saferRoute = widget.routePoints.map((point) {
+    final saferRoute = routePoints.map((point) {
       // Offset by ~0.0005 degrees (roughly 50 meters)
       return LatLng(point.latitude + 0.0005, point.longitude + 0.0005);
     }).toList();
@@ -292,17 +357,20 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     ];
   }
 
-  List<Marker> _buildReportedIncidentMarkers(ColorScheme colorScheme) {
+  List<Marker> _buildReportedIncidentMarkers(
+    ColorScheme colorScheme,
+    List<LatLng> routePoints,
+  ) {
     // Build markers for reported incidents
     final markers = <Marker>[];
 
-    if (widget.routePoints.isEmpty) return markers;
+    if (routePoints.isEmpty) return markers;
 
     // Create sample incident markers at random points along the route
     final incidentPoints = [
-      widget.routePoints[widget.routePoints.length ~/ 4],
-      widget.routePoints[widget.routePoints.length ~/ 2],
-      widget.routePoints[(widget.routePoints.length * 3) ~/ 4],
+      routePoints[routePoints.length ~/ 4],
+      routePoints[routePoints.length ~/ 2],
+      routePoints[(routePoints.length * 3) ~/ 4],
     ];
 
     final severities = ['Low', 'Medium', 'High'];
@@ -310,7 +378,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
     for (
       int i = 0;
-      i < incidentPoints.length && i < widget.routePoints.length;
+      i < incidentPoints.length && i < routePoints.length;
       i++
     ) {
       markers.add(
@@ -358,32 +426,26 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return markers;
   }
 
+  List<LatLng> _effectiveRoutePoints() {
+    if (widget.routePoints.length >= 2) {
+      return widget.routePoints;
+    }
+    return _previewRoutePoints;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    if (widget.routePoints.isEmpty) {
-      return Card(
-        clipBehavior: Clip.antiAlias,
-        child: EmptyState(
-          icon: Icons.map,
-          title: 'No active trip',
-          message:
-              'Start a trip to see the safety map with high-risk areas, safer routes, and reported incidents.',
-          ctaLabel: 'Start Trip',
-          onCtaPressed: () => TripActionSheet.show(context),
-        ),
-      );
-    }
-
+    final hasRealTripRoute = widget.routePoints.length >= 2;
+    final routePointsForLayers = _effectiveRoutePoints();
     final List<Marker> highRiskMarkers = widget.showHighRiskAreas
-        ? _buildHighRiskAreaMarkers(colorScheme)
+        ? _buildHighRiskAreaMarkers(colorScheme, routePointsForLayers)
         : <Marker>[];
     final List<Polyline<Object>> saferRoutes = widget.showSaferRoutes
-        ? _buildSaferRoutes(colorScheme)
+        ? _buildSaferRoutes(colorScheme, routePointsForLayers)
         : <Polyline<Object>>[];
     final List<Marker> incidentMarkers = widget.showReportedIncidents
-        ? _buildReportedIncidentMarkers(colorScheme)
+        ? _buildReportedIncidentMarkers(colorScheme, routePointsForLayers)
         : <Marker>[];
 
     return Card(
@@ -393,9 +455,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: widget.routePoints.isNotEmpty
-                  ? widget.routePoints.last
-                  : const LatLng(0, 0),
+              initialCenter: routePointsForLayers.last,
               initialZoom: 15,
             ),
             children: [
@@ -411,9 +471,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               PolylineLayer<Object>(
                 polylines: [
                   Polyline<Object>(
-                    points: widget.routePoints,
+                    points: routePointsForLayers,
                     strokeWidth: 4,
-                    color: colorScheme.primary,
+                    color: hasRealTripRoute
+                        ? colorScheme.primary
+                        : colorScheme.primary.withValues(alpha: 0.55),
                   ),
                 ],
               ),
@@ -423,7 +485,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               MarkerLayer(
                 markers: [
                   Marker(
-                    point: widget.routePoints.last,
+                    point: routePointsForLayers.last,
                     width: 50,
                     height: 50,
                     child: Container(
@@ -443,7 +505,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                         ],
                       ),
                       child: Icon(
-                        Icons.my_location,
+                        hasRealTripRoute ? Icons.my_location : Icons.travel_explore,
                         color: colorScheme.onPrimary,
                         size: 24,
                       ),
@@ -468,7 +530,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
           ),
           if (widget.isTracking)
             Positioned(
-              top: 124,
+              top: 132,
               left: 12,
               child: Chip(
                 avatar: Icon(
@@ -478,6 +540,20 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 ),
                 label: const Text('Live tracking'),
                 backgroundColor: colorScheme.secondaryContainer,
+              ),
+            ),
+          if (!hasRealTripRoute)
+            Positioned(
+              top: widget.isTracking ? 172 : 132,
+              left: 12,
+              child: Chip(
+                avatar: Icon(
+                  Icons.visibility,
+                  color: colorScheme.onTertiaryContainer,
+                  size: 16,
+                ),
+                label: const Text('Preview layers shown'),
+                backgroundColor: colorScheme.tertiaryContainer,
               ),
             ),
           if (widget.controller.isTracking)
@@ -498,13 +574,20 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             right: 12,
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outlineVariant,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

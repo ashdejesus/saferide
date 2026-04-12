@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -50,6 +52,12 @@ class AppDatabase {
       _databaseFileNameForScope(_activeStorageKey),
     );
 
+    await _migrateAnonymousScopeIfNeeded(
+      documentsPath: documentsDirectory.path,
+      targetPath: dbPath,
+      targetStorageKey: _activeStorageKey,
+    );
+
     _database = await openDatabase(
       dbPath,
       version: _databaseVersion,
@@ -58,6 +66,35 @@ class AppDatabase {
     _openedStorageKey = _activeStorageKey;
 
     return _database!;
+  }
+
+  Future<void> _migrateAnonymousScopeIfNeeded({
+    required String documentsPath,
+    required String targetPath,
+    required String targetStorageKey,
+  }) async {
+    if (!targetStorageKey.startsWith('user_')) {
+      return;
+    }
+
+    final targetFile = File(targetPath);
+    if (await targetFile.exists()) {
+      return;
+    }
+
+    final uid = targetStorageKey.substring('user_'.length);
+    if (uid.isEmpty) {
+      return;
+    }
+
+    final sourceFileName = _databaseFileNameForScope('anon_$uid');
+    final sourcePath = path.join(documentsPath, sourceFileName);
+    final sourceFile = File(sourcePath);
+    if (!await sourceFile.exists()) {
+      return;
+    }
+
+    await sourceFile.copy(targetPath);
   }
 
   Future<void> _onCreate(Database db, int version) async {
