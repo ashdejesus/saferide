@@ -203,7 +203,10 @@ class _LayerFilterChip extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-      avatarBoxConstraints: const BoxConstraints.tightFor(width: 18, height: 18),
+      avatarBoxConstraints: const BoxConstraints.tightFor(
+        width: 18,
+        height: 18,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       side: BorderSide(
         color: selected
@@ -376,11 +379,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final severities = ['Low', 'Medium', 'High'];
     final colors = [colorScheme.tertiary, Colors.orange, colorScheme.error];
 
-    for (
-      int i = 0;
-      i < incidentPoints.length && i < routePoints.length;
-      i++
-    ) {
+    for (int i = 0; i < incidentPoints.length && i < routePoints.length; i++) {
       markers.add(
         Marker(
           point: incidentPoints[i],
@@ -505,7 +504,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                         ],
                       ),
                       child: Icon(
-                        hasRealTripRoute ? Icons.my_location : Icons.travel_explore,
+                        hasRealTripRoute
+                            ? Icons.my_location
+                            : Icons.travel_explore,
                         color: colorScheme.onPrimary,
                         size: 24,
                       ),
@@ -574,7 +575,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             right: 12,
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: 0.92),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outlineVariant,
@@ -640,10 +643,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                           color: colorScheme.error,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
-                          'Incidents',
-                          style: TextStyle(fontSize: 12),
-                        ),
+                        const Text('Incidents', style: TextStyle(fontSize: 12)),
                       ],
                     ),
                 ],
