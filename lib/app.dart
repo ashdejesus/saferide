@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'data/app_database.dart';
 import 'services/sync_service.dart';
 import 'services/auth_service.dart';
+import 'services/preferences_service.dart';
 import 'state/trip_controller.dart';
 import 'theme.dart';
 import 'screens/dashboard_screen.dart';
@@ -16,6 +17,7 @@ import 'screens/trips_screen.dart';
 import 'widgets/trip_action_sheet.dart';
 import 'widgets/sync_widgets.dart';
 import 'screens/auth_screen.dart';
+import 'widgets/data_collection_agreement_dialog.dart';
 
 class SafeRideApp extends StatefulWidget {
   const SafeRideApp({
@@ -23,11 +25,13 @@ class SafeRideApp extends StatefulWidget {
     required this.database,
     required this.sync,
     required this.auth,
+    required this.preferences,
   });
 
   final AppDatabase database;
   final SyncService sync;
   final AuthService auth;
+  final PreferencesService preferences;
 
   @override
   State<SafeRideApp> createState() => _SafeRideAppState();
@@ -37,12 +41,31 @@ class _SafeRideAppState extends State<SafeRideApp> {
   int _selectedIndex = 0;
   StreamSubscription<User?>? _authSubscription;
   String _controllerScopeKey = 'signed_out';
+  bool _hasShownAgreement = false;
 
   @override
   void initState() {
     super.initState();
     _handleAuthChanged(widget.auth.currentUser);
-    _authSubscription = widget.auth.authStateChanges().listen(_handleAuthChanged);
+    _authSubscription = widget.auth.authStateChanges().listen(
+      _handleAuthChanged,
+    );
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _showAgreementIfNeeded(),
+    );
+  }
+
+  void _showAgreementIfNeeded() {
+    if (!_hasShownAgreement && !widget.preferences.hasAcceptedDataCollection) {
+      _hasShownAgreement = true;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => DataCollectionAgreementDialog(
+          onAccept: () => widget.preferences.acceptDataCollection(),
+        ),
+      );
+    }
   }
 
   @override
@@ -52,7 +75,10 @@ class _SafeRideAppState extends State<SafeRideApp> {
   }
 
   void _handleAuthChanged(User? user) {
-    widget.database.configureForUser(uid: user?.uid, isAnonymous: user?.isAnonymous ?? false);
+    widget.database.configureForUser(
+      uid: user?.uid,
+      isAnonymous: user?.isAnonymous ?? false,
+    );
     final nextScope = user == null
         ? 'signed_out'
         : (user.isAnonymous ? 'anon_${user.uid}' : 'user_${user.uid}');
