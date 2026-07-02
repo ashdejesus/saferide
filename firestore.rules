@@ -173,10 +173,28 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Reports - admin only
+    // Reports collection: allow authenticated users to create reports and
+    // allow owners or admins to update/delete. Validate fields on create.
     match /reports/{reportId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated()
+        // require minimal fields and types
+        && request.resource.data.keys().hasAll(['rating', 'createdAt'])
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        // optional numeric fields
+        && (request.resource.data.lat == null || request.resource.data.lat is number)
+        && (request.resource.data.lng == null || request.resource.data.lng is number)
+        && (request.resource.data.trust == null || request.resource.data.trust is number)
+        // owner field must match authenticated uid if present
+        && (request.resource.data.reportedBy == null || request.resource.data.reportedBy == request.auth.uid)
+        // createdAt may be set by client but should match request.time or be omitted
+        && (request.resource.data.createdAt == request.time || request.resource.data.createdAt == null);
+
+      // allow update/delete only by admin or owner
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.reportedBy == request.auth.uid);
     }
   }
 }

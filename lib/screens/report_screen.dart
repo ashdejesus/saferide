@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/passenger_trust_metrics.dart';
+import '../services/passenger_reporting_service.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/split_button.dart';
@@ -19,6 +21,8 @@ class _ReportScreenState extends State<ReportScreen>
   double _severity = 3;
   final TextEditingController _descriptionController = TextEditingController();
   late final AnimationController _animationController;
+  late final PassengerReportingService _reportingService;
+  PassengerTrustMetrics? _userTrustMetrics;
 
   static const List<String> _categories = [
     'Speeding',
@@ -38,6 +42,23 @@ class _ReportScreenState extends State<ReportScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
+    _reportingService = PassengerReportingService();
+    _loadUserTrustMetrics();
+  }
+
+  Future<void> _loadUserTrustMetrics() async {
+    try {
+      final metrics = await _reportingService.getPassengerTrustMetrics(
+        'current_user',
+      );
+      if (mounted) {
+        setState(() {
+          _userTrustMetrics = metrics;
+        });
+      }
+    } catch (e) {
+      // Silently handle error - trust metrics optional
+    }
   }
 
   @override
@@ -56,6 +77,8 @@ class _ReportScreenState extends State<ReportScreen>
     final items = <Widget>[
       const SectionHeader(title: 'Incident Report'),
       _IntroCard(isTracking: controller.isTracking),
+      if (_userTrustMetrics != null)
+        _TrustMetricsCard(metrics: _userTrustMetrics!),
       _ReportFormCard(
         formKey: _formKey,
         categories: _categories,
@@ -87,8 +110,11 @@ class _ReportScreenState extends State<ReportScreen>
                   _category = _categories.first;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Report saved locally.')),
+                  const SnackBar(
+                    content: Text('Report submitted and syncing to community.'),
+                  ),
                 );
+                await _loadUserTrustMetrics();
               }
             : null,
         controller: controller,
@@ -110,6 +136,7 @@ class _ReportScreenState extends State<ReportScreen>
             ),
           ),
         ),
+      _ReportingGuidelinesCard(),
       const SizedBox(height: 80),
     ];
 
@@ -183,6 +210,258 @@ class _IntroCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TrustMetricsCard extends StatelessWidget {
+  const _TrustMetricsCard({required this.metrics});
+
+  final PassengerTrustMetrics metrics;
+
+  Color _getTrustColor(double trust) {
+    if (trust >= 0.8) return Colors.green;
+    if (trust >= 0.6) return Colors.orange;
+    return Colors.red;
+  }
+
+  String _getTrustLabel(double trust) {
+    if (trust >= 0.8) return 'Highly Trusted';
+    if (trust >= 0.6) return 'Trusted';
+    if (trust >= 0.4) return 'Moderate Trust';
+    return 'Building Trust';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trustColor = _getTrustColor(metrics.overallTrust);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: trustColor.withAlpha(51),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.verified_user, color: trustColor),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Trust Score',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _getTrustLabel(metrics.overallTrust),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: trustColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${(metrics.overallTrust * 100).toStringAsFixed(0)}%',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: trustColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _TrustMetricRow(
+              label: 'Consistency',
+              value: metrics.consistencyScore,
+              icon: Icons.timeline,
+            ),
+            const SizedBox(height: 12),
+            _TrustMetricRow(
+              label: 'Alignment with Sensors',
+              value: metrics.sensorAlignmentScore,
+              icon: Icons.sensors,
+            ),
+            const SizedBox(height: 12),
+            _TrustMetricRow(
+              label: 'Anomaly Detection',
+              value: 1.0 - metrics.anomalyScore,
+              icon: Icons.notification_important,
+            ),
+            if (metrics.totalReports > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Wrap(
+                  spacing: 12,
+                  children: [
+                    Chip(
+                      label: Text('${metrics.totalReports} reports'),
+                      avatar: Icon(Icons.assignment, size: 18),
+                    ),
+                    Chip(
+                      label: Text('${metrics.verifiedCount} verified'),
+                      avatar: Icon(
+                        Icons.check_circle,
+                        size: 18,
+                        color: Colors.green,
+                      ),
+                    ),
+                    if (metrics.flaggedCount > 0)
+                      Chip(
+                        label: Text('${metrics.flaggedCount} flagged'),
+                        avatar: Icon(
+                          Icons.flag,
+                          size: 18,
+                          color: Colors.orange,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustMetricRow extends StatelessWidget {
+  const _TrustMetricRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final double value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final percentage = (value * 100).toStringAsFixed(0);
+    return Row(
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(value: value, minHeight: 6),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$percentage%',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportingGuidelinesCard extends StatelessWidget {
+  const _ReportingGuidelinesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: colorScheme.primary),
+                const SizedBox(width: 12),
+                Text(
+                  'Reporting Tips',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _GuidelineItem(
+              title: 'Be Accurate',
+              description: 'Accurate reports build your trust score.',
+            ),
+            const SizedBox(height: 10),
+            _GuidelineItem(
+              title: 'Stay Consistent',
+              description:
+                  'Consistent reporting patterns increase community trust.',
+            ),
+            const SizedBox(height: 10),
+            _GuidelineItem(
+              title: 'Add Details',
+              description: 'More context helps validate your report.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GuidelineItem extends StatelessWidget {
+  const _GuidelineItem({required this.title, required this.description});
+
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.check_circle_outline, size: 16),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

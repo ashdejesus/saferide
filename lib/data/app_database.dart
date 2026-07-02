@@ -4,13 +4,14 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../models/passenger_trust_metrics.dart';
 import '../models/report.dart';
 import '../models/sync_status.dart';
 import '../models/trip.dart';
 
 class AppDatabase {
   static const _databaseBaseName = 'saferide';
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 2;
 
   Database? _database;
   String _activeStorageKey = 'signed_out';
@@ -62,6 +63,7 @@ class AppDatabase {
       dbPath,
       version: _databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
     _openedStorageKey = _activeStorageKey;
 
@@ -127,6 +129,52 @@ class AppDatabase {
         created_at TEXT NOT NULL,
         sync_status TEXT,
         FOREIGN KEY(trip_id) REFERENCES trips(id) ON DELETE CASCADE
+      );
+    ''');
+
+    if (version >= 2) {
+      await _createTrustMetricsTables(db);
+    }
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2 && newVersion >= 2) {
+      await _createTrustMetricsTables(db);
+    }
+  }
+
+  Future<void> _createTrustMetricsTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE passenger_trust_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        passenger_id TEXT UNIQUE NOT NULL,
+        total_reports INTEGER DEFAULT 0,
+        consistency_score REAL DEFAULT 0.5,
+        anomaly_score REAL DEFAULT 0.0,
+        sensor_alignment_score REAL DEFAULT 0.5,
+        overall_trust REAL DEFAULT 0.5,
+        last_updated TEXT NOT NULL,
+        verified_count INTEGER DEFAULT 0,
+        flagged_count INTEGER DEFAULT 0,
+        sync_status TEXT
+      );
+    ''');
+
+    await db.execute('''
+      CREATE TABLE reports_with_trust (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_id INTEGER NOT NULL,
+        passenger_id TEXT NOT NULL,
+        category TEXT NOT NULL,
+        severity INTEGER NOT NULL,
+        description TEXT,
+        latitude REAL,
+        longitude REAL,
+        timestamp TEXT NOT NULL,
+        passenger_trust REAL DEFAULT 0.5,
+        is_verified INTEGER DEFAULT 0,
+        is_flagged INTEGER DEFAULT 0,
+        sync_status TEXT
       );
     ''');
   }
@@ -225,6 +273,75 @@ class AppDatabase {
       report.toMap(),
       where: 'id = ?',
       whereArgs: [report.id],
+    );
+  }
+
+  /// Insert or update passenger trust metrics
+  Future<int> upsertPassengerTrustMetrics(PassengerTrustMetrics metrics) async {
+    final db = await database;
+    return db.insert(
+      'passenger_trust_metrics',
+      metrics.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Get trust metrics for a passenger
+  Future<PassengerTrustMetrics?> getPassengerTrustMetrics(
+    String passengerId,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      'passenger_trust_metrics',
+      where: 'passenger_id = ?',
+      whereArgs: [passengerId],
+    );
+    if (results.isEmpty) {
+      return null;
+    }
+    return PassengerTrustMetrics.fromMap(results.first);
+  }
+
+  /// Insert report with trust information
+  Future<int> insertReportWithTrust(ReportWithTrust report) async {
+    final db = await database;
+    return db.insert('reports_with_trust', report.toMap());
+  }
+
+  /// Get reports with trust information for a trip
+  Future<List<ReportWithTrust>> getReportsWithTrust(int tripId) async {
+    final db = await database;
+    final results = await db.query(
+      'reports_with_trust',
+      where: 'trip_id = ?',
+      whereArgs: [tripId],
+      orderBy: 'timestamp DESC',
+    );
+    return results.map(ReportWithTrust.fromMap).toList();
+  }
+
+  /// Get pending trust metrics to sync
+  Future<List<PassengerTrustMetrics>> getPendingTrustMetrics() async {
+    final db = await database;
+    final results = await db.query(
+      'passenger_trust_metrics',
+      where: 'sync_status = ?',
+      whereArgs: [SyncStatus.pending.label],
+    );
+    return results.map(PassengerTrustMetrics.fromMap).toList();
+  }
+
+  /// Update trust metrics sync status
+  Future<void> updateTrustMetricsSyncStatus(
+    String passengerId,
+    SyncStatus status,
+  ) async {
+    final db = await database;
+    await db.update(
+      'passenger_trust_metrics',
+      {'sync_status': status.label},
+      where: 'passenger_id = ?',
+      whereArgs: [passengerId],
     );
   }
 }

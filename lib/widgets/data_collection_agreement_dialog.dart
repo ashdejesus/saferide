@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/permission_service.dart';
+
 class DataCollectionAgreementDialog extends StatelessWidget {
   const DataCollectionAgreementDialog({super.key, required this.onAccept});
 
@@ -107,11 +109,137 @@ class DataCollectionAgreementDialog extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        // Request location permission first
+                        final hasPermission =
+                            await PermissionService.requestAllPermissions();
+
+                        if (!context.mounted) return;
+
+                        // Show battery optimization reminder
+                        if (hasPermission) {
+                          await _showBatteryOptimizationReminder(context);
+                        }
+
+                        if (!context.mounted) return;
+
                         onAccept();
                         Navigator.of(context).pop();
                       },
                       child: const Text('I Understand & Accept'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Show reminder to disable battery optimization
+  static Future<void> _showBatteryOptimizationReminder(
+    BuildContext context,
+  ) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.battery_alert,
+                    size: 28,
+                    color: colorScheme.errorContainer,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Battery Optimization',
+                      style: textTheme.headlineSmall,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'For SafeRide to track your trips reliably, please disable battery optimization:',
+                style: textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '1. Open Settings',
+                      style: textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '2. Go to Apps > SafeRide',
+                      style: textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '3. Tap Battery > Battery Optimization',
+                      style: textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '4. Select "Don\'t optimize" or "Unrestricted"',
+                      style: textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'This ensures SafeRide can continue collecting location data even when your phone is sleeping.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: FilledButton.tonal(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Got it'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        PermissionService.openAppSettings();
+                        Navigator.of(dialogContext).pop();
+                      },
+                      child: const Text('Open Settings'),
                     ),
                   ),
                 ],

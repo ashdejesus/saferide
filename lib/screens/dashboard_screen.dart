@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/trip_controller.dart';
+import '../services/risk_scoring.dart' as risk_scoring;
 import 'settings_screen.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/section_header.dart';
@@ -182,7 +183,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                   if (!started) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Location permission is required.'),
+                        content: Text(
+                          'Could not start trip. Location permission required '
+                          'or GPS unavailable on this platform.',
+                        ),
                       ),
                     );
                   }
@@ -432,24 +436,24 @@ class _TripStatusPill extends StatelessWidget {
   }
 }
 
-IconData _eventIcon(UnsafeEventType type) {
+IconData _eventIcon(risk_scoring.UnsafeEventType type) {
   switch (type) {
-    case UnsafeEventType.speeding:
+    case risk_scoring.UnsafeEventType.speeding:
       return Icons.speed;
-    case UnsafeEventType.braking:
+    case risk_scoring.UnsafeEventType.braking:
       return Icons.warning_amber;
-    case UnsafeEventType.turning:
+    case risk_scoring.UnsafeEventType.turning:
       return Icons.turn_right;
   }
 }
 
-String _eventLabel(UnsafeEventType type) {
+String _eventLabel(risk_scoring.UnsafeEventType type) {
   switch (type) {
-    case UnsafeEventType.speeding:
+    case risk_scoring.UnsafeEventType.speeding:
       return 'Speeding detected';
-    case UnsafeEventType.braking:
+    case risk_scoring.UnsafeEventType.braking:
       return 'Harsh braking';
-    case UnsafeEventType.turning:
+    case risk_scoring.UnsafeEventType.turning:
       return 'Sharp turn';
   }
 }

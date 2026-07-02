@@ -10,7 +10,9 @@ import '../models/report.dart';
 import '../models/sync_status.dart';
 import '../models/trip.dart';
 import '../services/location_service.dart';
-import '../services/risk_scoring.dart';
+import '../services/notification_service.dart';
+import '../services/risk_scoring.dart' as risk_scoring;
+import '../services/firestore_service.dart';
 import '../services/sensor_service.dart';
 
 class TripController extends ChangeNotifier {
@@ -18,13 +20,17 @@ class TripController extends ChangeNotifier {
     required AppDatabase database,
     LocationService? locationService,
     SensorService? sensorService,
+    FirestoreService? firestoreService,
   }) : _database = database,
        _locationService = locationService ?? LocationService(),
-       _sensorService = sensorService ?? SensorService();
+       _sensorService = sensorService ?? SensorService(),
+       _firestoreService = firestoreService ?? FirestoreService();
+  final FirestoreService _firestoreService;
 
   final AppDatabase _database;
   final LocationService _locationService;
   final SensorService _sensorService;
+  final NotificationService _notificationService = NotificationService();
 
   Trip? _activeTrip;
   bool _isTracking = false;
@@ -35,13 +41,41 @@ class TripController extends ChangeNotifier {
   int _speedingCount = 0;
   int _brakingCount = 0;
   int _turningCount = 0;
+  int _potholeCount = 0; // P(t): pothole event aggregation
+  double _totalSlopeDeviation = 0; // Σ|S(t)|: accumulated slope deviation
   int _reportSeveritySum = 0;
+  int _consecutiveEventsInWindow = 0; // For rapid-fire event detection
+  DateTime? _lastNotificationTime; // Throttle notifications
+  List<RemoteReport> _remoteReports = [];
+  StreamSubscription<List<RemoteReport>>? _remoteReportsSub;
 
-  final SlidingWindow _accelWindow = SlidingWindow(size: 15);
-  final List<UnsafeEvent> _recentEvents = [];
+  final risk_scoring.SlidingWindow _accelWindow = risk_scoring.SlidingWindow(
+    size: 15,
+  );
+  final risk_scoring.SlidingWindow _speedWindow = risk_scoring.SlidingWindow(
+    size: 10,
+  );
+  final risk_scoring.SlidingWindow _gyroWindow = risk_scoring.SlidingWindow(
+    size: 10,
+  );
+  final List<risk_scoring.UnsafeEvent> _recentEvents = [];
+  final risk_scoring.AdaptiveThresholds _adaptiveThresholds =
+      risk_scoring.AdaptiveThresholds();
   DateTime? _lastBrakeEvent;
   DateTime? _lastTurnEvent;
   DateTime? _lastSpeedEvent;
+  DateTime? _lastPotholeEvent; // Cooldown for pothole detection
+  double _lastRecordedSpeed = 0;
+  int _turningStreak = 0;
+
+  // Slope calculation state: S(t) = (h(t) - h(t-1)) / d(t)
+  double _lastAltitude = 0;
+  double _lastLatitude = 0;
+  double _lastLongitude = 0;
+  bool _hasLastAltitude = false;
+
+  // Latest vertical acceleration for pothole detection coordination
+  double _lastVerticalAccel = 0;
 
   double _currentAcceleration = 0;
   double _currentTurnRate = 0;
@@ -52,6 +86,9 @@ class TripController extends ChangeNotifier {
   Timer? _bufferTimer;
   int _tripHistoryVersion = 0;
 
+  // Completed trips loaded from local database for map display
+  List<Trip> _completedTrips = [];
+
   Trip? get activeTrip => _activeTrip;
   bool get isTracking => _isTracking;
   double get currentSpeed => _currentSpeed;
@@ -61,56 +98,138 @@ class TripController extends ChangeNotifier {
   int get speedingCount => _speedingCount;
   int get brakingCount => _brakingCount;
   int get turningCount => _turningCount;
+  int get potholeCount => _potholeCount;
+  double get totalSlopeDeviation => _totalSlopeDeviation;
   int get reportSeveritySum => _reportSeveritySum;
-  List<UnsafeEvent> get recentEvents => List.unmodifiable(_recentEvents);
+  List<RemoteReport> get remoteReports => List.unmodifiable(_remoteReports);
+  List<risk_scoring.UnsafeEvent> get recentEvents =>
+      List.unmodifiable(_recentEvents);
 
   double get currentAcceleration => _currentAcceleration;
   double get currentTurnRate => _currentTurnRate;
   double get averageAcceleration => _accelWindow.average;
   int get tripHistoryVersion => _tripHistoryVersion;
 
+  // Context factor getters for UI display
+  double get contextRoad => _adaptiveThresholds.contextRoad;
+  double get contextVehicle => _adaptiveThresholds.contextVehicle;
+  double get contextTraffic => _adaptiveThresholds.contextTraffic;
+
+  // Completed trip history for map display
+  List<Trip> get completedTrips => List.unmodifiable(_completedTrips);
+
+  /// Load completed trips from the local database for map risk visualization.
+  /// Filters to only trips with route data and an end time.
+  Future<void> loadCompletedTrips() async {
+    final allTrips = await _database.getTrips();
+    _completedTrips = allTrips
+        .where((t) => t.endTime != null && t.routePoints.isNotEmpty)
+        .toList();
+    notifyListeners();
+  }
+
+  /// Compute a live fused safety score (0-100) using current sensor counts
+  /// and remote reports (if any). Returns null if not tracking.
+  int? get liveSafetyScore {
+    if (!_isTracking) return null;
+
+    final weights = risk_scoring.RiskWeights();
+    final sensorRisk = risk_scoring.computeSensorRiskScore(
+      overspeedingCount: _speedingCount,
+      harshBrakingCount: _brakingCount,
+      sharpTurningCount: _turningCount,
+      potholeCount: _potholeCount,
+      totalSlopeDeviation: _totalSlopeDeviation,
+      totalWindows: max(1, _speedingCount + _brakingCount + _turningCount + _potholeCount),
+      weights: weights,
+    );
+
+    final reportRiskReports = _remoteReports
+        .map(FirestoreService.toRiskReport)
+        .toList();
+    final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
+
+    final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
+      _speedingCount + _brakingCount + _turningCount,
+      _remoteReports.length,
+    );
+
+    final tripRisk = risk_scoring.computeTripRiskScore(
+      sensorRisk: sensorRisk,
+      reportRisk: reportRisk,
+      adaptiveWeight: adaptiveWeight,
+      inconsistencyPenalty: weights.phi,
+    );
+
+    final safety = risk_scoring.computeSafetyScore(tripRisk);
+    return safety;
+  }
+
   Future<bool> startTrip({String? routeName}) async {
-    final hasPermission = await _locationService.ensurePermission();
-    if (!hasPermission) {
-      return false;
+    try {
+      // Initialize notifications at trip start
+      await _notificationService.initialize();
+      await _notificationService.subscribeToTopic('critical_incidents');
+    } catch (e) {
+      debugPrint('TripController: Notification init failed ($e)');
     }
 
-    final position = await _locationService.currentPosition();
-    _currentPosition = position;
-    _routePoints.clear();
-    _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
+    try {
+      final hasPermission = await _locationService.ensurePermission();
+      if (!hasPermission) {
+        debugPrint('TripController: Location permission denied');
+        return false;
+      }
 
-    final startTime = DateTime.now();
-    final tripId = await _database.insertTrip(
-      Trip(
+      final position = await _locationService.currentPosition();
+      _currentPosition = position;
+      _routePoints.clear();
+      _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
+
+      final startTime = DateTime.now();
+      final tripId = await _database.insertTrip(
+        Trip(
+          startTime: startTime,
+          startLat: position.latitude,
+          startLng: position.longitude,
+          routeName: routeName,
+        ),
+      );
+
+      _activeTrip = Trip(
+        id: tripId,
         startTime: startTime,
         startLat: position.latitude,
         startLng: position.longitude,
         routeName: routeName,
-      ),
-    );
+        routePoints: List.of(_routePoints),
+        syncStatus: SyncStatus.pending,
+      );
 
-    _activeTrip = Trip(
-      id: tripId,
-      startTime: startTime,
-      startLat: position.latitude,
-      startLng: position.longitude,
-      routeName: routeName,
-      routePoints: List.of(_routePoints),
-      syncStatus: SyncStatus.pending,
-    );
+      _speedingCount = 0;
+      _brakingCount = 0;
+      _turningCount = 0;
+      _potholeCount = 0;
+      _totalSlopeDeviation = 0;
+      _reportSeveritySum = 0;
+      _recentEvents.clear();
+      _turningStreak = 0;
+      _hasLastAltitude = false;
+      _lastVerticalAccel = 0;
+      _isTracking = true;
 
-    _speedingCount = 0;
-    _brakingCount = 0;
-    _turningCount = 0;
-    _reportSeveritySum = 0;
-    _recentEvents.clear();
-    _isTracking = true;
-
-    _listenToSensors();
-    _startBuffering();
-    notifyListeners();
-    return true;
+      _listenToSensors();
+      // Subscribe to remote reports for this trip (if any)
+      if (_activeTrip?.id != null) {
+        _subscribeToRemoteReports(_activeTrip!.id!);
+      }
+      _startBuffering();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('TripController: startTrip failed ($e)');
+      return false;
+    }
   }
 
   Future<void> stopTrip() async {
@@ -118,18 +237,50 @@ class TripController extends ChangeNotifier {
       return;
     }
 
+    // Unsubscribe from notification topics
+    await _notificationService.unsubscribeFromTopic('critical_incidents');
+
     await _positionSub?.cancel();
     await _accelSub?.cancel();
     await _gyroSub?.cancel();
     _stopBuffering();
 
+    // Reset notification tracking
+    _consecutiveEventsInWindow = 0;
+    _lastNotificationTime = null;
+
     final endPosition = _currentPosition;
-    final riskScore = computeRiskScore(
-      speedingCount: _speedingCount,
-      brakingCount: _brakingCount,
-      turningCount: _turningCount,
-      reportSeveritySum: _reportSeveritySum,
+    // Compute sensor-based risk (legacy counts -> normalized)
+    final weights = risk_scoring.RiskWeights();
+    final sensorRisk = risk_scoring.computeSensorRiskScore(
+      overspeedingCount: _speedingCount,
+      harshBrakingCount: _brakingCount,
+      sharpTurningCount: _turningCount,
+      potholeCount: _potholeCount,
+      totalSlopeDeviation: _totalSlopeDeviation,
+      totalWindows: max(1, _speedingCount + _brakingCount + _turningCount + _potholeCount),
+      weights: weights,
     );
+
+    // Map remote reports to risk_scoring.PassengerReport and compute report risk
+    final reportRiskReports = _remoteReports
+        .map((r) => FirestoreService.toRiskReport(r))
+        .toList();
+    final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
+
+    final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
+      _speedingCount + _brakingCount + _turningCount,
+      _remoteReports.length,
+    );
+
+    final tripRisk = risk_scoring.computeTripRiskScore(
+      sensorRisk: sensorRisk,
+      reportRisk: reportRisk,
+      adaptiveWeight: adaptiveWeight,
+      inconsistencyPenalty: weights.phi,
+    );
+
+    final riskScore = (tripRisk * 100.0);
 
     final completedTrip = _activeTrip!.copyWith(
       endTime: DateTime.now(),
@@ -145,11 +296,29 @@ class TripController extends ChangeNotifier {
 
     await _database.updateTrip(completedTrip);
 
+    // Unsubscribe reports listener
+    await _remoteReportsSub?.cancel();
+    _remoteReportsSub = null;
+
     _activeTrip = null;
     _isTracking = false;
     _currentSpeed = 0;
     _tripHistoryVersion++;
+    // Refresh completed trips so the map shows the new trip immediately
+    unawaited(loadCompletedTrips());
     notifyListeners();
+  }
+
+  void _subscribeToRemoteReports(int tripId) {
+    _remoteReportsSub?.cancel();
+    _remoteReportsSub = _firestoreService.reportsStream(tripId: tripId).listen((
+      reports,
+    ) {
+      _remoteReports = reports;
+      // Update severity sum to reflect remote reports as well
+      _reportSeveritySum = _remoteReports.fold(0, (sum, r) => sum + (r.rating));
+      notifyListeners();
+    });
   }
 
   Future<void> addReport({
@@ -187,6 +356,8 @@ class TripController extends ChangeNotifier {
   void _onPosition(Position position) {
     _currentPosition = position;
     _currentSpeed = max(position.speed, 0);
+    _speedWindow.add(_currentSpeed);
+    final avgSpeedKmh = _speedWindow.average * 3.6;
     _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
     if (_routePoints.length > 200) {
       _routePoints.removeAt(0);
@@ -196,53 +367,207 @@ class TripController extends ChangeNotifier {
       unawaited(_persistActiveTripSnapshot());
     }
 
-    if (_currentSpeed > 20) {
+    // Detect overspeeding using adaptive threshold
+    if (avgSpeedKmh > _adaptiveThresholds.speedingThreshold) {
       if (_cooldownElapsed(_lastSpeedEvent)) {
         _speedingCount++;
         _lastSpeedEvent = DateTime.now();
-        _recordEvent(UnsafeEventType.speeding);
+        _recordEvent(risk_scoring.UnsafeEventType.speeding);
       }
     }
 
+    // Detect harsh braking using speed variation: Δv(k) = ṽ(k) - ṽ(k-1)
+    // Formula: E_b(w) = 1 if Δv(k) < -θ_b
+    final speedDelta = _currentSpeed - _lastRecordedSpeed;
+    if (speedDelta < _adaptiveThresholds.brakingThreshold &&
+        _currentSpeed > _adaptiveThresholds.thetaSpeedMin) {
+      if (_cooldownElapsed(_lastBrakeEvent)) {
+        _brakingCount++;
+        _lastBrakeEvent = DateTime.now();
+        _recordEvent(risk_scoring.UnsafeEventType.braking);
+      }
+    }
+
+    // Slope calculation: S(t) = (h(t) - h(t-1)) / d(t)
+    // Uses GPS altitude data for environmental hazard detection
+    final currentAltitude = position.altitude;
+    if (_hasLastAltitude) {
+      final distance = _haversineDistance(
+        _lastLatitude,
+        _lastLongitude,
+        position.latitude,
+        position.longitude,
+      );
+      if (distance > 1.0) {
+        // Only compute slope if moved at least 1 meter
+        final slope = risk_scoring.computeSlope(
+          currentAltitude: currentAltitude,
+          previousAltitude: _lastAltitude,
+          distanceTraveled: distance,
+        );
+        _totalSlopeDeviation += slope.abs();
+      }
+    }
+    _lastAltitude = currentAltitude;
+    _lastLatitude = position.latitude;
+    _lastLongitude = position.longitude;
+    _hasLastAltitude = true;
+
+    _lastRecordedSpeed = _currentSpeed;
     notifyListeners();
   }
 
   void _onUserAccelerometer(UserAccelerometerEvent event) {
+    // Calculate acceleration magnitude: a(k) = √(ax² + ay² + az²)
     final magnitude = sqrt(
       event.x * event.x + event.y * event.y + event.z * event.z,
     );
     _currentAcceleration = magnitude;
     _accelWindow.add(magnitude);
 
-    if (_accelWindow.max > 3.5 && _currentSpeed > 5) {
-      if (_cooldownElapsed(_lastBrakeEvent)) {
-        _brakingCount++;
-        _lastBrakeEvent = DateTime.now();
-        _recordEvent(UnsafeEventType.braking);
-        notifyListeners();
-      }
+    // Store vertical acceleration for pothole detection
+    // az(k) is the Z-axis component (vertical)
+    _lastVerticalAccel = event.z.abs();
+
+    // Pothole detection: P(k) = 1 if az(k) > θ_p ∧ g(k) < θ_g ∧ v(k) > θ_v
+    // Combines vertical acceleration spike with low gyro (not a turn) and moving
+    final isPothole = risk_scoring.detectPothole(
+      verticalAccel: _lastVerticalAccel,
+      gyroMagnitude: _gyroWindow.average,
+      speed: _currentSpeed,
+      thresholds: _adaptiveThresholds,
+    );
+    if (isPothole && _cooldownElapsed(_lastPotholeEvent)) {
+      _potholeCount++;
+      _lastPotholeEvent = DateTime.now();
     }
+
+    // Note: Braking detection is now based on speed variation (Δv) from GPS
+    // which is calculated in _onPosition using _speedWindow
   }
 
   void _onGyroscope(GyroscopeEvent event) {
-    final turnRate = event.z.abs();
-    _currentTurnRate = turnRate;
+    // Calculate gyroscope magnitude: g(k) = √(gx² + gy² + gz²)
+    final gyroMagnitude = risk_scoring.computeGyroMagnitude(
+      event.x,
+      event.y,
+      event.z,
+    );
+    _currentTurnRate = gyroMagnitude;
+    _gyroWindow.add(gyroMagnitude);
 
-    if (turnRate > 2.5) {
-      if (_cooldownElapsed(_lastTurnEvent)) {
-        _turningCount++;
-        _lastTurnEvent = DateTime.now();
-        _recordEvent(UnsafeEventType.turning);
-        notifyListeners();
+    // Detect sharp turning using adaptive threshold and full gyro magnitude
+    // Requires: (1) sufficient vehicle speed, (2) high gyro, (3) sustained duration
+    final maxGyro = _gyroWindow.max;
+    final isMoving = _currentSpeed >= 3.0; // ~11 km/h minimum to avoid stationary false positives
+    if (isMoving && maxGyro > _adaptiveThresholds.turningThreshold) {
+      _turningStreak++;
+      if (_turningCooldownElapsed(_lastTurnEvent)) {
+        if (_turningStreak >= 10) {
+          // Require sustained turn (10 samples min) to filter out bumps/phone jitter
+          _turningCount++;
+          _lastTurnEvent = DateTime.now();
+          _recordEvent(risk_scoring.UnsafeEventType.turning);
+          notifyListeners();
+          _turningStreak = 0;
+        }
       }
+    } else {
+      _turningStreak = 0;
     }
   }
 
-  void _recordEvent(UnsafeEventType type) {
-    _recentEvents.insert(0, UnsafeEvent(type: type, timestamp: DateTime.now()));
+  void _recordEvent(risk_scoring.UnsafeEventType type) {
+    _recentEvents.insert(
+      0,
+      risk_scoring.UnsafeEvent(type: type, timestamp: DateTime.now()),
+    );
     if (_recentEvents.length > 5) {
       _recentEvents.removeLast();
     }
+
+    // Track consecutive events for criticality detection
+    _consecutiveEventsInWindow++;
+
+    // Check if we should send a notification (with throttling)
+    _checkAndSendCriticalNotification();
+  }
+
+  void _checkAndSendCriticalNotification() {
+    // Throttle notifications: max one every 10 seconds
+    if (_lastNotificationTime != null &&
+        DateTime.now().difference(_lastNotificationTime!).inSeconds < 10) {
+      return;
+    }
+
+    // Get current safety score
+    final currentScore = liveSafetyScore;
+    if (currentScore == null) return;
+
+    final riskScore = 1.0 - (currentScore / 100.0);
+
+    // Determine criticality
+    final criticality = determineCriticality(
+      consecutiveEvents: _consecutiveEventsInWindow,
+      riskScore: riskScore,
+      reportSeveritySum: _reportSeveritySum,
+    );
+
+    // Only send notifications for medium and above
+    if (criticality.index < IncidentCriticality.medium.index) {
+      return;
+    }
+
+    _lastNotificationTime = DateTime.now();
+    _sendCriticalIncidentNotification(criticality);
+
+    // Reset counter after sending notification
+    _consecutiveEventsInWindow = 0;
+  }
+
+  void _sendCriticalIncidentNotification(IncidentCriticality criticality) {
+    final incidentType = _getIncidentTypeString();
+    final title = getNotificationTitle(incidentType);
+    final currentScore = liveSafetyScore;
+    final body = getNotificationBody(
+      incidentType,
+      criticality,
+      consecutiveEvents: _consecutiveEventsInWindow,
+      riskScore: currentScore != null ? 1.0 - (currentScore / 100.0) : 0.5,
+    );
+
+    debugPrint('CRITICAL NOTIFICATION: [$criticality] $title - $body');
+
+    // Log notification data
+    final notificationData = CriticalIncidentNotification(
+      incidentType: incidentType,
+      severity: 1.0 - (currentScore ?? 50) / 100.0,
+      message: body,
+      timestamp: DateTime.now(),
+      latitude: _currentPosition?.latitude,
+      longitude: _currentPosition?.longitude,
+    );
+
+    debugPrint('Incident Data: ${notificationData.toMap()}');
+  }
+
+  String _getIncidentTypeString() {
+    if (_consecutiveEventsInWindow >= 3) {
+      return 'rapid_sequence';
+    }
+    if (_reportSeveritySum > 15) {
+      return 'high_report_severity';
+    }
+    if (_speedingCount > 2) {
+      return 'speeding';
+    }
+    if (_brakingCount > 2) {
+      return 'harsh_braking';
+    }
+    if (_turningCount > 2) {
+      return 'sharp_turn';
+    }
+    return 'unsafe_event';
   }
 
   bool _cooldownElapsed(DateTime? lastEvent) {
@@ -251,6 +576,48 @@ class TripController extends ChangeNotifier {
     }
     return DateTime.now().difference(lastEvent) > const Duration(seconds: 2);
   }
+
+  /// Longer cooldown specifically for turning events to reduce false positives
+  bool _turningCooldownElapsed(DateTime? lastEvent) {
+    if (lastEvent == null) {
+      return true;
+    }
+    return DateTime.now().difference(lastEvent) > const Duration(seconds: 5);
+  }
+
+  /// Update adaptive threshold context factors: θ(t) = θ₀ · C_r(t) · C_v(t) · C_t(t)
+  /// Called from settings UI to adjust detection sensitivity based on conditions.
+  void updateContextFactors({
+    required double roadCondition, // 0.0 (poor) to 1.0 (good)
+    required double vehicleType, // 0.0 (heavy) to 1.0 (light)
+    required double trafficLevel, // 0.0 (heavy) to 1.0 (light)
+  }) {
+    _adaptiveThresholds.updateContextFactors(
+      roadCondition: roadCondition,
+      vehicleType: vehicleType,
+      trafficLevel: trafficLevel,
+    );
+    notifyListeners();
+  }
+
+  /// Haversine distance between two GPS coordinates in meters
+  /// Used for slope calculation: d(t) in S(t) = (h(t) - h(t-1)) / d(t)
+  double _haversineDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const earthRadiusM = 6371000.0;
+    final dLat = _toRad(lat2 - lat1);
+    final dLon = _toRad(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRad(lat1)) * cos(_toRad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadiusM * c;
+  }
+
+  double _toRad(double degrees) => degrees * pi / 180.0;
 
   void _startBuffering() {
     _stopBuffering();
@@ -290,15 +657,7 @@ class TripController extends ChangeNotifier {
     _positionSub?.cancel();
     _accelSub?.cancel();
     _gyroSub?.cancel();
+    _remoteReportsSub?.cancel();
     super.dispose();
   }
-}
-
-enum UnsafeEventType { speeding, braking, turning }
-
-class UnsafeEvent {
-  const UnsafeEvent({required this.type, required this.timestamp});
-
-  final UnsafeEventType type;
-  final DateTime timestamp;
 }

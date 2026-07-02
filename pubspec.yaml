@@ -38,7 +38,9 @@ dependencies:
   sqflite: ^2.4.2
   path: ^1.9.0
   path_provider: ^2.1.5
-  sensors_plus: ^7.0.0
+  package_info_plus: ^10.2.0
+  sensors_plus: ^7.1.0
+  shared_preferences_android: ^2.4.26
   geolocator: ^14.0.2
   provider: ^6.1.2
   flutter_map: ^8.2.2
@@ -46,6 +48,7 @@ dependencies:
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
+  firebase_messaging: ^16.1.1
   animations: ^2.0.11
   shared_preferences: ^2.3.2
 

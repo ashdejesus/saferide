@@ -41,7 +41,6 @@ class _SafeRideAppState extends State<SafeRideApp> {
   int _selectedIndex = 0;
   StreamSubscription<User?>? _authSubscription;
   String _controllerScopeKey = 'signed_out';
-  bool _hasShownAgreement = false;
 
   @override
   void initState() {
@@ -50,22 +49,6 @@ class _SafeRideAppState extends State<SafeRideApp> {
     _authSubscription = widget.auth.authStateChanges().listen(
       _handleAuthChanged,
     );
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _showAgreementIfNeeded(),
-    );
-  }
-
-  void _showAgreementIfNeeded() {
-    if (!_hasShownAgreement && !widget.preferences.hasAcceptedDataCollection) {
-      _hasShownAgreement = true;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => DataCollectionAgreementDialog(
-          onAccept: () => widget.preferences.acceptDataCollection(),
-        ),
-      );
-    }
   }
 
   @override
@@ -104,6 +87,12 @@ class _SafeRideAppState extends State<SafeRideApp> {
       child: MaterialApp(
         title: 'SafeRide',
         theme: buildSafeRideTheme(),
+        builder: (context, child) {
+          return _AgreementCheckWrapper(
+            preferences: widget.preferences,
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         home: StreamBuilder<User?>(
           stream: widget.auth.authStateChanges(),
           initialData: widget.auth.currentUser,
@@ -113,134 +102,185 @@ class _SafeRideAppState extends State<SafeRideApp> {
               return const AuthScreen();
             }
             return Consumer<TripController>(
-              builder: (context, controller, _) {
-                return Stack(
-                  children: [
-                    Scaffold(
-                      body: SafeArea(
-                        child: IndexedStack(
-                          index: _selectedIndex,
-                          children: const [
-                            DashboardScreen(),
-                            ReportScreen(),
-                            MapScreen(),
-                            TripsScreen(),
+                builder: (context, controller, _) {
+                  return Stack(
+                    children: [
+                      Scaffold(
+                        body: SafeArea(
+                          child: IndexedStack(
+                            index: _selectedIndex,
+                            children: const [
+                              DashboardScreen(),
+                              ReportScreen(),
+                              MapScreen(),
+                              TripsScreen(),
+                            ],
+                          ),
+                        ),
+                        floatingActionButtonLocation:
+                            FloatingActionButtonLocation.centerFloat,
+                        floatingActionButton: Visibility(
+                          visible: _selectedIndex == 0,
+                          maintainSize: true,
+                          maintainAnimation: true,
+                          maintainState: true,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 120),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, animation) {
+                              final fade = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeInOut,
+                              );
+                              final slide =
+                                  Tween<Offset>(
+                                    begin: const Offset(0, 0.18),
+                                    end: Offset.zero,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeOut,
+                                    ),
+                                  );
+                              return FadeTransition(
+                                opacity: fade,
+                                child: SlideTransition(
+                                  position: slide,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: FloatingActionButton.extended(
+                              key: ValueKey(controller.isTracking),
+                              onPressed: () => TripActionSheet.show(context),
+                              icon: Icon(
+                                controller.isTracking
+                                    ? Icons.stop_circle
+                                    : Icons.play_circle_fill,
+                              ),
+                              label: Text(
+                                controller.isTracking
+                                    ? 'End Trip'
+                                    : 'Start Trip',
+                              ),
+                            ),
+                          ),
+                        ),
+                        bottomNavigationBar: NavigationBar(
+                          selectedIndex: _selectedIndex,
+                          onDestinationSelected: (index) {
+                            setState(() {
+                              _selectedIndex = index;
+                            });
+                          },
+                          destinations: [
+                            NavigationDestination(
+                              icon: Badge(
+                                isLabelVisible:
+                                    controller.recentEvents.isNotEmpty,
+                                label: Text(
+                                  controller.recentEvents.length.toString(),
+                                ),
+                                child: const Icon(Icons.dashboard_outlined),
+                              ),
+                              selectedIcon: Badge(
+                                isLabelVisible:
+                                    controller.recentEvents.isNotEmpty,
+                                label: Text(
+                                  controller.recentEvents.length.toString(),
+                                ),
+                                child: const Icon(Icons.dashboard),
+                              ),
+                              label: 'Home',
+                            ),
+                            NavigationDestination(
+                              icon: Badge(
+                                isLabelVisible:
+                                    controller.reportSeveritySum > 0,
+                                label: Text(
+                                  controller.reportSeveritySum.toString(),
+                                ),
+                                child: const Icon(Icons.report_outlined),
+                              ),
+                              selectedIcon: Badge(
+                                isLabelVisible:
+                                    controller.reportSeveritySum > 0,
+                                label: Text(
+                                  controller.reportSeveritySum.toString(),
+                                ),
+                                child: const Icon(Icons.report),
+                              ),
+                              label: 'Report',
+                            ),
+                            const NavigationDestination(
+                              icon: Icon(Icons.map_outlined),
+                              selectedIcon: Icon(Icons.map),
+                              label: 'Map',
+                            ),
+                            const NavigationDestination(
+                              icon: Icon(Icons.list_alt_outlined),
+                              selectedIcon: Icon(Icons.list_alt),
+                              label: 'Trips',
+                            ),
                           ],
                         ),
                       ),
-                      floatingActionButtonLocation:
-                          FloatingActionButtonLocation.centerFloat,
-                      floatingActionButton: Visibility(
-                        visible: _selectedIndex == 0,
-                        maintainSize: true,
-                        maintainAnimation: true,
-                        maintainState: true,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 120),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeIn,
-                          transitionBuilder: (child, animation) {
-                            final fade = CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeInOut,
-                            );
-                            final slide =
-                                Tween<Offset>(
-                                  begin: const Offset(0, 0.18),
-                                  end: Offset.zero,
-                                ).animate(
-                                  CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOut,
-                                  ),
-                                );
-                            return FadeTransition(
-                              opacity: fade,
-                              child: SlideTransition(
-                                position: slide,
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: FloatingActionButton.extended(
-                            key: ValueKey(controller.isTracking),
-                            onPressed: () => TripActionSheet.show(context),
-                            icon: Icon(
-                              controller.isTracking
-                                  ? Icons.stop_circle
-                                  : Icons.play_circle_fill,
-                            ),
-                            label: Text(
-                              controller.isTracking ? 'End Trip' : 'Start Trip',
-                            ),
-                          ),
-                        ),
-                      ),
-                      bottomNavigationBar: NavigationBar(
-                        selectedIndex: _selectedIndex,
-                        onDestinationSelected: (index) {
-                          setState(() {
-                            _selectedIndex = index;
-                          });
-                        },
-                        destinations: [
-                          NavigationDestination(
-                            icon: Badge(
-                              isLabelVisible:
-                                  controller.recentEvents.isNotEmpty,
-                              label: Text(
-                                controller.recentEvents.length.toString(),
-                              ),
-                              child: const Icon(Icons.dashboard_outlined),
-                            ),
-                            selectedIcon: Badge(
-                              isLabelVisible:
-                                  controller.recentEvents.isNotEmpty,
-                              label: Text(
-                                controller.recentEvents.length.toString(),
-                              ),
-                              child: const Icon(Icons.dashboard),
-                            ),
-                            label: 'Home',
-                          ),
-                          NavigationDestination(
-                            icon: Badge(
-                              isLabelVisible: controller.reportSeveritySum > 0,
-                              label: Text(
-                                controller.reportSeveritySum.toString(),
-                              ),
-                              child: const Icon(Icons.report_outlined),
-                            ),
-                            selectedIcon: Badge(
-                              isLabelVisible: controller.reportSeveritySum > 0,
-                              label: Text(
-                                controller.reportSeveritySum.toString(),
-                              ),
-                              child: const Icon(Icons.report),
-                            ),
-                            label: 'Report',
-                          ),
-                          const NavigationDestination(
-                            icon: Icon(Icons.map_outlined),
-                            selectedIcon: Icon(Icons.map),
-                            label: 'Map',
-                          ),
-                          const NavigationDestination(
-                            icon: Icon(Icons.list_alt_outlined),
-                            selectedIcon: Icon(Icons.list_alt),
-                            label: 'Trips',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SyncStatusIndicator(),
-                  ],
-                );
-              },
-            );
-          },
+                      const SyncStatusIndicator(),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
+  }
+
+/// Wrapper widget that shows agreement dialog from proper Material context
+class _AgreementCheckWrapper extends StatefulWidget {
+  const _AgreementCheckWrapper({
+    required this.preferences,
+    required this.child,
+  });
+
+  final PreferencesService preferences;
+  final Widget child;
+
+  @override
+  State<_AgreementCheckWrapper> createState() => _AgreementCheckWrapperState();
+}
+
+class _AgreementCheckWrapperState extends State<_AgreementCheckWrapper> {
+  bool _shownAgreement = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showAgreementIfNeeded();
+    });
+  }
+
+  void _showAgreementIfNeeded() {
+    if (!_shownAgreement && !widget.preferences.hasAcceptedDataCollection) {
+      _shownAgreement = true;
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (!mounted) return;
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => DataCollectionAgreementDialog(
+            onAccept: () => widget.preferences.acceptDataCollection(),
+          ),
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
