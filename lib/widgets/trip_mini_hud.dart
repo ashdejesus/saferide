@@ -37,40 +37,43 @@ class TripMiniHud extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.speed,
-                color: isHighSpeed ? colorScheme.error : colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${speed.toStringAsFixed(1)} m/s',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: isHighSpeed ? colorScheme.error : null,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  if (isHighSpeed)
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.speed,
+                  color: isHighSpeed ? colorScheme.error : colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'High Speed',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.error,
+                      '${speed.toStringAsFixed(1)} m/s',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: isHighSpeed ? colorScheme.error : null,
+                            fontWeight: FontWeight.bold,
                           ),
                     ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              _HudStat(label: 'S', value: speedingCount),
-              const SizedBox(width: 8),
-              _HudStat(label: 'B', value: brakingCount),
-              const SizedBox(width: 8),
-              _HudStat(label: 'T', value: turningCount),
-            ],
+                    if (isHighSpeed)
+                      Text(
+                        'High Speed',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: colorScheme.error,
+                            ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                _HudStat(label: 'S', value: speedingCount),
+                const SizedBox(width: 8),
+                _HudStat(label: 'B', value: brakingCount),
+                const SizedBox(width: 8),
+                _HudStat(label: 'T', value: turningCount),
+              ],
+            ),
           ),
         ),
       ),

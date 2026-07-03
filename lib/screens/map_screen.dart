@@ -164,7 +164,7 @@ class _MapLayerControls extends StatelessWidget {
                     Icons.warning_rounded,
                     size: 18,
                     color: showHighRiskAreas
-                        ? colorScheme.onSecondaryContainer
+                        ? colorScheme.error
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
@@ -176,7 +176,7 @@ class _MapLayerControls extends StatelessWidget {
                     Icons.check_circle_rounded,
                     size: 18,
                     color: showSaferRoutes
-                        ? colorScheme.onTertiaryContainer
+                        ? colorScheme.tertiary
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
@@ -188,7 +188,7 @@ class _MapLayerControls extends StatelessWidget {
                     Icons.flag_rounded,
                     size: 18,
                     color: showReportedIncidents
-                        ? colorScheme.onErrorContainer
+                        ? Colors.orange
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
@@ -200,7 +200,7 @@ class _MapLayerControls extends StatelessWidget {
                     Icons.public_rounded,
                     size: 18,
                     color: showCommunitySafety
-                        ? colorScheme.onPrimaryContainer
+                        ? colorScheme.primary
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
@@ -279,6 +279,7 @@ class _FullScreenMapCard extends StatefulWidget {
     required this.onSaferRoutesChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
+    this.isFullScreen = false,
   });
 
   final bool isTracking;
@@ -292,6 +293,7 @@ class _FullScreenMapCard extends StatefulWidget {
   final ValueChanged<bool> onSaferRoutesChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
+  final bool isFullScreen;
 
   @override
   State<_FullScreenMapCard> createState() => _FullScreenMapCardState();
@@ -302,10 +304,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   LatLng? _lastCenteredLocation;
   bool _isMapReady = false;
 
+  late bool _showHighRiskAreas;
+  late bool _showSaferRoutes;
+  late bool _showReportedIncidents;
+  late bool _showCommunitySafety;
+
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+    _showHighRiskAreas = widget.showHighRiskAreas;
+    _showSaferRoutes = widget.showSaferRoutes;
+    _showReportedIncidents = widget.showReportedIncidents;
+    _showCommunitySafety = widget.showCommunitySafety;
   }
 
   void _syncMapCenter({required bool force}) {
@@ -350,31 +361,27 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
       return;
     }
 
-    if (points.length != oldWidget.routePoints.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        _mapController.move(points.last, _mapController.camera.zoom);
-      });
+    // Auto-pan if the location changed significantly
+    if (points.last.latitude != oldWidget.routePoints.lastOrNull?.latitude ||
+        points.last.longitude != oldWidget.routePoints.lastOrNull?.longitude) {
+      _mapController.move(points.last, _mapController.camera.zoom);
     }
   }
 
   /// Determine the map center based on real data, not hardcoded coordinates.
   /// Priority: 1) live trip, 2) most recent completed trip, 3) GPS position
   LatLng _resolveMapCenter() {
-    // 1. If tracking, center on current route
-    if (widget.routePoints.isNotEmpty) {
+    // 1. If actively tracking, use the latest route point
+    if (widget.isTracking && widget.routePoints.isNotEmpty) {
       return widget.routePoints.last;
     }
 
-    // 2. If completed trips exist, center on the most recent one
-    final completedTrips = widget.controller.completedTrips;
-    if (completedTrips.isNotEmpty) {
-      final mostRecent = completedTrips.first; // already sorted DESC
+    // 2. If we have completed trips, focus on the most recent one
+    if (widget.controller.completedTrips.isNotEmpty) {
+      final mostRecent = widget.controller.completedTrips.first;
       if (mostRecent.routePoints.isNotEmpty) {
-        final lastPoint = mostRecent.routePoints.last;
-        return LatLng(lastPoint['lat']!, lastPoint['lng']!);
+        final p = mostRecent.routePoints.last;
+        return LatLng(p['lat']!, p['lng']!);
       }
       // Fallback to start/end coordinates
       if (mostRecent.endLat != null && mostRecent.endLng != null) {
@@ -404,30 +411,30 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return Colors.red;
   }
 
-  /// Build polylines for completed trips, color-coded by safety score.
-  List<Polyline<Object>> _buildHistoricalTripRoutes(ColorScheme colorScheme) {
+  /// Build circle markers for completed trips, color-coded by safety score.
+  List<CircleMarker> _buildHistoricalTripHeatmap(ColorScheme colorScheme) {
     final completedTrips = widget.controller.completedTrips;
-    final polylines = <Polyline<Object>>[];
+    final circles = <CircleMarker>[];
 
     for (final trip in completedTrips) {
-      if (trip.routePoints.length < 2) continue;
-
-      final points = trip.routePoints
-          .map((p) => LatLng(p['lat']!, p['lng']!))
-          .toList();
+      if (trip.routePoints.isEmpty) continue;
 
       final color = _tripRouteColor(trip);
 
-      polylines.add(
-        Polyline<Object>(
-          points: points,
-          strokeWidth: 3.5,
-          color: color.withValues(alpha: 0.6),
-        ),
-      );
+      for (final p in trip.routePoints) {
+        circles.add(
+          CircleMarker(
+            point: LatLng(p['lat']!, p['lng']!),
+            color: color.withValues(alpha: 0.25),
+            borderStrokeWidth: 0,
+            useRadiusInMeter: false,
+            radius: 15, // Fixed 15px radius for better visibility at all zoom levels
+          ),
+        );
+      }
     }
 
-    return polylines;
+    return circles;
   }
 
   /// Build high-risk markers from actual trip data — marks the start/end
@@ -510,31 +517,31 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     );
   }
 
-  /// Build safer route polylines — completed trips with safety score >= 80.
-  List<Polyline<Object>> _buildSaferRoutes(ColorScheme colorScheme) {
+  /// Build safer route circles — completed trips with safety score >= 80.
+  List<CircleMarker> _buildSaferRoutesHeatmap(ColorScheme colorScheme) {
     final completedTrips = widget.controller.completedTrips;
-    final polylines = <Polyline<Object>>[];
+    final circles = <CircleMarker>[];
 
     for (final trip in completedTrips) {
       final safetyScore = 100.0 - trip.riskScore;
       if (safetyScore < 80) continue; // Only safe trips
 
-      if (trip.routePoints.length < 2) continue;
+      if (trip.routePoints.isEmpty) continue;
 
-      final points = trip.routePoints
-          .map((p) => LatLng(p['lat']!, p['lng']!))
-          .toList();
-
-      polylines.add(
-        Polyline<Object>(
-          points: points,
-          strokeWidth: 4,
-          color: colorScheme.tertiary.withValues(alpha: 0.7),
-        ),
-      );
+      for (final p in trip.routePoints) {
+        circles.add(
+          CircleMarker(
+            point: LatLng(p['lat']!, p['lng']!),
+            color: colorScheme.tertiary.withValues(alpha: 0.35),
+            borderStrokeWidth: 0,
+            useRadiusInMeter: false,
+            radius: 15,
+          ),
+        );
+      }
     }
 
-    return polylines;
+    return circles;
   }
 
   /// Build community routes as a circle-based heatmap
@@ -554,8 +561,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             point: LatLng(p['lat']!, p['lng']!),
             color: color.withValues(alpha: 0.15),
             borderStrokeWidth: 0,
-            useRadiusInMeter: true,
-            radius: 30, // 30 meters radius for heatmap
+            useRadiusInMeter: false,
+            radius: 15, // Fixed 15px radius for visibility at all zoom levels
           ),
         );
       }
@@ -638,7 +645,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
         child: Card(
           elevation: 0,
           margin: EdgeInsets.zero,
-          color: colorScheme.surface.withValues(alpha: 0.65),
+          color: colorScheme.surface.withValues(alpha: 0.75),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
@@ -647,41 +654,36 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             ),
           ),
           child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Trip History',
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Row(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shield, color: avgColor, size: 18),
-                const SizedBox(width: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.analytics_outlined, size: 18, color: avgColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Avg Safety: ${avgSafety.toStringAsFixed(1)}%',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: avgColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  '${avgSafety.toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: avgColor,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  '${trips.length} trips · $safeCount safe · $highRiskCount risky',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              '${trips.length} trips · $safeCount safe · $highRiskCount risky',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+          ),
         ),
       ),
-    )));
+    );
   }
 
   @override
@@ -691,19 +693,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final hasCompletedTrips = widget.controller.completedTrips.isNotEmpty;
 
     // Build layers from real data
-    final List<Polyline<Object>> historicalRoutes = _buildHistoricalTripRoutes(
+    final List<CircleMarker> historicalHeatmap = _buildHistoricalTripHeatmap(
       colorScheme,
     );
-    final List<Marker> highRiskMarkers = widget.showHighRiskAreas
+    final List<Marker> highRiskMarkers = _showHighRiskAreas
         ? _buildHighRiskAreaMarkers(colorScheme)
         : <Marker>[];
-    final List<Polyline<Object>> saferRoutes = widget.showSaferRoutes
-        ? _buildSaferRoutes(colorScheme)
-        : <Polyline<Object>>[];
-    final List<Marker> incidentMarkers = widget.showReportedIncidents
+    final List<CircleMarker> saferRoutesHeatmap = _showSaferRoutes
+        ? _buildSaferRoutesHeatmap(colorScheme)
+        : <CircleMarker>[];
+    final List<Marker> incidentMarkers = _showReportedIncidents
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
-    final List<CircleMarker> communityHeatmap = widget.showCommunitySafety
+    final List<CircleMarker> communityHeatmap = _showCommunitySafety
         ? _buildCommunityHeatmap(colorScheme)
         : <CircleMarker>[];
 
@@ -729,11 +731,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 userAgentPackageName: 'com.saferide.app',
               ),
               // Historical trip routes (color-coded by safety score)
-              PolylineLayer<Object>(polylines: historicalRoutes),
+              CircleLayer(circles: historicalHeatmap),
               // Community heatmap circles
               CircleLayer(circles: communityHeatmap),
-              // Safer routes layer (green, score ≥ 80)
-              PolylineLayer<Object>(polylines: saferRoutes),
+              // Safer routes layer (green, score >= 80)
+              CircleLayer(circles: saferRoutesHeatmap),
               // High-risk area markers
               MarkerLayer(markers: highRiskMarkers),
               // Active trip polyline (on top)
@@ -798,15 +800,68 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               constraints: const BoxConstraints(maxHeight: 150),
               child: SingleChildScrollView(
                 child: _MapLayerControls(
-                  showHighRiskAreas: widget.showHighRiskAreas,
-                  showSaferRoutes: widget.showSaferRoutes,
-                  showReportedIncidents: widget.showReportedIncidents,
-                  showCommunitySafety: widget.showCommunitySafety,
-                  onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
-                  onSaferRoutesChanged: widget.onSaferRoutesChanged,
-                  onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
-                  onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
+                  showHighRiskAreas: _showHighRiskAreas,
+                  showSaferRoutes: _showSaferRoutes,
+                  showReportedIncidents: _showReportedIncidents,
+                  showCommunitySafety: _showCommunitySafety,
+                  onHighRiskAreasChanged: (v) {
+                    setState(() => _showHighRiskAreas = v);
+                    widget.onHighRiskAreasChanged(v);
+                  },
+                  onSaferRoutesChanged: (v) {
+                    setState(() => _showSaferRoutes = v);
+                    widget.onSaferRoutesChanged(v);
+                  },
+                  onReportedIncidentsChanged: (v) {
+                    setState(() => _showReportedIncidents = v);
+                    widget.onReportedIncidentsChanged(v);
+                  },
+                  onCommunitySafetyChanged: (v) {
+                    setState(() => _showCommunitySafety = v);
+                    widget.onCommunitySafetyChanged(v);
+                  },
                 ),
+              ),
+            ),
+          ),
+          // Full screen toggle button
+          Positioned(
+            top: 170, // Placed below the layer controls
+            right: 12,
+            child: FloatingActionButton.small(
+              heroTag: 'map_fullscreen_btn_${widget.isFullScreen}',
+              backgroundColor: colorScheme.surface,
+              foregroundColor: colorScheme.primary,
+              onPressed: () {
+                if (widget.isFullScreen) {
+                  Navigator.of(context).pop();
+                } else {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => Scaffold(
+                        body: SafeArea(
+                          child: _FullScreenMapCard(
+                            isTracking: widget.isTracking,
+                            routePoints: widget.routePoints,
+                            controller: widget.controller,
+                            showHighRiskAreas: _showHighRiskAreas,
+                            showSaferRoutes: _showSaferRoutes,
+                            showReportedIncidents: _showReportedIncidents,
+                            showCommunitySafety: _showCommunitySafety,
+                            onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
+                            onSaferRoutesChanged: widget.onSaferRoutesChanged,
+                            onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
+                            onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
+                            isFullScreen: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: Icon(
+                widget.isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
               ),
             ),
           ),

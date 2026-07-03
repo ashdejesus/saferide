@@ -146,6 +146,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Divider(),
             const SizedBox(height: 24),
+            Text(
+              'Privacy',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Data Collection Agreement'),
+              subtitle: const Text('View or manage data collection preferences'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                showDialog<void>(
+                  context: context,
+                  builder: (ctx) => ScaffoldMessenger(
+                    child: Builder(
+                      builder: (scaffoldContext) => Scaffold(
+                        backgroundColor: Colors.transparent,
+                        body: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+                            child: Card(
+                              margin: const EdgeInsets.all(24),
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Data Collection Notice', style: Theme.of(context).textTheme.headlineSmall),
+                                    const SizedBox(height: 16),
+                                    const Text('You have already accepted the data collection agreement. Location tracking and sensor data is securely processed to provide safety features.'),
+                                    const SizedBox(height: 24),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: FilledButton(
+                                        onPressed: () => Navigator.of(context).pop(),
+                                        child: const Text('Close'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: user == null
                   ? null

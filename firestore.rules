@@ -196,5 +196,28 @@ service cloud.firestore {
       // allow update/delete only by admin or owner
       allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.reportedBy == request.auth.uid);
     }
+
+    // Passenger Trust Metrics
+    match /passenger_trust_metrics/{passengerId} {
+      // Allow reading trust metrics for any user (needed for map/community view)
+      allow read: if isAuthenticated();
+      // Allow the system/authenticated users to update trust metrics 
+      // (in a real app, this should be done via Cloud Functions to prevent tampering)
+      allow write: if isAuthenticated();
+    }
+
+    // Passenger Reports
+    match /passenger_reports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.passengerId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.passengerId == request.auth.uid);
+    }
+
+    // Collection Group Queries for Community Trips
+    // This allows `_db.collectionGroup('items')` to work for fetching community trips
+    match /{path=**}/items/{itemId} {
+      allow read: if isAuthenticated();
+    }
   }
 }

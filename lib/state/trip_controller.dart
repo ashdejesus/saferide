@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -142,12 +143,66 @@ class TripController extends ChangeNotifier {
         .where((t) => t.endTime != null && t.routePoints.isNotEmpty)
         .toList();
         
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
+    if (kIsWeb) {
+      _communityTrips = [
+        Trip(
+          id: 101,
+          startTime: DateTime.now().subtract(const Duration(hours: 5)),
+          endTime: DateTime.now().subtract(const Duration(hours: 4)),
+          startLat: 37.422,
+          startLng: -122.084,
+          endLat: 37.421,
+          endLng: -122.083,
+          riskScore: 30, // 70% safety
+          routePoints: [
+            {'lat': 37.422, 'lng': -122.084},
+            {'lat': 37.421, 'lng': -122.083},
+            {'lat': 37.422, 'lng': -122.085},
+          ],
+        ),
+        Trip(
+          id: 102,
+          startTime: DateTime.now().subtract(const Duration(hours: 1)),
+          endTime: DateTime.now(),
+          startLat: 37.420,
+          startLng: -122.088,
+          endLat: 37.422,
+          endLng: -122.084,
+          riskScore: 80, // 20% safety (high risk)
+          routePoints: [
+            {'lat': 37.420, 'lng': -122.088},
+            {'lat': 37.421, 'lng': -122.087},
+            {'lat': 37.422, 'lng': -122.084},
+          ],
+        ),
+      ];
+      
+      // Shift all dummy trips (historical and community) to the user's actual location!
       try {
-        _communityTrips = await _firestoreService.getCommunityTrips(user.uid);
+        final pos = await _locationService.currentPosition();
+        final latOffset = pos.latitude - 37.422;
+        final lngOffset = pos.longitude - (-122.084);
+        
+        void shiftTrip(Trip t) {
+          for (var p in t.routePoints) {
+            p['lat'] = (p['lat'] ?? 0) + latOffset;
+            p['lng'] = (p['lng'] ?? 0) + lngOffset;
+          }
+        }
+        
+        for (final t in _completedTrips) shiftTrip(t);
+        for (final t in _communityTrips) shiftTrip(t);
       } catch (e) {
-        debugPrint('Failed to load community trips: $e');
+        debugPrint('Failed to shift dummy trips: $e');
+      }
+    } else {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          _communityTrips = await _firestoreService.getCommunityTrips(user.uid);
+        } catch (e) {
+          debugPrint('Failed to load community trips: $e');
+        }
       }
     }
     
@@ -345,6 +400,12 @@ class TripController extends ChangeNotifier {
       _remoteReports = reports;
       // Update severity sum to reflect remote reports as well
       _reportSeveritySum = _remoteReports.fold(0, (sum, r) => sum + (r.rating));
+      notifyListeners();
+    }, onError: (error) {
+      debugPrint('Error subscribing to remote reports: $error');
+      // Gracefully handle missing index by falling back to empty reports.
+      _remoteReports = [];
+      _reportSeveritySum = 0;
       notifyListeners();
     });
   }

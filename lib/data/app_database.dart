@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -198,7 +199,44 @@ class AppDatabase {
   }
 
   Future<List<Trip>> getTrips() async {
-    if (kIsWeb) return [];
+    if (kIsWeb) {
+      return [
+        Trip(
+          id: 1,
+          startTime: DateTime.now().subtract(const Duration(days: 1)),
+          endTime: DateTime.now().subtract(const Duration(days: 1, hours: -1)),
+          startLat: 37.422,
+          startLng: -122.084,
+          endLat: 37.425,
+          endLng: -122.080,
+          riskScore: 20, // Safe trip (80% safety)
+          routePoints: [
+            {'lat': 37.422, 'lng': -122.084},
+            {'lat': 37.423, 'lng': -122.083},
+            {'lat': 37.424, 'lng': -122.081},
+            {'lat': 37.425, 'lng': -122.080},
+          ],
+        ),
+        Trip(
+          id: 2,
+          startTime: DateTime.now().subtract(const Duration(days: 2)),
+          endTime: DateTime.now().subtract(const Duration(days: 2, hours: -1)),
+          startLat: 37.422,
+          startLng: -122.084,
+          endLat: 37.420,
+          endLng: -122.088,
+          riskScore: 60, // Risky trip (40% safety)
+          speedingCount: 3,
+          brakingCount: 1,
+          turningCount: 0,
+          routePoints: [
+            {'lat': 37.422, 'lng': -122.084},
+            {'lat': 37.421, 'lng': -122.086},
+            {'lat': 37.420, 'lng': -122.088},
+          ],
+        ),
+      ];
+    }
     final db = await database;
     final results = await db.query('trips', orderBy: 'start_time DESC');
     return results.map(Trip.fromMap).toList();

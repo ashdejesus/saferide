@@ -87,21 +87,17 @@ class _SafeRideAppState extends State<SafeRideApp> {
       child: MaterialApp(
         title: 'SafeRide',
         theme: buildSafeRideTheme(),
-        builder: (context, child) {
-          return _AgreementCheckWrapper(
-            preferences: widget.preferences,
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
-        home: StreamBuilder<User?>(
-          stream: widget.auth.authStateChanges(),
-          initialData: widget.auth.currentUser,
-          builder: (context, snapshot) {
-            final user = snapshot.data;
-            if (user == null) {
-              return const AuthScreen();
-            }
-            return Consumer<TripController>(
+        home: _AgreementCheckWrapper(
+          preferences: widget.preferences,
+          child: StreamBuilder<User?>(
+            stream: widget.auth.authStateChanges(),
+            initialData: widget.auth.currentUser,
+            builder: (context, snapshot) {
+              final user = snapshot.data;
+              if (user == null) {
+                return const AuthScreen();
+              }
+              return Consumer<TripController>(
                 builder: (context, controller, _) {
                   return Stack(
                     children: [
@@ -234,9 +230,10 @@ class _SafeRideAppState extends State<SafeRideApp> {
             },
           ),
         ),
-      );
-    }
+      ),
+    );
   }
+}
 
 /// Wrapper widget that shows agreement dialog from proper Material context
 class _AgreementCheckWrapper extends StatefulWidget {
