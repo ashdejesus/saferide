@@ -63,8 +63,13 @@ class _TripsScreenState extends State<TripsScreen>
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
         final items = <Widget>[
-          const SectionHeader(title: 'Trip Summary'),
-          const SyncButton(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              SectionHeader(title: 'Trip Summary'),
+              SyncButton(),
+            ],
+          ),
           _TripsOverview(trips: trips, isLoading: isLoading),
           if (!isLoading && trips.isEmpty)
             EmptyState(
@@ -114,23 +119,28 @@ class _TripCard extends StatelessWidget {
     final badge = _RiskBadge.fromScore(context, trip.riskScore);
 
     final colorScheme = Theme.of(context).colorScheme;
-    return OpenContainer<void>(
-      transitionType: ContainerTransitionType.fadeThrough,
-      transitionDuration: const Duration(milliseconds: 420),
-      openBuilder: (context, _) => TripDetailScreen(trip: trip),
-      closedElevation: 0,
-      openElevation: 0,
-      closedColor: Colors.transparent,
-      openColor: colorScheme.surface,
-      closedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      closedBuilder: (context, openContainer) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: InkWell(
-            onTap: openContainer,
-            borderRadius: BorderRadius.circular(28),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: OpenContainer<void>(
+        transitionType: ContainerTransitionType.fadeThrough,
+        transitionDuration: const Duration(milliseconds: 420),
+        openBuilder: (context, _) => TripDetailScreen(trip: trip),
+        closedElevation: 0,
+        openElevation: 0,
+        closedColor: Colors.transparent,
+        openColor: colorScheme.surface,
+        closedShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        closedBuilder: (context, openContainer) {
+          return Card(
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: InkWell(
+              onTap: openContainer,
+              borderRadius: BorderRadius.circular(16),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -208,6 +218,7 @@ class _TripCard extends StatelessWidget {
           ),
         );
       },
+    ),
     );
   }
 }
@@ -250,22 +261,28 @@ class _TripsOverview extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _OverviewChip(
-                  label: 'Trips',
-                  value: totalTrips.toString(),
-                  color: colorScheme.primaryContainer,
+                Expanded(
+                  child: _OverviewChip(
+                    label: 'Trips',
+                    value: totalTrips.toString(),
+                    color: colorScheme.primaryContainer,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                _OverviewChip(
-                  label: 'Avg Risk',
-                  value: averageRisk.toStringAsFixed(0),
-                  color: colorScheme.secondaryContainer,
+                Expanded(
+                  child: _OverviewChip(
+                    label: 'Avg Risk',
+                    value: averageRisk.toStringAsFixed(0),
+                    color: colorScheme.secondaryContainer,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                _OverviewChip(
-                  label: 'High Risk',
-                  value: highRiskCount.toString(),
-                  color: colorScheme.tertiaryContainer,
+                Expanded(
+                  child: _OverviewChip(
+                    label: 'High Risk',
+                    value: highRiskCount.toString(),
+                    color: colorScheme.tertiaryContainer,
+                  ),
                 ),
               ],
             ),

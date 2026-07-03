@@ -104,10 +104,9 @@ class FirestoreService {
     try {
       final snapshot = await _db.collectionGroup('items')
           // Since both trips and incidents are in 'items' subcollections, 
-          // we filter by 'startedAt' to only get trips.
-          .orderBy('startedAt', descending: true)
-          // Limit to a reasonable number to prevent massive reads
-          .limit(100)
+          // we filter them out locally in the loop.
+          // Removed orderBy('startedAt') to avoid missing composite index errors.
+          .limit(300)
           .get();
 
       final trips = <Trip>[];

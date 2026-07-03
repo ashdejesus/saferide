@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../state/trip_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -55,6 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService?>(context);
     final sync = Provider.of<SyncService>(context, listen: false);
+    final tripController = context.watch<TripController>();
     final user = auth?.currentUser;
 
     return Scaffold(
@@ -72,12 +74,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : Text('UID: ${user.uid}'),
             ),
             const SizedBox(height: 24),
+            Text(
+              'Developer & Testing',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+            SwitchListTile(
+              title: const Text('Developer Test Mode'),
+              subtitle: const Text('Bypass minimum speed limits (11 km/h) to allow testing sensors by manually shaking the phone.'),
+              value: tripController.testMode,
+              onChanged: (val) {
+                tripController.setTestMode(val);
+              },
+            ),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text(
+              'Context Factors (Adaptive Sensitivity)',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            const Text('Road Condition (Poor to Good)'),
+            Slider(
+              value: tripController.contextRoad,
+              min: 0.0,
+              max: 1.0,
+              divisions: 10,
+              label: tripController.contextRoad.toStringAsFixed(1),
+              onChanged: (val) {
+                tripController.updateContextFactors(
+                  roadCondition: val,
+                  envNoise: tripController.contextEnvNoise,
+                  trafficDensity: tripController.contextTraffic,
+                );
+              },
+            ),
+            const Text('Environmental Noise (Low to High)'),
+            Slider(
+              value: tripController.contextEnvNoise,
+              min: 0.0,
+              max: 1.0,
+              divisions: 10,
+              label: tripController.contextEnvNoise.toStringAsFixed(1),
+              onChanged: (val) {
+                tripController.updateContextFactors(
+                  roadCondition: tripController.contextRoad,
+                  envNoise: val,
+                  trafficDensity: tripController.contextTraffic,
+                );
+              },
+            ),
+            const Text('Traffic Density (Light to Heavy)'),
+            Slider(
+              value: tripController.contextTraffic,
+              min: 0.0,
+              max: 1.0,
+              divisions: 10,
+              label: tripController.contextTraffic.toStringAsFixed(1),
+              onChanged: (val) {
+                tripController.updateContextFactors(
+                  roadCondition: tripController.contextRoad,
+                  envNoise: tripController.contextEnvNoise,
+                  trafficDensity: val,
+                );
+              },
+            ),
+            const Divider(),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: user == null
                   ? null
                   : () => _handleSignOut(context, auth!, sync),
               icon: const Icon(Icons.logout),
               label: const Text('Sign out'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
             ),
           ],
         ),

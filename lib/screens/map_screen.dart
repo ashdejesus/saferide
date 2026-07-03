@@ -1030,8 +1030,19 @@ class _HighRiskAreaPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Create a radial gradient that is solid in the center and transparent at the edges
+    final gradient = RadialGradient(
+      colors: [
+        color.withValues(alpha: 0.7), // Strong core
+        color.withValues(alpha: 0.3), // Mid fade
+        color.withValues(alpha: 0.0), // Fully transparent edge
+      ],
+      stops: const [0.2, 0.6, 1.0],
+    );
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
     final paint = Paint()
-      ..color = color
+      ..shader = gradient.createShader(rect)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(

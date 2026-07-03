@@ -120,6 +120,16 @@ class TripController extends ChangeNotifier {
   double get contextEnvNoise => _adaptiveThresholds.contextEnvNoise;
   double get contextTraffic => _adaptiveThresholds.contextTraffic;
 
+  bool _testMode = false;
+  bool get testMode => _testMode;
+
+  void setTestMode(bool value) {
+    _testMode = value;
+    notifyListeners();
+  }
+
+
+
   // Completed trip history for map display
   List<Trip> get completedTrips => List.unmodifiable(_completedTrips);
   List<Trip> get communityTrips => List.unmodifiable(_communityTrips);
@@ -386,7 +396,7 @@ class TripController extends ChangeNotifier {
     }
 
     // Detect overspeeding using adaptive threshold
-    if (avgSpeedKmh > _adaptiveThresholds.speedingThreshold) {
+    if (risk_scoring.detectOverspeeding(avgSpeedKmh, _adaptiveThresholds)) {
       if (_cooldownElapsed(_lastSpeedEvent)) {
         _speedingCount++;
         _lastSpeedEvent = DateTime.now();
@@ -397,8 +407,8 @@ class TripController extends ChangeNotifier {
     // Detect harsh braking using speed variation: Δv(k) = ṽ(k) - ṽ(k-1)
     // Formula: E_b(w) = 1 if Δv(k) < -θ_b
     final speedDelta = _currentSpeed - _lastRecordedSpeed;
-    if (speedDelta < _adaptiveThresholds.brakingThreshold &&
-        _currentSpeed > _adaptiveThresholds.thetaSpeedMin) {
+    if (risk_scoring.detectHarshBraking(speedDelta, _adaptiveThresholds) &&
+        (_testMode || _currentSpeed > _adaptiveThresholds.thetaSpeedMin)) {
       if (_cooldownElapsed(_lastBrakeEvent)) {
         _brakingCount++;
         _lastBrakeEvent = DateTime.now();
@@ -449,15 +459,17 @@ class TripController extends ChangeNotifier {
 
     // Pothole detection: P(k) = 1 if az(k) > θ_p ∧ g(k) < θ_g ∧ v(k) > θ_v
     // Combines vertical acceleration spike with low gyro (not a turn) and moving
-    final isPothole = risk_scoring.detectPothole(
-      verticalAccel: _lastVerticalAccel,
-      gyroMagnitude: _gyroWindow.average,
-      speed: _currentSpeed,
-      thresholds: _adaptiveThresholds,
-    );
-    if (isPothole && _cooldownElapsed(_lastPotholeEvent)) {
-      _potholeCount++;
-      _lastPotholeEvent = DateTime.now();
+    if (_testMode || _currentSpeed > _adaptiveThresholds.thetaSpeedMin) {
+      final isPothole = risk_scoring.detectPothole(
+        verticalAccel: _lastVerticalAccel,
+        gyroMagnitude: _gyroWindow.average,
+        speed: _testMode ? 10.0 : _currentSpeed, // Mock speed if in test mode so pothole formula passes
+        thresholds: _adaptiveThresholds,
+      );
+      if (isPothole && _cooldownElapsed(_lastPotholeEvent)) {
+        _potholeCount++;
+        _lastPotholeEvent = DateTime.now();
+      }
     }
 
     // Note: Braking detection is now based on speed variation (Δv) from GPS
@@ -484,8 +496,8 @@ class TripController extends ChangeNotifier {
     // Detect sharp turning using adaptive threshold and full gyro magnitude
     // Requires: (1) sufficient vehicle speed, (2) high gyro, (3) sustained duration
     final maxGyro = _gyroWindow.max;
-    final isMoving = _currentSpeed >= 3.0; // ~11 km/h minimum to avoid stationary false positives
-    if (isMoving && maxGyro > _adaptiveThresholds.turningThreshold) {
+    final isMoving = _testMode || _currentSpeed >= 3.0; // ~11 km/h minimum to avoid stationary false positives
+    if (isMoving && risk_scoring.detectSharpTurning(maxGyro, _adaptiveThresholds)) {
       _turningStreak++;
       if (_turningCooldownElapsed(_lastTurnEvent)) {
         if (_turningStreak >= 10) {
