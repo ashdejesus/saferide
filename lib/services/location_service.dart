@@ -10,6 +10,7 @@ class LocationService {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('LocationService: Location services not enabled');
+        if (!kIsWeb) await Geolocator.openLocationSettings();
         return false;
       }
 
@@ -24,7 +25,8 @@ class LocationService {
       // If denied forever, return false (user must go to settings)
       if (permission == LocationPermission.deniedForever) {
         debugPrint('LocationService: Permission denied forever');
-        return false;
+        if (!kIsWeb) await Geolocator.openAppSettings();
+        return kIsWeb; // Allow mock on web
       }
 
       // Accept both whileInUse and always for trip start
@@ -45,7 +47,7 @@ class LocationService {
       }
 
       // Permission still denied or not granted
-      return false;
+      return kIsWeb; // Allow mock on web
     } catch (e) {
       // Geolocator throws on unsupported platforms (e.g. Windows desktop)
       debugPrint('LocationService: Permission check failed ($e), '
@@ -89,7 +91,7 @@ class LocationService {
     return Geolocator.getPositionStream(locationSettings: locationSettings);
   }
 
-  Future<Position> currentPosition() {
+  Future<Position> currentPosition() async {
     LocationSettings locationSettings = const LocationSettings(
       accuracy: LocationAccuracy.best,
       distanceFilter: 5,
@@ -121,6 +123,26 @@ class LocationService {
       );
     }
 
-    return Geolocator.getCurrentPosition(locationSettings: locationSettings);
+    try {
+      return await Geolocator.getCurrentPosition(locationSettings: locationSettings);
+    } catch (e) {
+      debugPrint('LocationService: Failed to get position ($e).');
+      if (kIsWeb) {
+        debugPrint('Using mock position for web testing.');
+        return Position(
+          longitude: -122.084,
+          latitude: 37.422,
+          timestamp: DateTime.now(),
+          accuracy: 10,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+      }
+      rethrow;
+    }
   }
 }

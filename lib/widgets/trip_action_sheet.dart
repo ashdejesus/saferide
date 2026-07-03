@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
 
 import '../state/trip_controller.dart';
 
@@ -83,7 +84,9 @@ class TripActionSheet {
                           action: SnackBarAction(
                             label: 'Settings',
                             onPressed: () {
-                              Geolocator.openAppSettings();
+                              if (!kIsWeb) {
+                                Geolocator.openAppSettings();
+                              }
                             },
                           ),
                         ),

@@ -537,31 +537,31 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return polylines;
   }
 
-  /// Build community routes polylines — acts as a global heatmap
-  List<Polyline<Object>> _buildCommunityRoutes(ColorScheme colorScheme) {
+  /// Build community routes as a circle-based heatmap
+  List<CircleMarker> _buildCommunityHeatmap(ColorScheme colorScheme) {
     final communityTrips = widget.controller.communityTrips;
-    final polylines = <Polyline<Object>>[];
+    final circles = <CircleMarker>[];
 
     for (final trip in communityTrips) {
-      if (trip.routePoints.length < 2) continue;
-
-      final points = trip.routePoints
-          .map((p) => LatLng(p['lat']!, p['lng']!))
-          .toList();
+      if (trip.routePoints.isEmpty) continue;
 
       final color = _tripRouteColor(trip);
 
-      // Low opacity to create heatmap effect when multiple users take the same route
-      polylines.add(
-        Polyline<Object>(
-          points: points,
-          strokeWidth: 4,
-          color: color.withValues(alpha: 0.25),
-        ),
-      );
+      // Add a circle for every point in the route to create a heatmap effect
+      for (final p in trip.routePoints) {
+        circles.add(
+          CircleMarker(
+            point: LatLng(p['lat']!, p['lng']!),
+            color: color.withValues(alpha: 0.15),
+            borderStrokeWidth: 0,
+            useRadiusInMeter: true,
+            radius: 30, // 30 meters radius for heatmap
+          ),
+        );
+      }
     }
 
-    return polylines;
+    return circles;
   }
 
   /// Build reported incident markers from real Firestore data only.
@@ -703,9 +703,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final List<Marker> incidentMarkers = widget.showReportedIncidents
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
-    final List<Polyline<Object>> communityRoutes = widget.showCommunitySafety
-        ? _buildCommunityRoutes(colorScheme)
-        : <Polyline<Object>>[];
+    final List<CircleMarker> communityHeatmap = widget.showCommunitySafety
+        ? _buildCommunityHeatmap(colorScheme)
+        : <CircleMarker>[];
 
     final mapCenter = _resolveMapCenter();
 
@@ -730,8 +730,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               ),
               // Historical trip routes (color-coded by safety score)
               PolylineLayer<Object>(polylines: historicalRoutes),
-              // Community heatmap routes
-              PolylineLayer<Object>(polylines: communityRoutes),
+              // Community heatmap circles
+              CircleLayer(circles: communityHeatmap),
               // Safer routes layer (green, score ≥ 80)
               PolylineLayer<Object>(polylines: saferRoutes),
               // High-risk area markers

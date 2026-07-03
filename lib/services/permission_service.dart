@@ -26,6 +26,7 @@ class PermissionService {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       debugPrint('Location services are disabled');
+      if (!kIsWeb) await Geolocator.openLocationSettings();
       return false;
     }
 
@@ -49,12 +50,14 @@ class PermissionService {
     // If denied forever, return false
     if (permission == LocationPermission.deniedForever) {
       debugPrint('Location permission denied forever');
-      return false;
+      if (!kIsWeb) await Geolocator.openAppSettings();
+      return kIsWeb; // Return true on web to allow testing
     }
 
     // Accept both whileInUse and always
     return permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always;
+        permission == LocationPermission.always ||
+        kIsWeb; // Always allow on web to allow testing
   }
 
   /// Notify user about battery optimization and provide link to settings

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -180,11 +181,13 @@ class AppDatabase {
   }
 
   Future<int> insertTrip(Trip trip) async {
+    if (kIsWeb) return DateTime.now().millisecondsSinceEpoch;
     final db = await database;
     return db.insert('trips', trip.toMap());
   }
 
   Future<void> updateTrip(Trip trip) async {
+    if (kIsWeb) return;
     final db = await database;
     await db.update(
       'trips',
@@ -195,12 +198,14 @@ class AppDatabase {
   }
 
   Future<List<Trip>> getTrips() async {
+    if (kIsWeb) return [];
     final db = await database;
     final results = await db.query('trips', orderBy: 'start_time DESC');
     return results.map(Trip.fromMap).toList();
   }
 
   Future<Trip?> getTripById(int id) async {
+    if (kIsWeb) return null;
     final db = await database;
     final results = await db.query('trips', where: 'id = ?', whereArgs: [id]);
     if (results.isEmpty) {
@@ -210,11 +215,13 @@ class AppDatabase {
   }
 
   Future<int> insertReport(PassengerReport report) async {
+    if (kIsWeb) return DateTime.now().millisecondsSinceEpoch;
     final db = await database;
     return db.insert('reports', report.toMap());
   }
 
   Future<List<PassengerReport>> getReportsForTrip(int tripId) async {
+    if (kIsWeb) return [];
     final db = await database;
     final results = await db.query(
       'reports',
@@ -226,6 +233,7 @@ class AppDatabase {
   }
 
   Future<List<PassengerReport>> getPendingReports() async {
+    if (kIsWeb) return [];
     final db = await database;
     final results = await db.query(
       'reports',
@@ -236,6 +244,7 @@ class AppDatabase {
   }
 
   Future<List<Trip>> getPendingTrips() async {
+    if (kIsWeb) return [];
     final db = await database;
     final results = await db.query(
       'trips',
@@ -246,6 +255,7 @@ class AppDatabase {
   }
 
   Future<PendingCounts> getPendingCounts() async {
+    if (kIsWeb) return const PendingCounts(trips: 0, reports: 0);
     final db = await database;
     final tripCount =
         Sqflite.firstIntValue(
@@ -267,6 +277,7 @@ class AppDatabase {
   }
 
   Future<void> updateReport(PassengerReport report) async {
+    if (kIsWeb) return;
     final db = await database;
     await db.update(
       'reports',
@@ -278,6 +289,7 @@ class AppDatabase {
 
   /// Insert or update passenger trust metrics
   Future<int> upsertPassengerTrustMetrics(PassengerTrustMetrics metrics) async {
+    if (kIsWeb) return DateTime.now().millisecondsSinceEpoch;
     final db = await database;
     return db.insert(
       'passenger_trust_metrics',
@@ -290,6 +302,7 @@ class AppDatabase {
   Future<PassengerTrustMetrics?> getPassengerTrustMetrics(
     String passengerId,
   ) async {
+    if (kIsWeb) return null;
     final db = await database;
     final results = await db.query(
       'passenger_trust_metrics',
@@ -304,12 +317,14 @@ class AppDatabase {
 
   /// Insert report with trust information
   Future<int> insertReportWithTrust(ReportWithTrust report) async {
+    if (kIsWeb) return DateTime.now().millisecondsSinceEpoch;
     final db = await database;
     return db.insert('reports_with_trust', report.toMap());
   }
 
   /// Get reports with trust information for a trip
   Future<List<ReportWithTrust>> getReportsWithTrust(int tripId) async {
+    if (kIsWeb) return [];
     final db = await database;
     final results = await db.query(
       'reports_with_trust',
@@ -322,6 +337,7 @@ class AppDatabase {
 
   /// Get pending trust metrics to sync
   Future<List<PassengerTrustMetrics>> getPendingTrustMetrics() async {
+    if (kIsWeb) return [];
     final db = await database;
     final results = await db.query(
       'passenger_trust_metrics',
@@ -336,6 +352,7 @@ class AppDatabase {
     String passengerId,
     SyncStatus status,
   ) async {
+    if (kIsWeb) return;
     final db = await database;
     await db.update(
       'passenger_trust_metrics',
