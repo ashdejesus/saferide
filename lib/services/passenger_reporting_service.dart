@@ -26,8 +26,10 @@ class PassengerReportingService {
   }) async {
     try {
       final user = _auth.currentUser;
-      final passengerId =
-          user?.uid ?? 'anonymous_${DateTime.now().millisecondsSinceEpoch}';
+      if (user == null) {
+        throw Exception('User must be registered and logged in to submit reports.');
+      }
+      final passengerId = user.uid;
 
       final reportData = {
         'passengerId': passengerId,

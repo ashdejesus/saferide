@@ -53,61 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _continueAsGuest() async {
-    setState(() => _loading = true);
-    final auth = Provider.of<AuthService>(context, listen: false);
-    try {
-      debugPrint('Guest sign-in: started');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 15),
-            content: Row(
-              children: const [
-                SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Text('Signing in as guest...'),
-              ],
-            ),
-          ),
-        );
-      }
 
-      // apply a timeout so the UI doesn't hang indefinitely
-      await auth.signInAnonymously().timeout(const Duration(seconds: 15));
-
-      debugPrint('Guest sign-in: success');
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Signed in anonymously')));
-      }
-      // Do not navigate here; SafeRideApp listens to authStateChanges and will show the dashboard.
-    } on TimeoutException catch (_) {
-      debugPrint('Guest sign-in: timeout');
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Sign-in timed out.')));
-      }
-    } catch (e) {
-      debugPrint('Guest sign-in: error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,18 +138,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               : Text(_isLogin ? 'Sign In' : 'Register'),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _loading ? null : _continueAsGuest,
-                              icon: const Icon(Icons.person_off),
-                              label: const Text('Continue as guest'),
-                            ),
-                          ),
-                        ],
-                      ),
+
                       const SizedBox(height: 8),
                       Center(
                         child: TextButton(

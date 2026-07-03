@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -79,6 +80,7 @@ class TripController extends ChangeNotifier {
 
   double _currentAcceleration = 0;
   double _currentTurnRate = 0;
+  DateTime? _lastSensorNotify;
 
   StreamSubscription<Position>? _positionSub;
   StreamSubscription<UserAccelerometerEvent>? _accelSub;
@@ -88,6 +90,9 @@ class TripController extends ChangeNotifier {
 
   // Completed trips loaded from local database for map display
   List<Trip> _completedTrips = [];
+  
+  // Community trips fetched from Firestore
+  List<Trip> _communityTrips = [];
 
   Trip? get activeTrip => _activeTrip;
   bool get isTracking => _isTracking;
@@ -112,11 +117,12 @@ class TripController extends ChangeNotifier {
 
   // Context factor getters for UI display
   double get contextRoad => _adaptiveThresholds.contextRoad;
-  double get contextVehicle => _adaptiveThresholds.contextVehicle;
+  double get contextEnvNoise => _adaptiveThresholds.contextEnvNoise;
   double get contextTraffic => _adaptiveThresholds.contextTraffic;
 
   // Completed trip history for map display
   List<Trip> get completedTrips => List.unmodifiable(_completedTrips);
+  List<Trip> get communityTrips => List.unmodifiable(_communityTrips);
 
   /// Load completed trips from the local database for map risk visualization.
   /// Filters to only trips with route data and an end time.
@@ -125,6 +131,16 @@ class TripController extends ChangeNotifier {
     _completedTrips = allTrips
         .where((t) => t.endTime != null && t.routePoints.isNotEmpty)
         .toList();
+        
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        _communityTrips = await _firestoreService.getCommunityTrips(user.uid);
+      } catch (e) {
+        debugPrint('Failed to load community trips: $e');
+      }
+    }
+    
     notifyListeners();
   }
 
@@ -142,6 +158,7 @@ class TripController extends ChangeNotifier {
       totalSlopeDeviation: _totalSlopeDeviation,
       totalWindows: max(1, _speedingCount + _brakingCount + _turningCount + _potholeCount),
       weights: weights,
+      contextualAdjustment: _adaptiveThresholds.getContextualAdjustment(),
     );
 
     final reportRiskReports = _remoteReports
@@ -260,6 +277,7 @@ class TripController extends ChangeNotifier {
       totalSlopeDeviation: _totalSlopeDeviation,
       totalWindows: max(1, _speedingCount + _brakingCount + _turningCount + _potholeCount),
       weights: weights,
+      contextualAdjustment: _adaptiveThresholds.getContextualAdjustment(),
     );
 
     // Map remote reports to risk_scoring.PassengerReport and compute report risk
@@ -444,6 +462,13 @@ class TripController extends ChangeNotifier {
 
     // Note: Braking detection is now based on speed variation (Δv) from GPS
     // which is calculated in _onPosition using _speedWindow
+
+    final now = DateTime.now();
+    if (_lastSensorNotify == null ||
+        now.difference(_lastSensorNotify!).inMilliseconds > 250) {
+      _lastSensorNotify = now;
+      notifyListeners();
+    }
   }
 
   void _onGyroscope(GyroscopeEvent event) {
@@ -474,6 +499,13 @@ class TripController extends ChangeNotifier {
       }
     } else {
       _turningStreak = 0;
+    }
+
+    final now = DateTime.now();
+    if (_lastSensorNotify == null ||
+        now.difference(_lastSensorNotify!).inMilliseconds > 250) {
+      _lastSensorNotify = now;
+      notifyListeners();
     }
   }
 
@@ -585,17 +617,17 @@ class TripController extends ChangeNotifier {
     return DateTime.now().difference(lastEvent) > const Duration(seconds: 5);
   }
 
-  /// Update adaptive threshold context factors: θ(t) = θ₀ · C_r(t) · C_v(t) · C_t(t)
+  /// Update adaptive threshold context factors: θ(t) = θ_base(v) × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
   /// Called from settings UI to adjust detection sensitivity based on conditions.
   void updateContextFactors({
-    required double roadCondition, // 0.0 (poor) to 1.0 (good)
-    required double vehicleType, // 0.0 (heavy) to 1.0 (light)
-    required double trafficLevel, // 0.0 (heavy) to 1.0 (light)
+    required double roadCondition, // R_c(t): 0.0 (poor) to 1.0 (good)
+    required double envNoise, // E_n(t): 0.0 (low) to 1.0 (high)
+    required double trafficDensity, // T_d(t): 0.0 (light) to 1.0 (heavy)
   }) {
     _adaptiveThresholds.updateContextFactors(
       roadCondition: roadCondition,
-      vehicleType: vehicleType,
-      trafficLevel: trafficLevel,
+      envNoise: envNoise,
+      trafficDensity: trafficDensity,
     );
     notifyListeners();
   }

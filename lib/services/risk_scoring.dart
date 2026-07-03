@@ -39,25 +39,41 @@ class AdaptiveThresholds {
   double thetaGyroStable = 0.8; // rad/s
   double thetaSpeedMin = 5.0; // minimum speed for pothole detection
 
-  // Context factors
-  double contextRoad = 1.0; // C_r(t): road condition factor
-  double contextVehicle = 1.0; // C_v(t): vehicle type factor
-  double contextTraffic = 1.0; // C_t(t): traffic condition factor
+  // Calibration sensitivity parameters
+  double alpha = 0.3; // α: road condition sensitivity
+  double beta = 0.2; // β: traffic density sensitivity
+  double gamma = 0.1; // γ: environmental noise sensitivity
 
-  /// Get adaptive threshold: θ(t) = θ0 * C_r(t) * C_v(t) * C_t(t)
+  // Context coefficients
+  double contextRoad = 0.0; // R_c(t): road condition coefficient
+  double contextEnvNoise = 0.0; // E_n(t): environmental noise coefficient
+  double contextTraffic = 0.0; // T_d(t): traffic density coefficient
+
+  /// Adaptive threshold: θ(t) = θ_base(v) × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
   double getAdaptiveThreshold(double baseThreshold) {
-    return baseThreshold * contextRoad * contextVehicle * contextTraffic;
+    return baseThreshold *
+        (1 + alpha * contextRoad) *
+        (1 + beta * contextTraffic) *
+        (1 + gamma * contextEnvNoise);
   }
 
-  /// Update context factors (0.8 - 1.2 range)
+  /// Contextual adjustment factor: A(t) = 1 + α·R_c(t) + β·T_d(t) + γ·E_n(t)
+  double getContextualAdjustment() {
+    return 1 +
+        alpha * contextRoad +
+        beta * contextTraffic +
+        gamma * contextEnvNoise;
+  }
+
+  /// Update context coefficients (0.0 - 1.0 range)
   void updateContextFactors({
-    required double roadCondition,
-    required double vehicleType,
-    required double trafficLevel,
+    required double roadCondition, // R_c(t): 0.0 (poor) to 1.0 (good)
+    required double envNoise, // E_n(t): 0.0 (low) to 1.0 (high)
+    required double trafficDensity, // T_d(t): 0.0 (light) to 1.0 (heavy)
   }) {
-    contextRoad = 0.8 + (roadCondition * 0.4);
-    contextVehicle = 0.8 + (vehicleType * 0.4);
-    contextTraffic = 0.8 + (trafficLevel * 0.4);
+    contextRoad = roadCondition;
+    contextEnvNoise = envNoise;
+    contextTraffic = trafficDensity;
   }
 
   /// Get thresholds for event detection
@@ -235,7 +251,8 @@ bool detectSharpTurning(
 }
 
 /// Compute sensor-based risk score
-/// R_sens(t) = (w1*C_v + w2*C_b + w3*C_g + w4*P(t) + w5*|S(t)|) / W_total
+/// R_sens(t) = (w1*C_v + w2*C_b + w3*C_g + w4*P(t) + w5*|S(t)|) / W_total × A(t)
+/// where A(t) = 1 + α·R_c(t) + β·T_d(t) + γ·E_n(t)
 double computeSensorRiskScore({
   required int overspeedingCount, // C_v
   required int harshBrakingCount, // C_b
@@ -244,6 +261,7 @@ double computeSensorRiskScore({
   required double totalSlopeDeviation, // |S(t)|
   required int totalWindows,
   required RiskWeights weights,
+  double contextualAdjustment = 1.0, // A(t): contextual adjustment factor
 }) {
   if (totalWindows == 0) return 0.0;
 
@@ -253,7 +271,8 @@ double computeSensorRiskScore({
           weights.w3 * sharpTurningCount +
           weights.w4 * potholeCount +
           weights.w5 * totalSlopeDeviation) /
-      totalWindows;
+      totalWindows *
+      contextualAdjustment;
 
   return (riskScore).clamp(0.0, 1.0);
 }
@@ -364,7 +383,7 @@ int computeRiskScore({
 }) {
   final weights = RiskWeights();
 
-  // Compute sensor-based risk using legacy counts
+  // Compute sensor-based risk using legacy counts (A(t) defaults to 1.0)
   final sensorRisk = computeSensorRiskScore(
     overspeedingCount: speedingCount,
     harshBrakingCount: brakingCount,
@@ -373,6 +392,7 @@ int computeRiskScore({
     totalSlopeDeviation: 0,
     totalWindows: max(1, speedingCount + brakingCount + turningCount).toInt(),
     weights: weights,
+    contextualAdjustment: 1.0,
   );
 
   // Compute report-based risk from severity sum (1-5 normalized to 0-1)

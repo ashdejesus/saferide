@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -21,6 +22,7 @@ class _MapScreenState extends State<MapScreen>
   bool _showHighRiskAreas = true;
   bool _showSaferRoutes = true;
   bool _showReportedIncidents = true;
+  bool _showCommunitySafety = true;
 
   @override
   void initState() {
@@ -74,6 +76,7 @@ class _MapScreenState extends State<MapScreen>
                 showHighRiskAreas: _showHighRiskAreas,
                 showSaferRoutes: _showSaferRoutes,
                 showReportedIncidents: _showReportedIncidents,
+                showCommunitySafety: _showCommunitySafety,
                 onHighRiskAreasChanged: (value) {
                   setState(() => _showHighRiskAreas = value);
                 },
@@ -82,6 +85,9 @@ class _MapScreenState extends State<MapScreen>
                 },
                 onReportedIncidentsChanged: (value) {
                   setState(() => _showReportedIncidents = value);
+                },
+                onCommunitySafetyChanged: (value) {
+                  setState(() => _showCommunitySafety = value);
                 },
               ),
             ),
@@ -100,27 +106,42 @@ class _MapLayerControls extends StatelessWidget {
     required this.showHighRiskAreas,
     required this.showSaferRoutes,
     required this.showReportedIncidents,
+    required this.showCommunitySafety,
     required this.onHighRiskAreasChanged,
     required this.onSaferRoutesChanged,
     required this.onReportedIncidentsChanged,
+    required this.onCommunitySafetyChanged,
   });
 
   final bool showHighRiskAreas;
   final bool showSaferRoutes;
   final bool showReportedIncidents;
+  final bool showCommunitySafety;
   final ValueChanged<bool> onHighRiskAreasChanged;
   final ValueChanged<bool> onSaferRoutesChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
+  final ValueChanged<bool> onCommunitySafetyChanged;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 2,
-      color: colorScheme.surface.withValues(alpha: 0.92),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: colorScheme.surface.withValues(alpha: 0.65),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -171,12 +192,24 @@ class _MapLayerControls extends StatelessWidget {
                         : colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
+                _LayerFilterChip(
+                  selected: showCommunitySafety,
+                  onSelected: onCommunitySafetyChanged,
+                  label: const Text('Community Safety'),
+                  avatar: Icon(
+                    Icons.public_rounded,
+                    size: 18,
+                    color: showCommunitySafety
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
               ],
             ),
           ],
         ),
       ),
-    );
+    )));
   }
 }
 
@@ -241,9 +274,11 @@ class _FullScreenMapCard extends StatefulWidget {
     required this.showHighRiskAreas,
     required this.showSaferRoutes,
     required this.showReportedIncidents,
+    required this.showCommunitySafety,
     required this.onHighRiskAreasChanged,
     required this.onSaferRoutesChanged,
     required this.onReportedIncidentsChanged,
+    required this.onCommunitySafetyChanged,
   });
 
   final bool isTracking;
@@ -252,9 +287,11 @@ class _FullScreenMapCard extends StatefulWidget {
   final bool showHighRiskAreas;
   final bool showSaferRoutes;
   final bool showReportedIncidents;
+  final bool showCommunitySafety;
   final ValueChanged<bool> onHighRiskAreasChanged;
   final ValueChanged<bool> onSaferRoutesChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
+  final ValueChanged<bool> onCommunitySafetyChanged;
 
   @override
   State<_FullScreenMapCard> createState() => _FullScreenMapCardState();
@@ -301,6 +338,15 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
     final points = widget.routePoints;
     if (!widget.isTracking || points.isEmpty) {
+      return;
+    }
+
+    // If we just started tracking, zoom in to the user's location
+    if (widget.isTracking && !oldWidget.isTracking) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _mapController.move(points.last, 16.0);
+      });
       return;
     }
 
@@ -491,6 +537,33 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return polylines;
   }
 
+  /// Build community routes polylines — acts as a global heatmap
+  List<Polyline<Object>> _buildCommunityRoutes(ColorScheme colorScheme) {
+    final communityTrips = widget.controller.communityTrips;
+    final polylines = <Polyline<Object>>[];
+
+    for (final trip in communityTrips) {
+      if (trip.routePoints.length < 2) continue;
+
+      final points = trip.routePoints
+          .map((p) => LatLng(p['lat']!, p['lng']!))
+          .toList();
+
+      final color = _tripRouteColor(trip);
+
+      // Low opacity to create heatmap effect when multiple users take the same route
+      polylines.add(
+        Polyline<Object>(
+          points: points,
+          strokeWidth: 4,
+          color: color.withValues(alpha: 0.25),
+        ),
+      );
+    }
+
+    return polylines;
+  }
+
   /// Build reported incident markers from real Firestore data only.
   List<Marker> _buildReportedIncidentMarkers(ColorScheme colorScheme) {
     final markers = <Marker>[];
@@ -558,11 +631,22 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
         ? Colors.green
         : (avgSafety >= 50 ? Colors.orange : colorScheme.error);
 
-    return Card(
-      elevation: 4,
-      color: colorScheme.surface.withValues(alpha: 0.96),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: colorScheme.surface.withValues(alpha: 0.65),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,7 +681,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
           ],
         ),
       ),
-    );
+    )));
   }
 
   @override
@@ -619,6 +703,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final List<Marker> incidentMarkers = widget.showReportedIncidents
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
+    final List<Polyline<Object>> communityRoutes = widget.showCommunitySafety
+        ? _buildCommunityRoutes(colorScheme)
+        : <Polyline<Object>>[];
 
     final mapCenter = _resolveMapCenter();
 
@@ -635,11 +722,16 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: Theme.of(context).brightness == Brightness.dark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.saferide.app',
               ),
               // Historical trip routes (color-coded by safety score)
               PolylineLayer<Object>(polylines: historicalRoutes),
+              // Community heatmap routes
+              PolylineLayer<Object>(polylines: communityRoutes),
               // Safer routes layer (green, score ≥ 80)
               PolylineLayer<Object>(polylines: saferRoutes),
               // High-risk area markers
@@ -709,9 +801,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                   showHighRiskAreas: widget.showHighRiskAreas,
                   showSaferRoutes: widget.showSaferRoutes,
                   showReportedIncidents: widget.showReportedIncidents,
+                  showCommunitySafety: widget.showCommunitySafety,
                   onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
                   onSaferRoutesChanged: widget.onSaferRoutesChanged,
                   onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
+                  onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
                 ),
               ),
             ),

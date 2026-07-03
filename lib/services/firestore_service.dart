@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/trip.dart';
 import 'risk_scoring.dart' as risk_scoring;
 
 class RemoteReport {
@@ -94,5 +95,73 @@ class FirestoreService {
       trust: r.trust,
       timestamp: r.createdAt,
     );
+  }
+
+  /// Fetch all trips from the community, excluding the current user's trips.
+  /// Uses a collectionGroup query on 'items' and filters out incidents 
+  /// by checking for the 'startedAt' field.
+  Future<List<Trip>> getCommunityTrips(String currentUserId) async {
+    try {
+      final snapshot = await _db.collectionGroup('items')
+          // Since both trips and incidents are in 'items' subcollections, 
+          // we filter by 'startedAt' to only get trips.
+          .orderBy('startedAt', descending: true)
+          // Limit to a reasonable number to prevent massive reads
+          .limit(100)
+          .get();
+
+      final trips = <Trip>[];
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        
+        // Skip current user's trips since they are already loaded locally
+        final userId = data['userId'] as String?;
+        if (userId == null || userId == currentUserId) continue;
+
+        // Ensure it's actually a trip (it should have startedAt because of the orderBy, but good to be safe)
+        if (!data.containsKey('startedAt')) continue;
+
+        final metadata = data['metadata'] as Map<String, dynamic>? ?? {};
+        
+        final startedAtTs = data['startedAt'] as Timestamp?;
+        final endedAtTs = data['endedAt'] as Timestamp?;
+        if (startedAtTs == null) continue;
+
+        // Parse routePoints
+        final List<Map<String, double>> routePoints = [];
+        if (metadata['routePoints'] is List) {
+          for (final point in metadata['routePoints']) {
+            if (point is Map) {
+              routePoints.add({
+                'lat': (point['lat'] as num).toDouble(),
+                'lng': (point['lng'] as num).toDouble(),
+              });
+            }
+          }
+        }
+
+        trips.add(
+          Trip(
+            id: null, // Remote trips don't need a local SQLite ID
+            startTime: startedAtTs.toDate(),
+            endTime: endedAtTs?.toDate(),
+            startLat: (metadata['startLat'] as num?)?.toDouble(),
+            startLng: (metadata['startLng'] as num?)?.toDouble(),
+            endLat: (metadata['endLat'] as num?)?.toDouble(),
+            endLng: (metadata['endLng'] as num?)?.toDouble(),
+            routeName: data['routeName'] as String?,
+            riskScore: (metadata['riskScore'] as num?)?.toDouble() ?? 0.0,
+            speedingCount: (metadata['speedingCount'] as num?)?.toInt() ?? 0,
+            brakingCount: (metadata['brakingCount'] as num?)?.toInt() ?? 0,
+            turningCount: (metadata['turningCount'] as num?)?.toInt() ?? 0,
+            routePoints: routePoints,
+          ),
+        );
+      }
+      return trips;
+    } catch (e) {
+      // If collectionGroup index is missing, this will fail. We return empty list.
+      return [];
+    }
   }
 }
