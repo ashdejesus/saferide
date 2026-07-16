@@ -116,22 +116,51 @@ class TrustScoringService {
     return combined.clamp(0.0, 1.0);
   }
 
-  /// Calculate overall trust score from component scores
-  /// Weights: 40% consistency, 30% anomaly (inverse), 30% sensor alignment
+  /// Calculate frequency-based credibility score from total report count.
+  ///
+  /// Uses exponential saturation so credibility grows quickly for new reporters
+  /// and plateaus for highly active ones:
+  ///   F(n) = 1 − e^(−n / k)  where k = 15 (half-max ≈ 10 reports)
+  ///
+  /// Representative values:
+  ///   0 reports → 0.00 (no history)
+  ///   5 reports → 0.28
+  ///  10 reports → 0.49
+  ///  20 reports → 0.74
+  ///  30 reports → 0.86
+  ///  50 reports → 0.96
+  static double calculateFrequencyScore({required int totalReports}) {
+    if (totalReports <= 0) return 0.0;
+    const decayRate = 15.0; // k: controls how fast credibility grows
+    return (1.0 - exp(-totalReports / decayRate)).clamp(0.0, 1.0);
+  }
+
+  /// Calculate overall trust score from component scores.
+  ///
+  /// Weight distribution (sums to 1.0):
+  ///   20% reporting frequency  — RQ 2.1: credibility by frequency
+  ///   35% rating consistency   — lower variance = higher trust
+  ///   25% anomaly (inverse)    — z-score outlier penalty
+  ///   20% sensor alignment     — RQ 2.2: conformity with sensor data
   static double calculateOverallTrust({
     required double consistencyScore,
     required double anomalyScore,
     required double sensorAlignmentScore,
     int? verifiedCount,
     int? flaggedCount,
+    int totalReports = 0, // RQ 2.1: reporting frequency input
   }) {
-    // Base trust calculation
-    final baseTrust =
-        (consistencyScore * 0.4) + // Consistency: 40%
-        ((1.0 - anomalyScore) * 0.3) + // Anomaly inverse: 30%
-        (sensorAlignmentScore * 0.3); // Sensor alignment: 30%
+    // Frequency-based credibility: F(n) = 1 - e^(-n/k)
+    final frequencyScore = calculateFrequencyScore(totalReports: totalReports);
 
-    // Adjust for verification history
+    // Base trust: weighted sum of all four credibility components
+    final baseTrust =
+        (frequencyScore * 0.20) + // Reporting frequency:  20% — RQ 2.1
+        (consistencyScore * 0.35) + // Rating consistency:  35%
+        ((1.0 - anomalyScore) * 0.25) + // Anomaly (inverse): 25%
+        (sensorAlignmentScore * 0.20); // Sensor alignment:  20% — RQ 2.2
+
+    // Adjust for community verification history
     double verificationFactor = 1.0;
     if (verifiedCount != null && flaggedCount != null) {
       final totalVerifications = verifiedCount + flaggedCount;

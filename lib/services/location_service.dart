@@ -92,41 +92,69 @@ class LocationService {
   }
 
   Future<Position> currentPosition() async {
-    LocationSettings locationSettings = const LocationSettings(
-      accuracy: LocationAccuracy.best,
-      distanceFilter: 5,
-    );
-
+    // Use bestForNavigation on mobile, best elsewhere
+    LocationAccuracy preferredAccuracy = LocationAccuracy.best;
     if (!kIsWeb && Platform.isAndroid) {
-      locationSettings = AndroidSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5,
-        intervalDuration: const Duration(seconds: 2),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'SafeRide trip running',
-          notificationText: 'Collecting driving data in the background.',
-          enableWakeLock: true,
-          notificationIcon: AndroidResource(
-            name: 'ic_launcher',
-            defType: 'mipmap',
-          ),
-        ),
-      );
+      preferredAccuracy = LocationAccuracy.bestForNavigation;
     } else if (!kIsWeb && Platform.isIOS) {
-      locationSettings = AppleSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5,
-        activityType: ActivityType.automotiveNavigation,
-        allowBackgroundLocationUpdates: true,
-        showBackgroundLocationIndicator: true,
-        pauseLocationUpdatesAutomatically: false,
-      );
+      preferredAccuracy = LocationAccuracy.bestForNavigation;
     }
 
+    // Build settings helper
+    LocationSettings _settings(LocationAccuracy accuracy) {
+      if (!kIsWeb && Platform.isAndroid) {
+        return AndroidSettings(
+          accuracy: accuracy,
+          distanceFilter: 5,
+          intervalDuration: const Duration(seconds: 2),
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationTitle: 'SafeRide trip running',
+            notificationText: 'Collecting driving data in the background.',
+            enableWakeLock: true,
+            notificationIcon: AndroidResource(
+              name: 'ic_launcher',
+              defType: 'mipmap',
+            ),
+          ),
+        );
+      } else if (!kIsWeb && Platform.isIOS) {
+        return AppleSettings(
+          accuracy: accuracy,
+          distanceFilter: 5,
+          activityType: ActivityType.automotiveNavigation,
+          allowBackgroundLocationUpdates: true,
+          showBackgroundLocationIndicator: true,
+          pauseLocationUpdatesAutomatically: false,
+        );
+      }
+      return LocationSettings(accuracy: accuracy, distanceFilter: 5);
+    }
+
+    // --- Attempt 1: preferred accuracy, 10-second timeout ---
+    // Without mobile data, A-GPS cold-start can exceed the default timeout.
+    // We give it 10 s first; if that fails we fall back to medium accuracy
+    // (pure GPS, no network assist) with a longer 20-second window.
     try {
-      return await Geolocator.getCurrentPosition(locationSettings: locationSettings);
+      return await Geolocator.getCurrentPosition(
+        locationSettings: _settings(preferredAccuracy),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('GPS timeout on first attempt'),
+      );
     } catch (e) {
-      debugPrint('LocationService: Failed to get position ($e).');
+      debugPrint('LocationService: First GPS attempt failed ($e). Retrying with medium accuracy...');
+    }
+
+    // --- Attempt 2: medium accuracy (satellite-only, no A-GPS), 20-second timeout ---
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: _settings(LocationAccuracy.medium),
+      ).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw Exception('GPS timeout on fallback attempt'),
+      );
+    } catch (e) {
+      debugPrint('LocationService: Fallback GPS attempt failed ($e).');
       if (kIsWeb) {
         debugPrint('Using mock position for web testing.');
         return Position(

@@ -15,7 +15,15 @@ class PassengerReportingService {
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _auth = auth ?? FirebaseAuth.instance;
 
-  /// Submit a passenger report with location data
+  /// Submit a passenger report with location data.
+  ///
+  /// [tripSensorRisk] is the current sensor-based risk score (0–1) for the
+  /// active trip at the time of reporting. Passing this enables the trust
+  /// module to compare the report severity against real sensor measurements
+  /// (RQ 2.2 – sensor alignment).
+  ///
+  /// [tripEventCount] is the number of unsafe driving events detected by
+  /// sensors within the trip up to this point.
   Future<String> submitReport({
     required String category,
     required int severity,
@@ -23,6 +31,8 @@ class PassengerReportingService {
     required double? longitude,
     required int? tripId,
     String? description,
+    double tripSensorRisk = 0.5, // R_sens at time of report; default = neutral
+    int tripEventCount = 0, // N_sensor events detected so far in the trip
   }) async {
     try {
       final user = _auth.currentUser;
@@ -45,14 +55,21 @@ class PassengerReportingService {
         'isFlagged': false,
         'verificationCount': 0,
         'flagCount': 0,
+        // Store the sensor context at submission time for audit / alignment scoring
+        'sensorRiskAtSubmission': tripSensorRisk,
+        'sensorEventCountAtSubmission': tripEventCount,
       };
 
       final docRef = await _firestore
           .collection('passenger_reports')
           .add(reportData);
 
-      // Update passenger trust metrics after report submission
-      await _updatePassengerTrustMetrics(passengerId);
+      // Update passenger trust metrics with real sensor context (RQ 2.2)
+      await _updatePassengerTrustMetrics(
+        passengerId,
+        latestSensorRisk: tripSensorRisk,
+        latestEventCount: tripEventCount,
+      );
 
       return docRef.id;
     } catch (e) {
@@ -196,10 +213,19 @@ class PassengerReportingService {
       final docRef = _firestore.collection('passenger_reports').doc(reportId);
       await docRef.update({'verificationCount': FieldValue.increment(1)});
 
-      // Update trust metrics
+      // Refresh trust metrics; re-read sensor context stored on the document
       final doc = await docRef.get();
-      final passengerId = doc.get('passengerId') as String;
-      await _updatePassengerTrustMetrics(passengerId);
+      final data = doc.data() as Map<String, dynamic>;
+      final passengerId = data['passengerId'] as String;
+      final sensorRisk =
+          (data['sensorRiskAtSubmission'] as num?)?.toDouble() ?? 0.5;
+      final eventCount =
+          (data['sensorEventCountAtSubmission'] as num?)?.toInt() ?? 0;
+      await _updatePassengerTrustMetrics(
+        passengerId,
+        latestSensorRisk: sensorRisk,
+        latestEventCount: eventCount,
+      );
     } catch (e) {
       throw Exception('Failed to verify report: $e');
     }
@@ -216,17 +242,37 @@ class PassengerReportingService {
         'flaggedAt': FieldValue.serverTimestamp(),
       });
 
-      // Update trust metrics
+      // Refresh trust metrics; re-read sensor context stored on the document
       final doc = await docRef.get();
-      final passengerId = doc.get('passengerId') as String;
-      await _updatePassengerTrustMetrics(passengerId);
+      final data = doc.data() as Map<String, dynamic>;
+      final passengerId = data['passengerId'] as String;
+      final sensorRisk =
+          (data['sensorRiskAtSubmission'] as num?)?.toDouble() ?? 0.5;
+      final eventCount =
+          (data['sensorEventCountAtSubmission'] as num?)?.toInt() ?? 0;
+      await _updatePassengerTrustMetrics(
+        passengerId,
+        latestSensorRisk: sensorRisk,
+        latestEventCount: eventCount,
+      );
     } catch (e) {
       throw Exception('Failed to flag report: $e');
     }
   }
 
-  /// Update passenger trust metrics based on all their reports
-  Future<void> _updatePassengerTrustMetrics(String passengerId) async {
+  /// Update passenger trust metrics based on all their reports.
+  ///
+  /// [latestSensorRisk]  – the sensor-based risk score (R_sens, 0–1) from the
+  ///   trip at the moment the most-recent report was submitted. Used by the
+  ///   sensor alignment formula (RQ 2.2).
+  ///
+  /// [latestEventCount]  – number of unsafe driving events detected by sensors
+  ///   in that trip window. Feeds `detectedEventCount` in the alignment score.
+  Future<void> _updatePassengerTrustMetrics(
+    String passengerId, {
+    double latestSensorRisk = 0.5,
+    int latestEventCount = 0,
+  }) async {
     try {
       // Fetch all reports from this passenger
       final snapshot = await _firestore
@@ -253,25 +299,56 @@ class PassengerReportingService {
         return;
       }
 
-      // Extract severity history
+      // Extract severity history and verification/flag counts
       final severities = <int>[];
       int totalVerified = 0;
       int totalFlagged = 0;
 
+      // Also compute a weighted average sensor risk from stored context across
+      // all reports so alignment is informed by the full history, not just the
+      // latest call-site value.
+      double sensorRiskSum = 0.0;
+      int sensorRiskCount = 0;
+      int totalStoredEventCount = 0;
+
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        severities.add((data['severity'] as int));
-        totalVerified += (data['verificationCount'] as int?) ?? 0;
-        totalFlagged += (data['flagCount'] as int?) ?? 0;
+        severities.add(data['severity'] as int);
+        totalVerified += (data['verificationCount'] as num?)?.toInt() ?? 0;
+        totalFlagged += (data['flagCount'] as num?)?.toInt() ?? 0;
+
+        // Accumulate stored sensor context from each report document
+        final storedRisk =
+            (data['sensorRiskAtSubmission'] as num?)?.toDouble();
+        final storedEvents =
+            (data['sensorEventCountAtSubmission'] as num?)?.toInt();
+        if (storedRisk != null) {
+          sensorRiskSum += storedRisk;
+          sensorRiskCount++;
+        }
+        if (storedEvents != null) {
+          totalStoredEventCount += storedEvents;
+        }
       }
 
-      // Calculate consistency score from variance
+      // Use the mean historical sensor risk. Fall back to the value passed in
+      // from the current submission when no stored values exist yet.
+      final averageSensorRisk = sensorRiskCount > 0
+          ? (sensorRiskSum / sensorRiskCount)
+          : latestSensorRisk;
+
+      // Total event count across all stored reports; use the latest trip value
+      // as a floor so a brand-new reporter still gets a fair comparison.
+      final effectiveEventCount =
+          totalStoredEventCount > 0 ? totalStoredEventCount : latestEventCount;
+
+      // ── Consistency score: low variance across historical severities ──────
       final consistencyScore = TrustScoringService.calculateConsistencyScore(
         historicalSeverities: severities,
         currentSeverity: severities.last,
       );
 
-      // Calculate anomaly score for latest report
+      // ── Anomaly score: z-score outlier detection ──────────────────────────
       final anomalyScore = TrustScoringService.calculateAnomalyScore(
         historicalSeverities: severities.length > 1
             ? severities.sublist(0, severities.length - 1)
@@ -279,25 +356,27 @@ class PassengerReportingService {
         currentSeverity: severities.last,
       );
 
-      // For sensor alignment, we'd need actual sensor data
-      // For now, use a proxy based on report distribution
+      // ── Sensor alignment score: RQ 2.2 ───────────────────────────────────
+      // Now uses real sensor data persisted on each report document rather than
+      // a hardcoded proxy.
       final sensorAlignmentScore =
           TrustScoringService.calculateSensorAlignmentScore(
             reportSeverity: severities.last,
-            detectedEventCount: totalVerified > 0 ? 3 : 0,
-            averageSensorRisk: 0.5,
+            detectedEventCount: effectiveEventCount,
+            averageSensorRisk: averageSensorRisk,
           );
 
-      // Calculate overall trust
+      // ── Overall trust: weighted sum of all components (RQ 2.1 + RQ 2.2) ──
       final overallTrust = TrustScoringService.calculateOverallTrust(
         consistencyScore: consistencyScore,
         anomalyScore: anomalyScore,
         sensorAlignmentScore: sensorAlignmentScore,
         verifiedCount: totalVerified,
         flaggedCount: totalFlagged,
+        totalReports: snapshot.docs.length, // RQ 2.1: reporting frequency
       );
 
-      // Update Firestore
+      // Persist updated metrics to Firestore
       await _firestore
           .collection('passenger_trust_metrics')
           .doc(passengerId)
@@ -313,7 +392,7 @@ class PassengerReportingService {
             'flaggedCount': totalFlagged,
           }, SetOptions(merge: true));
     } catch (e) {
-      // Silently handle error - trust metrics update is non-critical
+      // Silently handle error – trust metrics update is non-critical
     }
   }
 
