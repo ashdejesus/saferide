@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../state/trip_controller.dart';
+import 'algo_demo_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -88,6 +89,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (val) {
                 tripController.setTestMode(val);
               },
+            ),
+            ListTile(
+              leading: const Icon(Icons.science_outlined),
+              title: const Text('Live Algorithm Demo'),
+              subtitle: const Text(
+                  'Real-time visualisation of all risk & trust scoring formulas using live sensor data.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AlgoDemoScreen(),
+                ),
+              ),
             ),
             const Divider(),
             const SizedBox(height: 12),

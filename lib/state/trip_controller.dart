@@ -221,7 +221,7 @@ class TripController extends ChangeNotifier {
       sharpTurningCount: _turningCount,
       potholeCount: _potholeCount,
       totalSlopeDeviation: _totalSlopeDeviation,
-      totalWindows: max(1, _speedingCount + _brakingCount + _turningCount + _potholeCount),
+      totalWindows: _tripDurationWindows,
       weights: weights,
       contextualAdjustment: _adaptiveThresholds.getContextualAdjustment(),
     );
@@ -232,7 +232,7 @@ class TripController extends ChangeNotifier {
     final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
 
     final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
-      _speedingCount + _brakingCount + _turningCount,
+      _tripDurationWindows,
       _remoteReports.length,
     );
 
@@ -247,9 +247,20 @@ class TripController extends ChangeNotifier {
     return safety;
   }
 
-  Future<bool> startTrip({String? routeName}) async {
+  /// Calculates the total number of evaluation windows based on trip duration.
+  /// Assuming an average event cooldown/window size of 2 seconds.
+  int get _tripDurationWindows {
+    if (_activeTrip == null) return 1;
+    final duration = DateTime.now().difference(_activeTrip!.startTime);
+    return max(1, duration.inSeconds ~/ 2);
+  }
+
+  Future<bool> startTrip({
+    String? routeName,
+    double vehicleMultiplier = 1.0,
+  }) async {
     try {
-      // Initialize notifications at trip start
+      // Initialize notifications at trip start (network-optional, errors ignored)
       await _notificationService.initialize();
       await _notificationService.subscribeToTopic('critical_incidents');
     } catch (e) {
@@ -257,23 +268,39 @@ class TripController extends ChangeNotifier {
     }
 
     try {
+      // --- 1. Location permission (required — can't track without it) ---
       final hasPermission = await _locationService.ensurePermission();
       if (!hasPermission) {
         debugPrint('TripController: Location permission denied');
         return false;
       }
 
-      final position = await _locationService.currentPosition();
+      // --- 2. Initial GPS fix (best-effort — trip starts even if this fails) ---
+      // Without mobile data, A-GPS cold-start may time out. We attempt the fix
+      // but proceed regardless so the user is never blocked from recording a trip.
+      // The position stream (_listenToSensors) will supply coordinates once
+      // satellites lock, usually within 30–60 s outdoors.
+      Position? position;
+      try {
+        position = await _locationService.currentPosition();
+      } catch (e) {
+        debugPrint('TripController: Initial GPS fix failed ($e). '
+            'Starting trip without initial position — stream will fill in.');
+      }
+
       _currentPosition = position;
       _routePoints.clear();
-      _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
+      if (position != null) {
+        _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
+      }
 
+      // --- 3. Save trip to local SQLite (no internet needed) ---
       final startTime = DateTime.now();
       final tripId = await _database.insertTrip(
         Trip(
           startTime: startTime,
-          startLat: position.latitude,
-          startLng: position.longitude,
+          startLat: position?.latitude,
+          startLng: position?.longitude,
           routeName: routeName,
         ),
       );
@@ -281,8 +308,8 @@ class TripController extends ChangeNotifier {
       _activeTrip = Trip(
         id: tripId,
         startTime: startTime,
-        startLat: position.latitude,
-        startLng: position.longitude,
+        startLat: position?.latitude,
+        startLng: position?.longitude,
         routeName: routeName,
         routePoints: List.of(_routePoints),
         syncStatus: SyncStatus.pending,
@@ -300,8 +327,11 @@ class TripController extends ChangeNotifier {
       _lastVerticalAccel = 0;
       _isTracking = true;
 
+      // Apply baseline vehicle thresholds before starting
+      _adaptiveThresholds.vehicleMultiplier = vehicleMultiplier;
+
+      // --- 4. Start sensor + report streams ---
       _listenToSensors();
-      // Subscribe to remote reports for this trip (if any)
       if (_activeTrip?.id != null) {
         _subscribeToRemoteReports(_activeTrip!.id!);
       }
@@ -340,7 +370,7 @@ class TripController extends ChangeNotifier {
       sharpTurningCount: _turningCount,
       potholeCount: _potholeCount,
       totalSlopeDeviation: _totalSlopeDeviation,
-      totalWindows: max(1, _speedingCount + _brakingCount + _turningCount + _potholeCount),
+      totalWindows: _tripDurationWindows,
       weights: weights,
       contextualAdjustment: _adaptiveThresholds.getContextualAdjustment(),
     );
@@ -352,7 +382,7 @@ class TripController extends ChangeNotifier {
     final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
 
     final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
-      _speedingCount + _brakingCount + _turningCount,
+      _tripDurationWindows,
       _remoteReports.length,
     );
 

@@ -1,0 +1,1000 @@
+﻿SAFERIDE: A MOBILE COMPUTING–BASED RISK SCORING SYSTEM FOR PUBLIC TRANSPORTATION USING SENSOR DATA AND TRUST-WEIGHTED CROWDSOURCING
+A Thesis Proposal
+Submitted to the Faculty of
+The College of Computing Studies
+PAMANTASAN NG CABUYAO
+City of 
+Cabuyao
+, Laguna
+In Partial Fulfillment
+of the Requirements for the Degree:
+BACHELOR OF SCIENCE IN COMPUTER SCIENCE
+By:
+Almanon, Clark Jester C.
+De Jesus, 
+Nichoe
+ Ashley B.
+Esmenos
+, Christan M.
+Alado
+, Mary Joy M.
+May 2026
+TABLE OF CONTENTS
+Title Page
+  
+i
+Recommendation Letter
+  ii
+Table of Contents
+  iii
+List of Tables
+  v
+List of Figures
+  vi
+List of Appendices
+  ix
+CHAPTER
+I
+THE PROBLEM AND ITS SETTING
+Page
+Introduction
+1
+Statement of the Problem
+3
+Scope and Limitation
+5
+Significance of the Study
+7
+II
+REVIEW OF RELATED LITERATURE AND STUDIES
+Conceptual Literature
+9
+Research Literature
+Review of Related Literature
+    Topic 1
+    Topic 2
+    Topic 3
+Review of Related Studies
+    Topic 1
+    Topic 2
+    Topic 3
+13
+14
+14
+16
+17
+18
+18
+19
+20
+Theoretical Background
+21
+Conceptual Framework
+24
+Synthesis
+26
+Definition of Terms
+29
+III
+METHODS AND PROCEDURES
+Research Design
+33
+Research Locale
+34
+Respondents of the Study
+35
+Data Gathering Procedure
+36
+Discussion on Algorithms/Mathematical Concepts Used/Proposed Solution
+41
+System Development Methodology
+60
+Statistical Treatment of Data
+64
+Ethical Considerations
+68
+LITERATURE CITED
+70
+APPENDICES
+75
+LIST OF TABLES
+Table
+Page
+1
+Respondents of the Study
+35
+2
+Five-Point Likert Scale Method
+68
+LIST OF FIGURES
+Figure
+Page
+1
+Theoretical Framework of the SafeRide System
+21
+2
+SafeRide risk scoring and safety analytics framework
+24
+3
+Phases of Agile SLDC
+60
+4
+UML Component Diagram of the System 
+65
+LIST OF APPENDICES
+ 
+APPENDIX TITLE
+Page
+A
+Informed Consent Form (PNC PRE-FO-50 Informed Consent Form)
+75
+B
+Report of Language Software
+76
+C
+Curriculum Vitae of Student Researchers
+78
+2914015-6057262vii
+vii
+CHAPTER I
+THE PROBLEM AND ITS SETTING
+Students and workers in 
+Cabuyao
+ City must travel in order to reach their destination point. Each time a student or worker travels in a jeepney or tricycle, there will always be certain risks involved. One cannot tell whether the jeepney or tricycle driver knows how to drive and whether the vehicle being used by that particular driver is safe enough to ride [1]. The SafeRide mobile app is the solution to this problem. It employs the passenger’s smartphone in gathering data from the jeepney or tricycle for analyzing its dynamic behavior under a non-linear risk assessment model. It solves the information gap in collecting data using GPS and gyroscope sensors in the mobile application.
+Introduction
+There has been limited advancement of the creation of a transport safety and management system for PUVs such as jeepneys and tricycles, which cater to thousands of students and employees each day. Safety and welfare of the commuters are put into peril by the improper driving and overcrowding tendencies of some drivers, but nothing has been done so far to gather and analyze data regarding the above-mentioned risk factors that would provide insights into the city's transport safety policy. Based on findings of studies conducted on commuter perception of safety in public transport in the Philippines, it seems that there is room for improving commuter safety and welfare assessments within an urban community environment [2].
+To solve the problem of insufficient monitoring of unsafe driving behavior in commuter transport, some alternative monitoring techniques may be considered aside from expensive video camera equipment. With the help of mobile phones equipped with motion sensors like an accelerometer and gyroscope, vehicle dynamics data that can be associated with unsafe driving behavior (sudden braking, sharp turnings, and accelerating) can be collected [3]. The technology shows promise through deep 
+learning framework-based processing of the data yet, implementation in ordinary conditions is problematic for its high computational demand, significant power consumption, and hardware limitations [4].
+The limitations of conventional approaches to activity recognition do not allow for their adaptation to everyday smartphone usage. To address this challenge, we propose a real-time algorithm for activity recognition based on the sensor data. Sliding window and threshold-based classifications are applied in the presented approach [5]. The computational complexity is acceptable for real-time processing of the data on a smartphone, and the activity recognition system can complement GPS information to provide uninterrupted activity recognition [6]. The proposed technique allows us to use additional sensor telemetry data provided by smartphones and consumes minimal computing resources when operating in a low-power mode.
+Whereas current studies related to transport infrastructure and traffic management have analyzed road and traffic information from a macroscopic level through various sources of information gathered from traditional sensing devices like roadside sensors and traffic cameras, the SafeRide project views the issue of road safety through the eyes of a commuter [7]. Crowdsourced reports are gathered from the public about road safety concerns. However, crowdsourced reports may be subjectively biased and not time-consistent. In order to overcome these two obstacles, SafeRide uses passive sensor information present in all smartphones and the newly developed weighted trust reporting system to confirm commuters' reports of road safety concerns using information from the vehicle dynamics [8].
+In this study, the researchers enhance their framework to achieve better classification results for unsafe driving behavior by eliminating any road anomalies that could produce misleading classifications. Road anomalies include potholes, speed bumps, and grade, and also include road features with different duration of signals, axes orientation, and window to window consistency [9]. These are eliminated from the safe driver behavior analysis process in order to reduce false positives. In addition, we utilize road features in a pattern recognition manner to improve classification results of the framework [10].
+The aim of this research study is to validate the proposed framework by implementing and testing it in various urban environments located in Laguna, Philippines, including: 
+Biñan
+ City, Santa Rosa City, 
+Cabuyao
+ City, and Calamba City with varying traffic and roadway characteristics.
+The ultimate goal of this research project is to develop a safety rating system applicable to various forms of public transportation systems. The safety performance and quality of the safety-enabled public transportation system will be evaluated based on the ISO/IEC 25010:2023 software product quality model, which includes functional suitability, performance efficiency, reliability, and interaction capability, as defined in the ISO/IEC 25010:2023 Systems and Software Quality Requirements and Evaluation (
+SQuaRE
+) [11].
+Statement of the Problem
+Public safety continues to pose an issue concerning PUVs such as jeepneys, tricycles, and buses that run within 
+Cabuyao
+ and other adjacent municipalities in Laguna province. There has been reliance on post-hoc measures that try to address unsafe driving behaviors when they have happened already. While commuter reports are possible means for reporting any such behaviors, the reliability of these reports may not be consistent. Consequently, there should be a transportation risk assessment tool that integrates smartphone sensor data together with credible passenger reporting to make an assessment of the safety of transportation.
+The current research will work towards developing the SafeRide mobile application that will use behavioral data captured via smartphone sensors and credible commuter reports.
+In order to assess if the proposed system will meet the above objectives, this study intends to answer the following research questions:
+Is SafeRide’s sensor module effective in detecting the following types of unsafe behavior?
+Speeding incidents using GPS;
+Hard braking events through accelerometer measurements; and
+Sudden direction changes based on gyroscope measurements.
+How well is the reliability of safety data submitted by commuters handled by the weighted reporting module? This includes:
+Assigning credibility scores based on the reporting frequency of the user; and
+Assigning credibility scores based on conformity of the report with the sensor data.
+Is the composite scoring algorithm effective in generating meaningful safety scores? The algorithm performance will be assessed by aggregating normalized sensor indicators and credibility-weighted reports to produce scores at:
+Individual trip levels; and
+Route level.
+How do Information Technology experts evaluate the technical quality of the SafeRide application based on the ISO/IEC 25010:2023 software product quality model in terms of:
+functional suitability;
+performance efficiency;
+reliability; and
+interaction capability?
+How do end users evaluate the SafeRide application based on the ISO/IEC 25010:2023 software product quality model in terms of:
+5.1 functional suitability;
+5.2 performance efficiency;
+5.3 reliability; and
+5.4 interaction capability
+Scope and Limitation 
+The purpose of this study is the design, development, and evaluation of the SafeRide mobile application, which is a mobile computing-based risk scoring system estimating the safety level of public transportation via smartphone sensors and weighted reports from passengers. The SafeRide mobile application collects and analyzes the information about vehicle movement through sensors in smartphones in order to estimate the safety level of trips and public transportation routes. 
+The application is developed using the Flutter framework, while backend services are implemented using Firebase, which provides user authentication, real-time database capabilities through Cloud 
+Firestore
+, and cloud messaging through Google's managed infrastructure. Cloud 
+Firestore
+ serves as the real-time database for storing sensor data, passenger reports, user information, and the safety scores calculated for each trip and transportation route.
+Sensor-Based Unsafe Driving Detection
+ Module is the first module of the system that gathers motion data from the smartphone accelerometer, gyroscope, and Global Positioning System (GPS). These sensors provide measurements of acceleration, angular velocity, and the geographic location of the vehicle during the trip. 
+In order to preserve the temporal characteristics of vehicle movement, the collected sensor data are segmented into overlapping sliding windows. The extracted features are compared with adaptive threshold values to detect unsafe driving events such as 
+overspeeding
+, harsh braking, sharp turning, and pothole encounters.
+ 
+The speed of the vehicle is estimated using GPS, and motion-related events are detected using accelerometer and gyroscope. The adaptive threshold values were calibrated with the help of numerous field tests under Philippine road and traffic conditions. Filtering of the signals and multi-sensor fusion are used for the reduction of the noise in the data provided by sensors. However, slight variations may arise because of the variations in hardware and users' skills.
+The 
+Weighted Passenger Reporting
+ Module allows passengers to submit structured reports on the observed unsafe driving behavior during the trip. Reports are classified according to predefined types of unsafe driving behaviors in order to maintain the consistency of user inputs. Each submitted report is assigned the credibility value depending on the user's history of reporting, frequency, and consistency with the observations obtained through sensors. Credibility score is further used for weighting the reports in order to decrease the effect of inconsistent and unreliable reports and increase the contribution of credible reports.
+The 
+Composite Safety Scoring Algorithm
+ is the third module of the system that combines the outputs of the sensor-based detection and weighted passenger reporting modules. The measurements obtained with the help of sensors are normalized prior to aggregation, and reports from passengers are weighted according to the credibility score calculated for them. Both objective and subjective information sources are then combined in order to obtain composite safety score between 0 and 100, where the higher score corresponds to the higher level of public transportation safety. The monitoring system is specifically designed for the Philippine public transportation setting, taking into account local road surface conditions, traffic, and operating environment. Evaluation of transportation safety is performed at the level of individual trips and the whole transportation route in order to provide micro-level and macro-level assessments of transportation safety. The system is intended to evaluate the existing level of safety conditions, and it is not designed to predict future safety incidents or driving behavior.
+System testing will be conducted in four cities in Laguna province, namely, 
+Biñan
+ city, Santa Rosa city, 
+Cabuyao
+ city, and Calamba city. These cities were chosen because they provide different levels of traffic congestion and commuter volume and have different road characteristics. Testing will cover different types of public transportation including jeepneys, buses, and tricycles. There will be thirty (30) participants in total, namely ten (10) Information Technology experts and twenty (20) 
+end users that regularly use smartphones while commuting. Testing will last for twelve (12) weeks during the academic year 2026-2027. The quality of the developed system will be evaluated using the ISO/IEC 25010:2023 software product quality model and will focus on such criteria as functional suitability, performance efficiency, reliability, and interaction capability.
+Limitations of the system should be considered despite all design considerations. First of all, variations in smartphone hardware, sensors, and their calibration may influence the consistency and accuracy of the sensor measurements despite the usage of normalization and sensor fusion. Secondly, variations in road infrastructure, traffic, and local driving environment in various locations may influence the accuracy of detection of unsafe driving behavior. Thirdly, the efficiency of the crowdsourcing component depends on active participation of the users and their truthful reports that cannot be ensured. Fourthly, distinguishing unsafe driving behavior from the vehicle movement caused by potholes, speed bumps, and uneven road surfaces remains difficult despite the application of multi-condition validation techniques aimed at minimizing false-positive classifications. Finally, the recalculation of credibility scores and updates of trust values are processed asynchronously on the backend server, and thus there is a delay in the updating of the credibility scores of newly submitted passenger reports
+.
+Significance of the Study
+This project is seen as a significant step forward in determining transportation safety in 
+Cabuyao
+ City. SafeRide goes beyond subjective reporting, presenting a systematic method for converting raw smartphone data into a viable safety assessment. This allows us to form a more empirical view of what weaknesses need to be addressed in transportation in this region.
+The possible benefits of the system can help numerous vital demographics, such as:
+Commuters
+. In the case of a commuter, SafeRide offers an opportunity to rise above subjective judgments about transport safety. With the use of calculated safety assessments based on sensor data and evaluations from other riders, it becomes easier for people to make safer decisions concerning their daily transportation needs. In turn, this will allow the community to become aware of what the current state of safety is when it comes to the means of transportation they have to utilize.
+Public Transport Operators.
+ In this regard, the researchers want to provide transport companies with an objective metric of safety and quality. With the use of the information presented in our safety reports, operators will be able to assess how well drivers operate and in which aspects they may be lacking in following certain safety protocols.
+Local Government Units and Transportation Authorities
+. Local transportation authorities of 
+Cabuyao
+ will obtain an informative "safety map" of the city with the use of the research results. This will help the government develop new plans for better transportation in the future in terms of safety.
+IT Professionals and System Evaluators
+. This research provides the field with a useful case study of mobile computing system evaluation. This study will present an example of how to evaluate mobile sensory technology with the use of ISO/IEC 25010:2023 software product quality model, focusing on functional suitability, performance efficiency, reliability, and interaction capability.
+The Researchers.
+ This research experience has helped the researchers combine theoretical knowledge in computer science with practical application. The researchers were able to apply their skills in designing software architecture, implementing algorithms, and analyzing real-time data. The process of developing a system aligned with international standards, such as ISO/IEC 25010:2023, has significantly improved their technical competencies as computer science students.
+Future Researchers.
+ Future research should build on SafeRide as a foundation, not as the end of the road. The system's architecture and scoring methods can be used 
+to help build similar sensing systems in other cities or to include more complex predictive models. It is intended that this study provides a useful benchmark for future research on intelligent transportation in the Philippines.
+CHAPTER II
+REVIEW OF RELATED LITERATURE AND STUDIES
+In order to come up with a proper SafeRide solution, there was a need for detailed analysis of the current technological state of affairs in mobile transport monitoring and in-depth investigation of the relevant literature in the field of public safety mechanisms. In this chapter, we examine some of the existing alternatives to mobility monitoring, especially pointing out their shortcomings, which the SafeRide solution tries to resolve. The chapter discusses such aspects as the principle of smartphone sensors operation, issues with credibility-based crowdsourcing, and mathematical aspects of dynamic risk modeling with the use of weighted sensor fusion and behavioral features, rather than linear scores. Moreover, the theoretical underpinning of our system architecture is provided with respect to Technology Acceptance Model and Risk Assessment Theory.
+.
+Conceptual Literature
+Standard Features
+The ability of modern mobile phones to serve as advanced and accurate navigation and security devices can be credited to their capacity to integrate sensors of superior quality like accelerometers, gyroscopes, and GPS receivers. Therefore, 
+this system is programmed to constantly evaluate the real-world driving patterns from a set of developing sensor patterns. As such, the risky conditions can be detected without having to invest in expensive and complicated hardware solutions [3]. In contrast to using rule-based threshold settings, the system analyzes changes in linear acceleration, angular velocity, and GPS speed to interpret the complex driving behaviors like sudden brake, fast acceleration, and 
+overspeeding
+ [15].
+These risk conditions are identified using the sensor fusion-based behavioral modeling strategy. In other words, the data received from a combination of sensors are not independently assessed to identify possible risk conditions. Instead, the information gathered from the gyroscope provides rotational dynamics when making turns, while the accelerometer detects changes in linear motion at acceleration and deceleration stages. In such a way, the driving patterns can be interpreted holistically, providing a complete picture of the driver's behavior during operation.
+Nevertheless, these sensors provide noisy and distorted information due to different environmental conditions like uneven roads and device positioning or unintentional movements [6]. For this reason, adaptive filtering and continuous signal correction algorithms are used to enhance the data processing procedure and ensure stable measurements over time [34].
+While automatic analysis and interpretation of the sensor data are essential for the risk evaluation procedure, some contextual information is also required for assessing certain aspects of driving that cannot be monitored using physical sensors. As a solution, a crowdsourcing methodology was developed to collect passenger information about overcrowding, driving experience, and other subjective indicators [10]. After transforming these qualitative inputs into quantitative representations based on their severity rating, the risk model can be calculated. High-risk behaviors, such as excessive 
+overspeeding
+ or driving patterns, are weighted more heavily in the computation process than low-risk behaviors [35].
+Guidelines for Using the Algorithms
+The SafeRide framework implements the sliding window segmentation algorithm to analyze continuous streams of sensor data. Thus, the data stream will be split into overlapping segments of time intervals. This will make it possible to conduct behavior evaluation in real-time with limited usage of memory space [37]. Next, threshold-based classification algorithm will be applied to evaluate data values that exceed the safety thresholds.
+Unlike sophisticated deep learning architectures, the SafeRide framework adopts threshold-based detection for energy efficiency and deployment on devices with basic hardware, e.g., smartphones [15]. Although machine learning techniques offer more accurate results under laboratory conditions, rule-based approaches demonstrate better performance if run constantly in realistic scenarios. Preprocessing of raw sensor readings involves applying averaging or low-pass filtering to eliminate external factors and prevent false detections [34].
+In order to improve the quality of crowdsourced data records, the SafeRide framework implements the trust-based aggregation of data. In this context, the credibility rating is assigned to each user depending on their past behavior. High credibility entries will receive high weights, whereas low credibility entries will get insignificant weights [10].
+User-Centric Design
+The usability of the SafeRide application is crucial for the successful performance of its functions. The interface is simple and easy to use for any level of users' technical literacy. Safety is displayed in the form of numerical values and visualized on the map by means of corresponding icons [30]. Trust between the user and the application is generated due to the transparency of the system – users learn that the inputs they provide affect the model, which evolves with their interaction [36].
+Thus, feedback-oriented approach makes the user input more informative and precise, contributing to the quality of data collection process in the application. In other words, instead of being a passive system for calculation of certain score, the 
+application constantly updates the interpretation of data entered by the users and obtained from sensors [36]. Moreover, the application will function well in areas of poor internet connectivity, since it does not require constant data exchange but only uses synchronized and locally buffered computing techniques.
+In such way, trip registration and safety information collection will be carried out without interruptions [38], [37].
+Testing Tools and Procedure
+Testing for system performance will involve field testing, whereby the effectiveness of the system will be tested in various traffic and weather conditions with different smartphone placements on the dashboard. The testing will consider different phone placements to analyze their effect on sensor signal strength and ability to classify behavior. Testing will also include testing of various driving behaviors such as hard braking, quick accelerating, 
+overspeeding
+, and sharp turns. Testing will not only focus on detection of these behaviors but also on how the risk-scoring model will respond adaptively to evolving input.
+Another aspect of the validation process will include testing of the stability of the feedback loop mechanism. Specifically, it will involve testing of how sensor-derived outputs and crowdsourced passenger inputs operate in the unified model, and if crowd-adjusted risk values are in line with those detected by sensors. If there are inconsistencies, then how well the adaptive mechanism of weighting resolves any inconsistencies should be examined in order to establish coherent sensor-crowd fusion.
+Moreover, the stability of the risk score values generated by the system at any given time should be established during testing. Specifically, this should focus on how safety scores adjust consistently and logically when driving behavior changes. Specifically, the stability of the safety score values and how changes are made to the safety scores based on evolving driving behavior needs to be validated.
+Finally, user evaluation is required in order to test the usability, interpretability, 
+and practicality of the proposed system. This testing procedure will involve analyzing user interaction patterns to see if the system is producing adaptive outputs that are consistent with the user's perception of the risk level. Moreover, this test will show how effective the feedback loop operates in practice, since it is critical in establishing safety scores in real-time and in a nonlinear way.
+In summary, the tests to be conducted during validation of the adaptive model include detection of various driving behaviors, adaptation of the risk-scoring mechanism to evolving inputs, coherence of feedback loop mechanism, and temporal stability of scores.
+Research Literature
+The advent of smartphone sensors in ITS has led to a significant shift in methods of monitoring road safety. Current studies show that smartphones featuring built-in accelerometer, gyroscope, and GPS can be used to detect unsafe driving behavior, including sudden acceleration, harsh braking, and 
+overspeeding
+, without relying on specialized automotive telematics equipment [3], [4], [34].
+In contrast to traditional linear models of detection that assume driving behavior to be consistent and disconnected from context, the proposed approach assumes that transportation risk is non-linear and highly dependent on context. From this point of view, risk cannot be defined solely through the proportion between particular sensor values; rather, risk appears through the interactions of several different parameters, including sensor data, timing, external environment, and crowdsourced information. Most existing models either work separately with different types of sensor inputs or use rigid fusion algorithms in static manner, producing outputs that do not change according to varying driving context. Even machine learning solutions that significantly improve the accuracy of event classification in laboratory settings cannot be easily applied in mobile transportation due to high computational demands and inability to adapt to specific driving situations [21], [23].
+Another problem that affects most multi-sensor fusion solutions is their reliance 
+on signal aggregation and failure to interpret it in an adaptive manner. This leads to sensitivity to interference, instability in interpreting different sensor data, and inability to maintain consistency of behavior identification depending on various driving context [17], [36]. Thus, while current frameworks are able to detect certain events, the process of risk assessment and interpretation continues to remain an important challenge.
+A major drawback of existing models of risk assessment is the absence of an integrated approach that links sensor data with passenger feedback in real time. Passenger data provides valuable information on the perception of safety and level of service, although it can be biased and unstable. Meanwhile, sensor-based solutions can produce accurate motion data but lack contextual understanding and perception of the experience of transportation [22], [10].
+Furthermore, as for the Philippine context, the scope of existing researches is limited to issues of large-scale transportation, including infrastructure problems and traffic congestion analysis. The focus on vehicles and driving behavior at the microlevel and development of corresponding datasets is another problem to consider. Finally, crowdsourcing is limited by unreliable and biased inputs of participants and unstable connection with the server [31], [33].
+Thus, a mobile solution to the problem of transportation risk assessment is needed for the Philippine context. Unlike detection-centered frameworks, this approach would involve continuous interpretation of driver behavior using sliding windows for sensor inputs and context-based assessment, as well as incorporating trust-weighted crowd information. Within this framework, inputs from different sources (sensor data, rules-based algorithm, and passenger information) do not work independently; rather, they are linked together using a feedback-based approach.
+In conclusion, the discussed drawbacks of existing models indicate that there is a need to develop a mobile adaptive framework for intelligent transportation safety management. Rather than focusing on event detection based on static or isolated information, this approach would emphasize non-linear risk interpretation using multi-source input through continuous adaptation [30], [32].
+Review of Related Literature
+Driving Behavior Detection Using Smartphone Sensors
+Mobile sensors in smartphones have already gained traction when it comes to detecting risks in vehicles as a part of intelligent transportation systems (ITS). The use of accelerometers, gyroscopes, and GPS allows the analysis of dynamic driving behaviors that include excessive acceleration, hard braking, and erratic movements in driving. According to 
+Almazroi
+ et al. [3], mobile sensing represents a much cheaper solution compared to vehicular hardware solutions. 
+Castignani
+ et al. [6], on the other hand, stress the possibility of real-time monitoring enabled by mobile sensors that require no additional infrastructure.
+Recently, research interests started moving in the direction of developing efficient techniques for real-time detections. In particular, Li et al. [15] suggested using simplified methods of detection as a way of overcoming the challenges associated with applying computationally-intensive models. Ferreira et al. [16] also stressed that there is currently a trend to balance between detection performance and efficient computations to support mobile applications in ITS.
+Nevertheless, the majority of modern approaches to risk detection are sensor-based, focusing on dynamic aspects of behavior detection as a classification problem. However, this poses a problem since most current detection systems lack an integrated feedback loop that can take into account passengers' experiences, external information, and reliability factors. Such a shortcoming means that current systems cannot adjust their decisions based on changing conditions, user feedback, and different contexts. Besides, many of these systems were tested only in controlled conditions, which may limit their effectiveness when used with unstructured and inconsistent real-life data.
+When referring to the Philippines, one should mention the study conducted by 
+Fillone
+ and Tiglao [2]. It suggests the inefficiency of current solutions that fail to provide real-time behavioral analysis while lacking scalability and economic efficiency.
+Thus, in connection to the stated problem, there is a need to develop a system that uses a hybrid approach combining detection based on sensor data and feedback-driven analysis and taking into account context and changing conditions. Rather than considering detection as an independent process, new needs require systems that include constant feedback to improve detection results using various factors, including passenger experience and contextual variables.
+Crowdsourcing and Transportation Safety Systems
+First of all, crowdsourcing has been demonstrated as a useful way of obtaining subjective safety information that supplements objective metrics measured by sensor-based techniques. For example, as pointed out by 
+Hoseinzadeh
+ [13], crowdsourcing provides an opportunity to discover risks which are difficult to detect without consideration of context. Likewise, Zhang et al. [39] suggest that crowdsourced transportation monitoring systems benefit from incorporation of various reports provided by people from different locations and environments.
+In order to overcome issues related to possible unreliability of data submitted by people, Kim and Shin [10] suggested a trust-based crowdsourcing model, where reported data would be weighted in accordance with credibility of users' past contributions. The proposed solution guarantees increased contribution of the most credible contributors. Besides, as noted by Wang et al. [21], active involvement of users and collaboration contribute to data richness and increased system performance.
+From a local perspective, Guinto et al. [22] designed a mobile transportation reporting system that allows people to report hazards. Thus, the proposed solution proved that crowdsourcing is applicable for discovering risk factors associated with local roads and traffic accidents caused by reckless drivers.
+However, there is room for improvements in terms of existing crowdsourcing models. Firstly, crowdsourcing is considered as an independent input channel, separate from sensor-based information, which leads to fragmented analysis. Secondly, trust-based weightings have been already implemented, but are used 
+independently from sensor outputs and are not combined. Thus, current crowdsourcing frameworks consider only one of two possible aspects – subjective or objective – without integrating them into a coherent analytical process.
+A more advanced idea can be formulated in terms of mutual validation of both types of information. Namely, in the described case, sensor-based detection should be checked and updated based on crowdsourced data while reports submitted by users should be validated or modified by analyzing patterns detected by sensors. Moreover, in this case, dynamic adjustment of trust-based weightings is also possible depending on whether the behavior of a contributor is consistent with sensor patterns.
+Risk Scoring Models in Intelligent Transportation Systems
+Risk scoring models provide the foundation for transforming unstructured transportation data into useful safety indicators that can be used to develop an intelligent transportation system. For example, Masood et al. [17] show that risk scoring models make it possible to systematically evaluate the levels of safety in relation to different driving scenarios. In a similar vein, Ferreira et al. [16] note that predictive risk models allow one to identify hazardous conditions based on data analysis.
+Current research shows that recent trends in risk assessment involve development of increasingly adaptive risk models. For instance, 
+Katrakazas
+ et al. [19] introduce a new set of context-aware models for assessing risk by adjusting the evaluation based on current conditions and behavior. Additionally, Chen et al. [9] propose models that make risk assessment adaptive and continuous in response to changes in driving conditions.
+However, there are several limitations associated with current risk scoring techniques. First, they are often restricted to the use of sensor-based parameters and traffic data aggregated to various degrees. In addition, commuter feedback is not always integrated into these models, thus limiting the possibility of continuous monitoring of risks. Moreover, many risk evaluation models focus on generalized safety evaluations, considering the road segment, zone, or even the entire transport 
+system rather than providing individual, per trip behavior-related risk evaluations.
+In the Philippine context, the situation becomes more complex. Specifically, according to the National Center for Transportation Studies [20], the problem relates to a lack of tools for systematic risk assessment related to vehicles. 
+Fillone
+ and Tiglao [2] note that heterogeneous transportation data makes it difficult to translate it into useful safety indicators in local conditions.
+Thus, it can be stated that current literature lacks a real-time, multi-source adaptive vehicle-level risk scoring framework. As opposed to large-scale systems, it focuses on individualizing the process of risk assessment and making safety scores per vehicle/trip instance, rather than evaluating generalized levels of safety based on various factors. Such a system will incorporate behavioral signals detected with the help of sensors and crowdsourced passenger feedback with adaptive weight allocation.
+Review of Related Studies
+Systems for Detecting Driving Behaviors with Smartphone
+Various research studies have demonstrated the feasibility of using smartphones' built-in sensor technology for detecting risky behaviors during drives. In particular, the study by Liu et al. [35] introduces nonlinear dynamic fusion techniques for evaluating multi-source risks related to transportations, enabling effective behavior detection by means of adaptive data fusion. Similarly, Ferreira Júnior et al. [21] introduced multiple smartphones' sensors combined with machine learning techniques achieving great levels of behavior detection accuracy.
+Among the main current trends in developing this technique, it is essential to mention improved computational capabilities. In other words, according to Li et al. [20], there is an increasing tendency towards creating a lightweight behavior detection algorithm for mobile devices to address the problem of heavy computation procedures used. This idea is further advanced by Wang and Bi [28] who introduce a method for implementing real-time detection on the basis of continuous sensor stream. Finally, 
+the authors argue that big data sets are especially important for smartphone applications.
+On the contrary, one of the major flaws of the above studies is their reliance on motion detection only, which limits their potential to achieve the required level of accuracy. It also implies the use of computational resource-heavy algorithms including machine learning and neglecting situational peculiarities which can affect behavior significantly. Finally, in terms of feasibility and practical implications, this kind of algorithms can lead to technical challenges.
+In the case of public transportation, it is necessary to take into account that motion data alone is insufficient for performing full-scale behavior evaluation. Therefore, the combination of computational efficiency and context should be considered as the primary factor, which was taken into account in SafeRide design.
+Crowdsourced Transportation Safety Systems
+Crowdsourcing has been heavily studied as a complementary approach that, alongside the sensor system, provides timely and reliable information concerning issues regarding safety. For instance, Wang et al. [21] have presented crowdsourcing traffic events detection that provides information submitted by users that help raise situational awareness about the state of the transportation network. Furthermore, Santos and Cruz [39] introduced a crowdsourced traffic monitoring system which receives input from the commuters for identifying various traffic problems along particular routes.
+In addition, Kim and Shin [10] have introduced a trust-based crowdsourcing approach, according to which user input depends on his/her reliability – the more credible he/she is, the more impact his/her input will make on the system performance. On the other hand, 
+CrowdRadar
+ technology has improved the idea by validating incidents reported by two or more users, as presented by Wang et al. [21].
+Concerning the case in question, Guinto et al. [22] proved successful application of crowdsourcing to develop mobile transport system that included hazards report and route selection function. Moreover, 
+Fillone
+ and Tiglao [2] underlined the 
+importance of collaborative data gathering for efficient governance and policy making in the sphere of transportation.
+Nevertheless, despite these efforts, there remain several flaws in modern crowdsourcing systems. Firstly, the major problem is the high dependency on unstructured user information that has not yet been fully integrated into the automated detection system. Secondly, while some crowdsourcing applications implement trust-based approaches, they do not complement them with real-time sensors data.
+Thus, crowdsourcing does not offer balanced solutions based on both subjective and objective information.
+Risk Scoring and Intelligent Transportation Systems
+Risk scoring models are expected to be present to convert the data into metrics of safety. According to Masood et al. [17], risk scoring contributes to the conversion of the data to enable the estimation of safety level of the ITSs. Besides that, Ferreira et al. [16] suggested some predictive models aimed at assessing risks based on both historical and modern data.
+The contemporary research works are concentrated on the adaptive and context-aware risk detection modeling. Thus, for instance, 
+Katrakazas
+ et al. [19] proposed a context-aware risk detection framework, where risk changes depended on specific environment or behavioral factors. Moreover, it became apparent that there is a dynamic algorithm for calculating urban safety relying on the data collected in real time [9]. Additionally, there is another example of developing models for analyzing human behavior in real-time for further use in the assessment of risks by Wang and Park [40].
+Nevertheless, there are several weaknesses that need to be addressed concerning the risk scoring models. Firstly, the problem can be associated with poor data integration, because there are no standardizations at the vehicle level. Secondly, risks are assessed on a macro-level basis; that is to say that assessment involves large units such as road segments or traffic zones.
+In regard to Philippine public transportation systems, it was found that the 
+contemporary ITSs lacked a standardized framework of safety estimation of vehicles [20]. Moreover, 
+Fillone
+ and Tiglao [2] raised several concerns about the transformation of data to measures of safety and its inefficient processing.
+Thus, considering the above-presented information, there seems to be a gap that requires some improvements. Currently, there is no single and real-time risk scoring framework for assessing the safety relying on various sources of data collection. The 
+safeRide
+ system has managed to overcome that problem.
+Theoretical Framework
+The theoretical foundation of the SafeRide system is based on aspects taken from both the TAM and Risk Assessment Theory models, resulting in a combination of paradigms whereby the adoption of behavior and its analysis are both taken into account. The theoretical framework of the research has been illustrated graphically in Figure 1.
+Figure 1. Theoretical Framework of the SafeRide System
+The conceptual framework for the present research was developed based on the Technology Acceptance Model (TAM) and Risk Assessment Theory (see Figure 1). Under the suggested approach, SafeRide can be understood as an adaptive mobile application where user acceptance and system intelligence work together continuously to facilitate transportation safety assessment in real time.
+The left-hand part of the framework demonstrates how the Technology Acceptance Model (TAM) is applied to serve as a behavioral basis for exploring the adoption process of the SafeRide mobile application. Within TAM, perceived usefulness and perceived ease of use are key drivers impacting users' decision to embrace a certain technological solution [27]. In the case of SafeRide, perception of usefulness of the system is enhanced through its capability to perform continuous and adaptive transportation safety evaluations. On the other hand, perceived ease of use is ensured through a lack of user involvement, automation of data processing, and making the system work as a low-maintenance adaptive safety analysis platform instead of a traditional user-based application. Key features of the system described in Figure 1 include automated trip monitoring, minimum user intervention, and visual display of adaptive safety scores.
+The behavioral risk modeling within Risk Assessment Theory serves as the theoretical basis of SafeRide when it comes to transforming raw mobility data into quantitative safety indicators [35]. According to this model, data transformation goes through three key stages – hazard identification, risk assessment, and risk interpretation. At the same time, the process of raw data transformation in SafeRide goes through the cycle of continuous and adaptive risk modeling. Multi-source inputs collected by SafeRide come from smartphone sensors (GPS, accelerometer, and gyroscope) as well as crowdsourced feedback from passengers [3], [10]. However, instead of treating each data source separately, SafeRide performs a fusion of various inputs in order to obtain behavioral information through adaptive risk modeling.
+In this context, processes of detection of unsafe driving behavior and computation of risk score are performed continuously and in an interactive manner. 
+Based on the input data streams, the process produces non-linear and continuously evolving risk profiles of drivers, rather than static and one-time classifications [35], [30]. Thus, the described framework covers the process of data transformation as well as adaptive interpretation of transportation behavior.
+On the one hand, TAM uses the perception of users' interaction and acceptance of the system via their perceived usefulness and ease of use. On the other hand, Risk Assessment Theory is responsible for structuring multi-source data into safety intelligence [35]. In the SafeRide application, however, these two approaches to mobile transportation safety are not separate from each other. Instead, they integrate through an adaptive system that continuously interacts among itself, the data obtained from sensors, and the user's behavior.
+As can be seen from Figure 1, the results of such interaction include vehicle-level safety scores, risk interpretation based on routes, and decision-making output information provided to the commuters. All of the above is based on the continuously updated model, not a one-time evaluation process. This makes SafeRide a continuously operating adaptive platform for transportation safety [30], [35].
+In general, the figure reflects the idea that both TAM and Risk Assessment Theory are necessary components that contribute to the creation of the SafeRide as an adaptive and feedback-driven mobile safety application. It means that the framework is also an analytical model demonstrating how perceived usability and integrated multi-source data affect adaptive transportation safety decision making.
+Conceptual Paradigm
+The SafeRide framework uses an Input-Process-Output (IPO) model to show how raw data is systematically transformed into useful safety information.
+Figure 2. SafeRide risk scoring and safety analytics framework
+According to Figure 2, SafeRide uses the concept of Risk Scoring and Safety Analytics Framework that involves multi-source data processing to continually analyze driving behavior and make adaptive safety decisions. While existing solutions involve sequential linear processing stages, the proposed system functions based on the 
+feedback and adaptability principles – the data gathering, analyzing, and scoring processes run iteratively as opposed to being a one-off task.
+There are two principal types of data input utilized by SafeRide. First of all, the smartphone sensor data will be used for behavioral analysis purposes. GPS tracking will serve for determining driving speed and estimating whether any route deviation was made. Accelerometer sensors will track the acceleration/deceleration dynamics of the car, identifying the cases when there were abrupt changes in velocity. Moreover, the gyroscope sensors will determine whether the driver was making turns at dangerous angles, causing the car to lose control [3], [15].
+Crowdsourced passenger reports are another major data source. Passenger behavior includes such variables as reckless driving, presence of overcrowding, the actual perceived threats of road accidents, as well as the overall condition of the vehicle in question. Every report will contain information about its severity and be accompanied by contextual metadata regarding the timing and geographic location of the problem and anonymized ID of the user providing the report [17], [22]. Additionally, textual feedback will also be considered.
+Finally, in contrast to most systems where there is only a single-pass analytic stage performed, the SafeRide algorithm follows the principle of an iterative adaptive loop process. In order to do this, the noise filtering of sensor data will be followed by its structuring via using the sliding window segmentation technique, which is necessary to divide data into relevant temporal behavioral sequences. However, there is a difference compared to the threshold-based system. Classification criteria used by SafeRide are continuously modified based on historical context [19].
+Importantly, there is a concept of feedback-based calibration in place, according to which the detected events are verified using crowd input. If the discrepancy occurs between the output of sensors and reports made by the passengers, it will influence further modification of system parameters and behavior detection rules [27].
+Just like that, the credibility-based crowdsourcing module works as an adaptive component and not a rigid weighting system. Credibility ratings of users are constantly 
+being updated according to the degree to which their reports match sensor verified events. Thus, weighting factors used for processing contributions from users become dynamic and constantly recalculated according to historical performance and alignment with detected behavior [24].
+Risk score module is designed in a way that it uses adaptive components within its computational procedures. Rather than generating rigid trip scores, the SafeRide system generates ever-changing safety scores as more data gets collected and analyzed. In particular, trip-level scores contribute to vehicle-level and route-level safety scores that are themselves constantly changing due to processing additional trips [30].
+It should be noted that all the layers of SafeRide include a feedback loop, thus making all the results produced by modules such as risk scores, reports, and detected behaviors get back to the system and used for adjusting various thresholds, weighting factors, and credibility scores [28].
+The output layer of Figure 2 features safety insights in a shape of vehicle safety scores, route risk evaluations, and safety trends visualization including maps. All these outputs are part of the continual process of SafeRide's learning; in addition, transportation agencies can use aggregated information to identify areas of high risks and implement road safety strategies accordingly [31], [33].
+In summary, SafeRide utilizes a non-linear and iterative model with feedback loops, incorporating sensor data, crowdsourcing, and risk scores into its operations. Thanks to continual recalibration of thresholds, weighting factors, and credibility ratings, the system keeps improving and changing from a mere behavior detection tool into a fully-fledged adaptive transportation safety intelligence system.
+Synthesis
+The reviewed literature consistently demonstrates that smartphone-based transportation monitoring has evolved from basic motion detection toward multi-source safety assessment systems. Early approaches primarily utilized accelerometer, gyroscope, and GPS data to detect unsafe driving behaviors such as abrupt braking, rapid acceleration, 
+overspeeding
+, and sharp turning through multi-sensor fusion techniques [14]. While these methods established the feasibility of mobile sensing in transportation safety, they generally treat driving behavior as a fixed classification task, relying on predefined rules or static models. This limits their ability to represent the continuously changing and context-dependent nature of real-world driving conditions.
+Recent studies further indicate that even advanced machine learning and multi-sensor fusion approaches remain constrained by computational limitations, device heterogeneity, and limited adaptability in mobile environments [15], [18]. More critically, these approaches often lack a feedback-driven mechanism that allows system outputs to continuously refine future behavioral interpretation. As a result, driving behavior analysis remains largely event-based, without sustained adaptation to evolving driving patterns and contextual changes.
+A similar limitation is observed in crowdsourcing-based transportation systems, where passenger feedback is effectively used to capture subjective safety perceptions but is typically processed separately from sensor-derived data [17], [26]. Although trust-based weighting improves data reliability [24], [36], such mechanisms are generally static and do not dynamically adjust in response to real-time behavioral signals. This separation results in fragmented interpretation, where objective sensor measurements and subjective user experiences are not fully integrated within a unified analytical framework.
+In parallel, existing risk scoring models demonstrate strong capability in transforming transportation data into safety indicators through predictive and context-aware techniques [17], [30]. However, most models operate at aggregated levels such 
+as road segments or traffic zones and rely on fixed or periodically updated parameters. They rarely support continuous, vehicle-level risk evaluation that integrates behavioral sensing and commuter feedback in real time. This limitation reduces their effectiveness in representing real-time safety dynamics at the individual trip level.
+In the Philippine context, the lack of scalable micro-level transportation datasets and real-time behavioral risk systems further highlights the need for an integrated solution [13]. Existing studies primarily focus on infrastructure and traffic flow analysis rather than continuous per-trip safety evaluation that can adapt to local transportation variability and connectivity constraints [15], [19].
+Overall, the literature converges on a central gap: current transportation safety systems remain structurally fragmented, with sensor-based detection, crowdsourced feedback, and risk scoring operating as separate processes rather than interconnected components of a unified adaptive system. This fragmentation prevents continuous recalibration of detection thresholds, credibility weights, and risk estimates, which are essential for accurately modeling real-world driving behavior.
+In response to these limitations, there is a clear need for a mobile-first adaptive transportation safety framework that integrates multi-sensor fusion, trust-weighted crowdsourcing, sliding-window processing [37], and dynamic risk scoring within a single feedback-driven architecture. Such integration enables continuous interaction among data sources, allowing behavioral interpretation and risk estimation to evolve over time rather than remain static.
+Thus, the synthesis of related literature supports the development of SafeRide as a non-linear, adaptive, and feedback-driven transportation safety intelligence system. It reframes transportation safety assessment from isolated detection and static evaluation toward a continuously evolving model in which sensor data, user feedback, and risk computation interact dynamically to refine and recalibrate safety assessment, particularly within the constraints of Philippine public transportation systems.
+Definition of Terms
+In order to ensure better understanding of the SafeRide system's basic principles and processes, this chapter provides explanations and definitions of key terms used throughout this research paper. These key terms are classified into two separate groups: those related to operational processes and terms that are linked to hardware and software, allowing for the operation of the system under discussion. The provision of such clarifications ensures the consistency of data analysis conducted by the authors of the document.
+Conceptual Terms
+TERMS
+DEFINITION
+Accelerometer
+In the SafeRide system, a smartphone sensor detects linear acceleration in three-dimensional space (x, y, and z) to detect dangerous events related to severe breaking and sudden acceleration when traveling [3], [15].
+Algorithm
+SafeRide implements a series of computational steps to analyze data collected by sensors and estimate the level of trust and calculate a transportation safety score
+ 
+[30], [40].
+Detection Threshold
+A calibrated threshold number by the system to decide if the reported sensor measurement like acceleration or speed indicates unsafe driving behavior
+ 
+[30], [19].
+Global Positioning System (GPS)
+It is the location-tracking tool in the smartphone used in SafeRide to track route trajectory, calculate vehicle speed and detect any 
+overspeeding
+ case
+ 
+[3], [14].
+Gyroscope
+The SafeRide system uses the sensor in a smartphone to capture angular velocity in order to determine risky maneuvers of the driver
+ 
+[3], [15].
+Mobile Computing System
+A smartphone application that collects, analyzes, evaluates and visualizes transportation safety data instantly
+ 
+[30], [38].
+Multi-Sensor Fusion
+Integration of accelerometer, gyroscope, and GPS sensors in the SafeRide system enhances the reliability of detecting any risky driving behavior
+ 
+[34], [35].
+Noise Filtering
+A preprocessing step in the process which includes moving averages or other filter systems to counteract any variations in sensor readings due to vibration, orientation of the phone or environment effects [37], [38].
+Sliding Window Analysis
+SafeRide employs a technique called data segmentation. This involves breaking down the continuous sensor data into very short periods of time – generally up to one or three seconds in duration. It is therefore possible to detect risky driving behavior in real-time [37].
+Operational Terms
+TERMS
+DEFINITION
+Crowdsourced Report
+A systematic safety report, filed by passengers via the SafeRide smartphone application, is categorized and assessed based on the transportation safety guidelines.
+Passive Sensor Data
+Information regarding movement and geolocation is gathered automatically by the 
+Saferide
+ system throughout the trip without involving any effort from the passenger.
+Risk Assessment
+The systematic assessment technique utilized by SafeRide is used in order to identify, estimate, and categorize risky driving behavior as transportation safety indicators.
+Risk Score
+Numbers are assigned to indicate transportation safety risks for a particular route, vehicle, or trip. This value is derived from an analysis of reported problems, as well as feedback from travelers.
+Safety Score
+SafeRide’s safety score, measured in numbers from 0 to 100, functions as a benchmark rating the performance of the vehicle or the route. Higher values mean better results.
+Trust Weight
+A user's reliability factor is calculated dynamically and yields a value ranging from 0 to 1. This value depends on their 
+reporting frequency, previous involvement, and matching sensor-detected incidents.
+Trust-Weighted Aggregation
+The aggregation technique involves collecting trip scores based on trust weight defined by the user in order to obtain reliable safety ratings of the vehicle or the route.
+Unsafe Driving Event
+An event detected by the 
+Saferide
+ system that contradicts established transportation safety standards, including speeding, abrupt braking, quick acceleration, and sharp turning maneuvers.
+Vehicle-Level Safety Rating
+An assessment score that is applied to a public transport vehicle, which is obtained based on a collection of trip risk data and is backed up by commuter feedback.
+Route-Level Safety Rating
+An assessment score that is assigned to a public transport route, calculated from aggregated data about the safety rating of a particular vehicle.
+CHAPTER III
+RESEARCH METHODOLOGY
+This chapter describes the methodological approach that will be used in this study. The methodological approach encompasses aspects such as research design, location, respondents, data collection process, validation, and evaluation in addition to other matters that must be attended to ensure proper collection of data to be analyzed. This is important in assessing the effectiveness of the system.
+Research Design
+The methodology used in this study is quantitative in nature because the measures of safety implemented within transport systems will be evaluated through numbers gotten from the sensors on the smartphones. This is appropriate for this study because the SafeRide program requires the analysis of data coming from sensors and passengers. The goal of this research project is to detect the hazardous activities, calculate the safety measures, and give ratings accordingly.
+Data acquisition will be carried out using SafeRide application as the main research tool. It should be noted that the app has been created using the Flutter programming language in order to operate in different mobile operating environments. Data from sensors is collected alongside data from passengers during travels. The processing and analyses of this data are carried out through Node. JS back end application. This way, the system gains the capability of detecting any hazardous actions including the ones associated with high speeds, sudden braking, and aggressive turning of wheels. Data acquisition will be accomplished using Firebase 
+Firestore
+ Database, which stores structured data. In this manner, the necessary data can be easily accessible to the system for analyses. In this study, sensors on smartphones are going to be used to collect data for analyses. The sensors selected 
+include Global Positioning System (GPS), Accelerometer, and Gyroscope. GPS sensor collects data related to locations and speeds while accelerometer and gyroscope collect data related to movements and orientations respectively.
+Some existing algorithms will be used in carrying out analyses. Among them are sliding window and threshold-based algorithms. Upon identifying any unsafe activity on the road, safety scores are determined based on certain criteria. Through this process, it will be possible to determine safety levels of trips, vehicles, and routes.
+Research Locale
+It can be seen that public utility vehicles are actively used in the Philippines in order to commute across urban locations. Indeed, there are many individuals who depend on these vehicles in order to move around different places, including going to work and to educational facilities. Some of the most popular public utility vehicles used in the Philippines include jeepneys, tricycles, and motorcycle taxis, which have an important function of connecting residential neighborhoods to key urban locations. This is one of the main reasons why improvement in safety and security of passenger trips using these vehicles is demanded.
+The current research is conducted in several urban areas located within Laguna Province, Philippines. Such major urban centers as 
+Cabuyao
+ City, Santa Rosa City, 
+Biñan
+ City, and Calamba City serve as the main subjects of this research. The first reason behind the selection of such urban centers for this study is the presence of high commuter population in these urban centers. In addition, public transportation service is actively functioning in these urban centers. Commuters regularly use such modes of public transportation as jeepneys, tricycles, and motorcycle taxis.
+Finally, these urban centers have different transportation risk environment. Indeed, there are different characteristics of the route used by commuters. On the one hand, the level of traffic in such urban areas is diverse depending on the location and time of day; while one area is characterized by heavy traffic, another urban center does not have this problem at all. In addition, there are different road surfaces in these 
+urban centers; in some areas there is heavy traffic and potholes, while in others the traffic is moderate and there are no obstacles for safe movement.
+Respondents of the Study
+Respondents for the study will include end users and experts selected from urban areas of Laguna, Philippines. End users, who are commuters that regularly make use of public transportation systems and own smartphones capable of installing and operating the SafeRide application, will make up part of the sample. This requirement is necessitated by the fact that data acquired through smartphone sensors, specifically the accelerometer, gyroscope, and Global Positioning System, constitutes the core of the detection process for unsafe cases.
+In total, thirty (30) respondents will participate in the experiment. Out of these respondents, twenty (20) will be end users who will provide their trips using the SafeRide application as the foundation for collecting sensor-based data for the calculation of transportation safety scores.
+Experts, on the other hand, will evaluate the system using the criteria presented in the ISO/IEC 25010:2023 software product
+ 
+quality model, focusing especially on functional suitability, performance efficiency, reliability, and interaction capability. The combination of such approaches will contribute towards comprehensive analysis and assessment of the system from two perspectives: one focused on user experience and the other on software characteristics. As a result, validation of results will be significantly improved.
+Additionally, it must be noted that among the end user respondents, there are further sub-classifications depending on their mode of use of the public transportation system. The classification is directly correlated with the options provided in the SafeRide application regarding the type of transport vehicles being used.
+Classification
+Number of Participants
+End Users
+20
+Information Technology Experts
+10
+Total
+30
+Data Gathering Procedures
+Data collection takes place over the duration of twelve (12) weeks, and entails selected public transportation routes within 
+Cabuyao
+ City, Santa Rosa City, 
+Biñan
+ City, and Calamba City in Laguna, Philippines. The data collection method consists of three phases, namely: system preparation, trip data acquisition, and system evaluation. The sequence of these phases ensures that transportation data is acquired from the actual commuting experiences of users for effective evaluation of the SafeRide system.
+The safe drive monitoring application undergoes system initialization and verification at the start of data collection. This involves validating the functions of the unsafe drive algorithm, trust-based reporting, and risk score computation. Controlled testing is conducted to check whether the system can detect driving behaviors such as acceleration, braking, turning, and speeding based on threshold parameter values. The test aims at ensuring that the application works optimally and efficiently in actual situations.
+In this phase, respondents will be educated about the study, SafeRide application, and the ethics involved therein. Consent from participants will be obtained in accordance with the ethical standards. Unique identification codes will be provided to all respondents participating in the study.
+Respondents will use their smartphones to activate the trip recording functionality of SafeRide during actual commuting trips. After activation, the system 
+will collect data from the built-in sensors of the mobile phone, including the accelerometer, gyroscope, GPS, speed, and timestamps. This data stream will consist of motion and position data for the movement of the vehicle. Sliding windows will be used to segment the sensor data into smaller time segments for evaluation of the driving behavior. Filter techniques will be employed to minimize irregular fluctuations of data due to sensor noise.
+Threshold parameters will be set for detecting any form of unsafe drive. Some of the events include sudden braking, abrupt acceleration, sharp turning, and 
+overspeeding
+. Unsafe drive events will be counted during each drive and contribute towards the computation of a trip risk score based on sensor data. The detection will continue consistently throughout the entire data collection process.
+After each trip, respondents will be asked to provide incident reports about safety issues experienced during their commute. The reports are expected to cover categories, severities, and other forms of details relevant to transportation safety. The reports will contribute towards computing a trip risk score through a trust-based process. The data collected from sensor readings and user reports will be saved in the database.
+Upon completion of the twelve weeks period, SafeRide will be evaluated according to ISO/IEC 25010:2023 software product quality model. The quality aspects covered will be functional suitability, reliability, performance efficiency, and usability . Respondents will provide feedback regarding their experience using the application by answering a questionnaire on a five-point agree–disagree scale. The validity of the questionnaire will be validated through expert judgment [11].
+Lastly, the data will be analyzed using descriptive statistics to determine the frequency and nature of unsafe drive behavior in public transportation vehicles in Philippine urban areas. Results will be crosschecked with other relevant studies to ensure consistency and validity of findings.
+Instrumentation
+One of the most important tools that will be used in the research is the SafeRide mobile application that can monitor transport safety during commuter trips, collect passive sensor data, and identify driving conditions that can potentially lead to accidents. As stated before, SafeRide will use accelerometer readings, gyroscope inputs, global positioning system (GPS) coordinates, speed indicators, and timestamp information for the purposes of monitoring unsafe driving behaviors such as harsh breaking, accelerating, turning, and speeding according to the Republic Act No. 4136 requirements and specific traffic conditions.
+As stated before, smartphones' sensors are used for collecting data for the purpose of determining vehicle characteristics. The accelerometer detects rapid acceleration of the car, while the gyroscope detects the changes in direction. The GPS sensor provides information regarding the speed of the vehicle and its trajectory, which can be studied to detect violations of traffic regulations, such as 
+overspeeding
+. To ensure higher accuracy of classification and minimize the number of false warnings, some filtration procedures should be applied to the collected data. For example, moving average smoothing, sensor fusion, and multiple criteria validation could be used to distinguish between accidents caused by improper driving and dangerous road conditions, such as potholes, bumps, or changes in road surface elevation.
+Apart from the use of sensor-based techniques, the SafeRide app will include a reporting module for allowing users to report potential safety issues associated with their travel. Such reports will contain data provided by users and categorized in terms of severity and type of issue. Crowdsourcing approach to reporting is beneficial in transportation monitoring systems due to the fact that it provides valuable feedback coming from passengers, which can be helpful in detecting unsafe driving behaviors that are otherwise impossible to detect.
+  Furthermore, SafeRide will incorporate a trust-weighted reporting system for evaluating the validity of commuter-provided reports by assigning each user a credibility index. Credibility scores will be based on reporting frequency, consistency, and compatibility with sensor-detected data. Reports coming from users with high credibility indexes will have more weight in calculating overall risk level scores, while 
+inconsistent reports will not have a significant impact on the outcome of the process . This trust mechanism significantly improves the effectiveness of crowdsourced transportation monitoring and increases the accuracy of overall transportation safety scores.
+In order to evaluate four software quality criteria as required by the panel, including functional suitability, performance efficiency, usability, and reliability, the following structured questionnaire will be employed. Evaluation Questionnaire: In line with the requirements of ISO/IEC 25010:2011 Software Quality Model, this questionnaire will cover questions that are related to all the four criteria mentioned above. Every question in the questionnaire will be related to one of the four criteria listed above. In addition, evaluation of the system will be performed through the 5-point Likert Scale that will allow assessing the user perception regarding software reliability, usability, performance efficiency, and functional suitability [11].
+  Finally, regarding the back end of the system, it will be created with the use of Node.js along with Firebase 
+Firestore
+ serving as a database management module. With regard to the proposed system architecture, all data processing activities will be handled within this architecture with respect to input from sensors and reports made by passengers, including unsafe driving events detection algorithm implementation, localized adaptive threshold analysis, road conditions data processing, passenger reports weighting based on trustworthiness, and transportation safety score calculation for the SafeRide app.
+Validation
+It is essential to establish the reliability and consistency of results produced by the tools and systems used in the study. It implies the need to validate the developed algorithms, relevance of the evaluation instrument, and the operational performance of SafeRide in practice.
+  Validation of the detection algorithm involves assessment of the capacity of the system to detect unsafe driving events in accordance with preset and adaptive 
+threshold values based on Philippine transportation conditions and Republic Act No. 4136, especially for urban and highway speed regulations [33]. Validation involves testing of the ability of the algorithm to detect the specified types of dangerous driving behaviors by means of sensor inputs from smartphones. It implies conducting controlled simulations for acceleration, braking, turning, and speeding events while taking into account the environmental variables including potholes, uneven roads, elevation, and speed bumps to separate driver-induced movement from reckless behavior. Application of sensor fusion, including accelerometer, gyroscope, and GPS data combined with the use of moving average filtering and multi-condition validation is necessary to minimize the risk of false positives. The use of threshold-based detection methods is justified since the approach allows for real-time identification of unsafe driving events without compromising efficiency.
+  Content validation of the questionnaire is performed by specialists who work in IT sector and have expertise in computer science. The aim of validation is to assess the extent to which the developed tool can evaluate the selected quality characteristics of the software described in ISO/IEC 25010:2011 Software Quality Model, which include functional suitability, reliability, performance efficiency, and usability [11]. The subject matter experts analyze questionnaire items in order to determine whether they match the intended evaluation criteria and eliminate redundant or irrelevant statements. Recommendations obtained in the course of validation are used to enhance the questionnaire.
+  System validation is designed to check the ability of the SafeRide to perform effectively in terms of the specified parameters. At this stage, it is checked whether the application captures the required data related to acceleration, gyroscope, GPS, speed, and timestamps while commuters travel. The next step involves analyzing whether the backend environment properly works with the collected data. Furthermore, the validation process is supposed to assess whether unsafe driving events, trust-weighted reports, and transportation scores are appropriately identified, calculated, and generated.
+  In addition, external validation is carried out to determine whether the proposed methodology is consistent with other transportation monitoring studies published in the scholarly sources. This task involves comparing the proposed approach to methodologies suggested by previous studies in regard to the use of smartphone sensors, threshold-based detection of unsafe driving behaviors, crowdsourced trust-weighted reporting of incidents, and transportation safety scoring. External validation ensures that the SafeRide framework meets the standards established for transportation safety monitoring studies.
+Discussion on Algorithms/Mathematical Model/Formula
+SafeRide leverages information gathered from the sensors of mobile phones along with passenger-trust-weighted reports to derive a standardized transportation safety score for public utility vehicles. By integrating measurable driving behavior together with passenger experience into transportation safety assessment, the model compensates for the problem with the lack of driving safety assessment technology in public transportation in the Philippines.
+This hybrid transportation safety algorithm comprises two sub-models, namely sensor-based detection model and trust-weighted passenger reporting model. They operate through the means of a non-linear fusion function to yield transportation risk score.
+Figure 3. Overall Risk Scoring Pipeline of SafeRide
+Sensor-based detection model identifies instances of unsafe driving behavior and road conditions based on accelerometer, gyroscope, and GPS data. As phones can adopt any posture during the trip, the first step is to transform all tri-axial sensor data into their Euclidean magnitudes to remove orientation dependency. Accelerometer magnitude indicates vehicle speed acceleration whereas gyroscope magnitude shows rotation which corresponds to driving turns.
+Figure 4. Sensor Fusion and Feature Extraction Model
+To make data more reliable and reduce the influence of vibration and sensor fluctuations, the model uses sliding windows. Rather than analyzing individual values, SafeRide evaluates driving behavior across certain observation windows. Thus, it provides for more accurate identification of sudden braking, 
+overspeeding
+, and sharp turns as well as reduces false-positive rate due to short-term spikes.
+Figure 5. Sliding Window Time-Series Processing
+Additionally, SafeRide includes several types of environmental factors. Potholes and road bumps are identified with sudden acceleration spikes when there is no significant gyroscope rotation at the same time and some vehicle movement. Road slope is calculated via altitude changes over distance covered via GPS data. This helps to detect hills that have to be considered during transportation risk evaluation but should not overlap with driving safety measures.
+Unsafe driving events like speeding, harsh braking, and quick directional changes are detected with an adaptive threshold model. In contrast to static threshold models, SafeRide incorporates threshold changes depending on the road condition, vehicle type, and traffic density. Moreover, the localized thresholding technique takes into account local conditions as specified by Republic Act No. 4136.
+Once the events are detected, a sensor-based risk score will be estimated by the application of weighted aggregation on both the unsafe driving events and environmental hazards. Speeding, harsh braking, sharp turn, potholes, and slope-related conditions are among these components that will have their own severity weights in the calculation of the score.
+To integrate passenger reporting, a trust-weighted aggregation model will be used. The commuter reports on risky events will be rated with a certain level of trust 
+based on historical consistency, anomaly detection, and alignment with sensor outputs. The reports from trusted passengers are going to carry more weight than those that are suspected of manipulation and will have greater impact on the score.
+Figure 6. Trust-Weighted Crowdsourcing Model
+To estimate the overall risk on a particular trip, non-linear fusion is employed by aggregating the two scores mentioned above – the sensor-based and report-based ones. The resulting score becomes the central equation for the proposed SafeRide transportation safety estimation. To prevent fraudulent manipulations and make the system even more resilient to inconsistencies, the disagreement factor is introduced as well. This way, the system will increase the final risk in case of major discrepancies between the objective measurements and subjective reports.
+In order to provide more flexibility in the use of the system for different types of transportation, SafeRide employs adaptive weighting between sensor-based and user-report risk scores based on the availability of the data for each source. Thus, more sensors lead to more weight on sensor measurements and vice versa for the commuter reports.
+Lastly, in order to make the result of the analysis more intuitive, the transportation risk score will be normalized into a 0-100 safety index, where high numbers will represent safer traveling circumstances and low numbers mean increased transportation risk.
+In conclusion, SafeRide framework incorporates smartphone sensing, environmental risk detection, adaptive thresholding, traffic laws of the Philippines, and crowdsourcing with trust-awareness.
+Fundamentals of the Algorithms/Mathematical Model/Formula
+Theoretical Foundations
+First and foremost, SafeRide can be justified in terms of relevant scientific fields that underpin time-series analysis, intelligent transportation systems, and participatory sensing. In particular, SafeRide leverages a combination of findings in the domains of mobile sensing, risk modeling, and multi-source data fusion, thereby supporting the use of sensor data and human-provided feedback in transportation safety systems. This concept is extensively explored in existing studies as a reliable way of integrating objective motion data and subjective commuter experience into transport safety systems [3], [4], [6], [10].
+As a basic element of the proposed system, the interpretation of sensor inputs (accelerometer, gyroscope, GPS data) as time-series data is considered valid, based on extensive empirical research conducted in the field of mobile sensing that highlights the need to analyze temporal aspects of driving behavior to ensure accurate identification of real-world motion dynamics [4], [6], [39]. The importance of time-series-based analysis for obtaining high-quality results in transport monitoring in mobile settings is also confirmed by existing literature [3].
+In order to process continuous sensor data stream, the system uses a sliding window technique to split continuous sensor data streams into time-limited sequences that can be interpreted separately. This method allows localized behavioral analysis without compromising overall continuity of a specific trip. According to existing studies in the fields of activity recognition and transportation analytics, a windowed interpretation of sensor data is effective in identifying short-duration behavioral states that may be overlooked during complete sequence interpretation [37].
+Detection of unsafe driving is done using a threshold-based approach complemented by contextual adaptations. While fixed-threshold classification is used in many systems, SafeRide implements thresholding that dynamically adjusts its limits based on current environmental and operational conditions. Studies in the field of intelligent transportation systems show that contextual adaptations allow for overcoming the weaknesses associated with rigid classification systems, making them more reliable [19]. At the same time, the implementation itself is compliant with Republic Act No. 4136 and allows the application of Philippine-specific rules regarding safe speed limits [33].
+To facilitate multi-source data integration, the system employs normalization of different sources of information. Normalization allows for combining various measurement scales and integrating them into one uniform metric. Based on the available data, the application of normalization techniques is justified since they ensure proper and effective integration of several metrics (speed violations, hard braking events, road condition) into a risk framework [30] as per the recommendations from existing engineering studies.
+In addition to raw data processing and interpretation, SafeRide relies on trust-based crowdsourcing of passenger reports. Rather than treating all incoming data uniformly, this system introduces the concept of individual trust scores that reflect user credibility and agreement between sensor data and reported incidents. According to participatory sensing literature, trust-weighted aggregations of incoming data provide substantial improvements in reliability and minimize possible biases [10]. More recent studies in transportation systems confirm that dynamic adaptive trust mechanisms improve system performance [36].
+Lastly, SafeRide uses modular pipelines where each step of the process is represented by independent modules (data collection, preprocessing, detection, risk calculation, and data fusion). This architecture is validated in the domain of software engineering as an appropriate strategy in case of complex and multi-step tasks that require clear separation between operations to achieve optimal performance [30]. In 
+particular, intelligent transportation systems widely employ modular architectures that make such systems highly flexible and scalable [8], [9].
+Summing up, it is possible to conclude that SafeRide theory is thoroughly justified by research from a number of scientific disciplines. Time-series signal processing, sliding windows, adaptive thresholding, normalization, trust-based crowdsourcing, and modular architecture form the theoretical basis of SafeRide.
+Algorithm Design
+SafeRide utilizes a modular pipeline framework wherein raw input sensor signals and passenger reports are systematically integrated into a single trip-level safety score. The modular structure ensures higher maintainability, scalability, and testability of the entire pipeline by decomposing the system into several distinct steps following proven software engineering practices for modular system design [30].
+At the first step, trip initialization creates a new user session for tracking personal identity, vehicle class, and journey parameters. While the trip is ongoing, raw signals from the smartphone's GPS, accelerometer, and gyroscope sensors are recorded regularly in time-stamped intervals, resulting in a structured time-series dataset. This session-based approach is critical in transportation behavior modeling because it allows interpreting sequential motion patterns instead of single events [6], [38].
+Raw input sensor data undergo processing to ensure stability and noise reduction. Smoothing of speed values based on GPS measurements, and transforming tri-axial signals from accelerometer and gyroscope to the magnitude form are necessary to isolate motion features independent of the device's orientation. These steps are required because mobile devices' random placement in the vehicle causes signal changes that are irrelevant for transportation behavior analysis.
+Environmental road conditions are explicitly modeled in this approach in order to avoid misclassification of road-caused motion as behavior-related signals. Vertical 
+acceleration spikes in combination with gyroscope stability tests identify anomalies caused by road disturbances like potholes or speed bumps. The slope of the road is determined by evaluating the altitude change measured by GPS per unit of traveled distance. As a result, it is represented as continuous environmental conditions and not discrete disturbances. This separation strategy is validated in previous works that highlighted the necessity of isolating environment noise and behavior in mobile sensing systems [12], [14].
+Segmentation of time series data into fixed intervals is performed using sliding windows in order to facilitate localized behavioral analysis while keeping trip continuity. Such approaches have been extensively used in real-time transportation analytics and proven to capture events too short to be analyzed within whole sequence analysis frameworks [37].
+Each segment is then analyzed in terms of detected events using adaptive threshold criteria. Contrary to conventional static rules, detection threshold values vary depending on the road and traffic conditions as well as vehicle type and size. This adaptive strategy ensures that unsafe driving events detection will remain responsive to real-world situations in the Philippine transportation context, while adhering to Republic Act No. 4136. This design strategy is also consistent with adaptive event sensing strategies in the context of intelligent transportation [19], [33] and prevents arbitrary thresholding.
+Detected events contribute to the sensor-based risk score calculated by assigning specific weight values to various types of driving violations. Unsafe behaviors associated with high risks are given relatively large coefficients; smaller ones are attributed to other violations.
+Passenger-generated inputs are aggregated using the trust weighting mechanism. All reports are scored according to historical consistency and consistency with sensor-detected events. This approach eliminates the contribution of unreliable sources to the final score and amplifies the impact of credible users. Previous research in participatory sensing shows that this technique increases data reliability and reduces noise in crowd-generated transportation models [10], [36].
+The ultimate trip-level risk score is obtained using a non-linear data fusion technique that combines information about risk computed by both sensors and trusted users. A disagreement-sensitive component accounts for any discrepancies between objectivity of sensors and subjectivity of passengers' inputs, thus ensuring that the final score does not ignore potential anomalies. Disagreements between two sources can serve as meaningful signals of abnormality in the context of safe driving. Such a design decision was previously demonstrated to enhance model performance [35], [40]. Finally, the calculated risk score is mapped into a standardized safety index ranging from 0 to 100.
+All together
+, SafeRide utilizes the multi-source and feedback aware pipeline structure consisting of several steps. These include sensor pre-processing, environmental data isolation, sliding window-based time-series analysis, context-dependent event detection, weighted risk score aggregation, trust-based crowdsourcing, and non-linear data fusion. Overall, SafeRide implements a context-sensitive transportation safety model that accounts for real-life Philippine road conditions.
+Mathematical Model Formulation
+SafeRide integrates the smartphone sensor and passenger report data to compute an aggregate safety score that captures the behavioral pattern of the vehicle for a particular journey. The vehicle speed at time step 
+is referred to as 
+. The accelerometer readings for the three axes are described by 
+, while gyroscopic readings are given as 
+. The multiaxis motion sensor reading serves as the basic input for modeling motion behavior analysis based on smartphone data.
+In order to avoid any influence of the sensor orientation with respect to the direction of movement, tri-axial motion sensor readings are normalized by computing their Euclidean magnitude:
+This ensures that the motion characteristics remain independent of the sensor orientation. Sensor data processing involving the use of signal magnitudes is a well-recognized preprocessing step in mobile activity recognition and driving behavior analysis [41],[42]. Mekki et al. [41] recommend its application in IoT-based motion sensing tasks, while Khandakar et al. [42] demonstrate the usefulness of this process in vehicular motion detection.
+Filtering is used to eliminate sensor readings that arise due to vibration and fluctuations in road conditions as follows:
+This filtering preserves behavior trends while eliminating high frequency noise. This methodology has been proven to be computationally efficient and practical for mobile deployments [43],[45].
+Environment-specific features are included in the model for avoiding misclassifications caused by road conditions such as potholes. Vertical acceleration spikes associated with road impact and verified using gyroscope stability and GPS speed are considered to indicate pothole and road bump events:
+Accordingly, a road surface event is detected only when the acceleration spike is above a predefined threshold and the gyroscope reading is below another threshold, and the vehicle is running above a minimum speed.
+An elevation change is computed using GPS-derived altitude difference as follows:
+This helps differentiate between slope transitions and road impacts by eliminating vertical disturbance from sloped roads. Thus, terrain variations (such as 
+uphill or downhill slopes) are differentiated from road impact events, so as not to interfere with classification of unsafe driving behavior.
+For improving classification accuracy, SafeRide uses a multivariate criterion to differentiate road-induced behavior from unsafe driving. Motion behavior triggered by road surface anomalies such as potholes generally occurs in isolation, while unsafe driving involves sustained anomalous acceleration, speed, and rotation. An instance of dangerous driving behavior is therefore only identified when anomalies are observed across acceleration, speed, and rotation sensors, while ignoring those arising due to the road surface.
+The processed signal is split into overlapping windows of length 
+to allow for local analysis of behavior patterns. Within a window 
+, various features are extracted, including the average speed in the window:
+Speed variation is computed as:
+The maximum angular velocity within a window is computed as:
+These features are among the most important ones that can help detect dangerous driving behavior. Driving studies involving smartphones have identified speed, acceleration, and rotational movement as vital components for safe road transport [42],[46]. Sliding window splitting has been shown to be effective in detecting short driving instances such as sudden braking and sharp turns.
+Unsafe driving events are detected using adaptive thresholding based on contextual behaviors. Binary event detection is performed based on each window 
+using the following rule, where 
+and 
+denote overspeeding, harsh braking, and sharp turning events:
+Where the adaptive thresholding is done as follows:
+This adaptive thresholding makes it possible for the system to modify the thresholding dynamically based on road conditions, vehicle type, and traffic.
+The event occurrences are aggregated over the trip to get the following:
+Environmental hazard events are also added by considering pothole events 
+and slopes 
+.
+The sensor-based risk score is computed as follows:
+Where,
+Passenger report data are integrated into the model using the trust-based weighted average as follows:
+Here, 
+denotes passenger risk ratings and 
+denotes the trust weights of the passenger's report, which are dynamically adjusted based on their agreement with sensor-validated events. Passenger trust increases when their observations agree with the sensor outputs, and decreases otherwise.
+The trip-level risk score is computed using the following formula that employs a nonlinear fusion model:
+Here, the weight of the sensor-based data 
+and report-based data 
+are inversely proportional, and their sum equals 1. In addition, the parameter 
+increases the risk score in case there is large inconsistency between the two types of data. This is non-linear because the transport risk score does not vary linearly with regard to passenger reports and sensor readings.
+The adaptive weight of sensor data over report-based data is computed as:
+where, 
+The overall safety score is then computed as:
+Where,
+The above transformation is used to convert the risk score to safety score, which means that a larger value implies better safety while a smaller value implies more risk.
+Generally speaking, the presented model incorporates behavioral, environmental, and trust factors within a framework for estimating transport risk score. SafeRide detects transport safety through the use of smartphones, adaptive thresholds, environment, and passenger reports.
+Algorithm Implementation
+The algorithm used to derive the trip safety score employs the sensor data collected from smart devices and crowd-sourced ratings provided by passengers. As indicated by Sommerville [30], modularity makes the pipeline easily testable and maintainable, which applies when SafeRide is being utilized, for example, for continuous monitoring of trips.
+Denote 
+ as the speed of the vehicle at time point  
+, and 
+ and 
+ as the accelerometer and gyroscope measurements, respectively. They are obtained during the journey through the passenger's device. In accordance with the research by Khandakar et al. [18], the structure and timestamps of sensors facilitate efficient data acquisition for transport behavioral analysis.
+For the purpose of ignoring the orientation of devices and uniformly representing motion, raw tri-axial data are transformed into magnitudes using the 
+acceleration and gyroscope magnitude computation
+:
+Then the signal can be stabilized by filtering out vibrations, fluctuations in sensors' performance, and the variations on the road through a 
+moving average filter
+:
+where 
+is the filter window size. The process is performed independently on each of the signals associated with the motions, leaving only driving-related signals [43].
+Then the stream of data is divided into time segments with the help of a sliding window with size 
+and step 
+. Indexes of windows are as follows: 
+; 
+, 
+. If 
+, then windows overlap, and thus capture events of short duration [37].
+Using windowing for assessing the state of the road makes it possible to treat road movements differently from unsafe driving since one needs to differentiate 
+between the two. Potholes and bumps are assessed on the basis of vertical accelerations, which are enhanced by the stabilization properties of gyroscopes and changes in speeds from GPS through the 
+pothole detection function
+:
+SafeRide identifies driving behavior patterns by analyzing the sensory information comprehensively. Typically, the road disturbances create peaks of vertical acceleration only, whereas reckless driving involves anomalous acceleration, rotation and speeding [12].
+The slope is derived from differences in GPS elevations and the distance covered during the trip using the 
+slope computation
+:
+It makes it easier to distinguish the effects caused by elevation from other factors that may affect hazard detection and avoid such biases.
+Unsafe driving events are assessed according to adaptive threshold criteria using 
+binary event detection
+:
+where the 
+adaptive threshold function
+ is defined as:
+In this case, the threshold depends on the road, vehicle and traffic conditions. It increases contextual awareness and prevents static cutoffs [19].
+The categories of unsafe behaviors are further defined by breaking them down into their constituents. 
+Overspeeding
+ is:
+Harsh braking
+ is:
+Sharp turning
+ is:
+Finally, those indicators are summarized across the whole trip using 
+event aggregation
+:
+These variables make it possible to define risk related to driving using sensors through the 
+sensor-based risk score
+:
+subject to:
+In the first place, the weights are calibrated for the Philippine transport sector and then further optimized relying on feedback. As a result, the model becomes adaptive and context-aware [20].
+Crowdsourced ratings can be aggregated based on the level of trust using the 
+trust-weighted report risk
+:
+The contribution factor of every participant is adjusted depending on how often he or she agrees with the results obtained based on sensors. In case participants frequently submit inaccurate reports, their inputs are filtered out over time [10].
+Then trip risk is calculated as a nonlinear combination of the two variables mentioned above using the 
+nonlinear risk fusion model
+:
+The nonlinear adjustment punishes discrepancy between the estimates instead of simply averaging them out [35]. Finally, adaptive balancing of sensor reliability and crowdsourced reporting rates can be achieved as follows using the 
+adaptive weight function
+:
+And finally, the index of safety is normalized as the 
+safety score transformation
+:
+As a result, SafeRide provides a reliable metric with a 0–100 scale, where the higher the indicator, the safer the journey is expected to be.
+Complexity Analysis
+In order to provide the proper functioning of SafeRide application on the smartphones, the complexity analysis of the SafeRide application algorithms is undertaken. Given that mobile applications require a great deal of energy and computing resource, it seems necessary to analyze the level of complexity of processing the input sensor data. By evaluating the complexity, it will be possible to understand whether the app can detect unsafe driving patterns.
+At the first stage, it involves data pre-processing and dividing the data stream into sliding windows. This way, the application collects data coming from three main sources (accelerometer, gyroscope, and the Global Positioning System). Let us assume that during the trip, we gather n sensor samples. Constant time is required to filter and test the particular sample according to certain parameters. Although there is overlapping between adjacent sliding windows, each sample is processed constantly many times. This means that time complexity for this algorithm is equal to:
+It can be considered appropriate for mobile transportation analysis due to the fact that a single pass or several passes are sufficient for processing each value. As a result, the determination of the presence of any risky behavior becomes possible without reiteration. Thresholds are widely used in mobile transportation analysis owing to their efficiency and low computational cost.
+At the second stage, it implies computation of trustworthiness for crowdsourced passenger reports. We will suppose that a certain user gives m reports about any suspicious behavior in public transportation. These calculations are performed for each submission at a constant rate. As a result, the time complexity in such a case is as follows:
+Many people believe that the possibility of changing the trust level becomes much easier with the help of linear complexity of the system. This does not affect the performance of SafeRide, as it involves only basic calculations and gathering. Many experts claim that the third stage concerns the calculation of cumulative safety score. Assuming that k denotes the number of trips of the particular vehicle or road, the set of rules determines the total safety score after verifying each trip with a weighted collection. Due to simplicity, the time complexity is as follows:
+All major parts of SafeRide algorithm show linear speed dependency concerning the quantity of information obtained. According to many experts, it is a very good thing in regard to mobile applications since the amount of time for computation directly correlates with the volume of information. It makes the analysis process of important journeys more convenient since the SafeRide algorithm maintains the speed of computer operations. The choice of threshold-based detection methods reduces the amount of processing work for a computer instead of using heavy machine 
+learning approaches. Many people believe that using these methods decreases the demand for memory and power consumption.
+System Development Methodology
+Figure 6. Phases of Agile SLDC
+Figure 6 illustrates the process of evolution of SafeRide within the framework of the Agile Software Development Life Cycle (SDLC). The main focus of the presented model of development is put on the continuous development and adaptation, active participation of the stakeholders, and flexibility of planning. Speaking of iterative development processes or sprints, it should be mentioned that the system is continuously evaluated and optimized. Agile SDLC focuses on flexibility, active involvement of the stakeholders, and iterative deliveries in software engineering [30]. These criteria are in line with the aims of SafeRide initiative.
+The employment of CI/CD (Continuous Integration &amp; Delivery) also enables gradual deployment and release of the system. In each stage of its work, there is 
+created a full working version of SafeRide that is able to detect risky driving, aggregate trust between drivers, and calculate safety score. 
+Agile methodology helps in adapting the system based on feedback from users and their changing needs. User feedback is collected after each sprint, allowing us to make appropriate improvements in accordance with users' realities and expectations. User feedback is crucial for us because it helps to make the developed public transportation monitoring system stronger and more relevant for people.
+This research employs systematic software development. This means the presence of a particular approach aimed at design, implementation, testing, and deployment of public transport monitoring software system. For these purposes, Agile Software Development Life Cycle (SDLC) is used. According to this SDLC, design, implementation, testing, deployment, and maintenance of software pass through several well-structured stages [30].
+Using Agile SDLC means high responsiveness and flexibility of approaches towards software development. Instead of the linear flow of development process, each stage consists of several sprints. As a result, each of the output stages includes development of an increment of software that is optimized taking into account the results of testing and feedback from stakeholders. Such a development cycle contributes to the optimization of all its modules including sensing, assessing risks, crowdsourcing reports, and visualization on the dashboard.
+Requirement
+ 
+Gathering Phase
+The first stage is referred to as the requirement gathering phase. It involves specifying and acquiring system requirements from the right stakeholders. Functional requirements are particularly essential for SafeRide system. These include sensor monitoring, risk assessment, crowd source reporting, and dashboard visualization. Moreover, non-functional requirements concerning performance, usability, reliability, and scalability need to be specified. Finally, stakeholder participation needs to be 
+sustained to ensure relevance and consistency of all requirements with regard to user expectations.
+Figure 7. UML Use Case Diagram of the System
+The above figure shows the functionality boundaries and interactions between the two main entities in the system – the Passenger and the Admin. The Passenger is the main entity whose actions kick off all activities within the system. Activities may include signing up for an account and logging in, initiating and ending a trip, getting the safety rating, and filing reports about the use of the service. On the other hand, the Admin takes care of all activities that occur behind the scenes within the system like handling the reports provided by the users, verifying the safety ratings, and managing users.
+System Design Phase
+The second stage is system design phase, which refers to the design process of SafeRide. We designed SafeRide in order to bridge the gap between objective telematics data and subjective passenger perception. With the help of creating the UML component diagram depicted below, we were able to describe how smartphone data was going to turn into a user-friendly safety score.
+Figure 8. UML Component Diagram of the System
+The SafeRide system architecture is designed with a multi-layered and modular architecture, which includes four main layers: Infrastructure Layer, Data Ingestion Layer, Processing Engines Layer, and Presentation Layer. Each layer serves a unique purpose and plays an important role in the entire process of processing and visualization.
+The first layer of the SafeRide system is the Infrastructure Layer. This layer is responsible for security management and storage of persisted data. To facilitate secure transactions and authenticate user data, the Infrastructure Layer uses an 
+Infrastructure Security component. As the database, the Firebase 
+Firestore
+ Database stores real-time trip data, sensor outputs, and user reports.
+To acquire raw input data from smartphones and other devices, the system uses the Data Ingestion Layer. There are three components within the layer including the Backend API Server, the Sensor Data Collector, and the Incident Report Module. Acting as a communication interface, the Backend API Server facilitates the connection between the mobile app and backend components. For acquiring sensor-based data from smartphones, the Sensor Data Collector collects real-time GPS, accelerometer, and gyroscope inputs. Meanwhile, the Incident Report Module processes user-sourced information about dangerous events and unsafe driving. All raw inputs are delivered to the processing layer.
+Processing of inputs acquired by the previous layer is done in the Processing Engines Layer. The layer contains three engines: the Trust Aggregation Module, the Unsafe Driving Engine, and the Risk Scoring Engine. As its name suggests, the Trust Aggregation Module aggregates reports based on historical records and sensor outputs to estimate credibility. On the other hand, the Unsafe Driving Engine analyzes sensor-based inputs to find driving anomalies. These include excessive speed, abrupt stops, and sharp turns made by drivers. Finally, the Risk Scoring Engine combines reports from these two components to estimate the safety score via weighted and normalized aggregation.
+In the final Presentation Layer, the acquired results can be presented. Specifically, this layer contains the SafeRide Mobile Application, Admin Dashboard, the Safety Rating Module, and the Analytics Module. For example, the SafeRide Mobile Application can allow people to report trips and get safety-related data. Similarly, the Safety Rating Module presents trip and route safety scores. Meanwhile, the Admin Dashboard serves the purpose of managing the overall system, and the Analytics Module visualizes safety analytics data.
+In conclusion, the overall design of the UML component structure is evident in the way that information is segregated into three layers where the input layer acquires data, the engine layer processes and computes risks, and the output layer provides 
+the processed data to the end-user. The design facilitates scalability, maintainability, and real-time processing needed for the adaptive transportation safety system.
+Testing Phase
+Lastly, the Testing Phase, which is an ongoing activity during the software development lifecycle, involves evaluating the performance of the system. The unit test involves the functionality of individual components within the system. Likewise, the integration test seeks to determine if the system parts interact with other parts as required. On the other hand, system testing assesses the effectiveness of the entire system in performing its intended functions. For example, it seeks to ascertain whether the system can process the raw sensor data and produce scores. Moreover, user acceptance testing (UAT) is conducted among selected people [30].
+ 
+Figure 9. System Testing Activity Flow of the SafeRide System
+System Testing Activity Flow for SafeRide in Figure 9 above shows how the whole activity flow in real time takes place, starting from passengers using the Flutter mobile application, which starts up the sensor module to get raw data from sensors such as GPS, accelerometer, and gyroscope. Data gathered by these sensors, together with the data from passenger-reported incidents if any, is transferred to the 
+Node.js backend API. From there, the validation process is executed with the help of various engines within the system. Event Detection Engine analyzes data collected in real time using sliding windows and detects any events of unsafe driving practices. On the other hand, Trust Aggregation Module assesses the validity of user-submitted information about incidents based on the generated trust scores.
+In the last step of the testing activity flow, the Risk Scoring Engine calculates the final risk score that will take into account not only sensor-detected but also weighted reported data from the passengers. Once calculated, the final score along with the metadata for the ride is stored in Firebase 
+Firestore
+. After all of the necessary calculations are finished, the system provides the passenger with their final score, which ranges between 0 and 100, through the Node.js backend to the Flutter mobile application.
+Deployment Phase
+The successful testing marks the start of Deployment Phase, whereby the system is tested by being deployed in a real-world setting for evaluation and partial use. Slow deployment using CI/CD pipeline allows continuous refinement and fixing of errors without interrupting the operation of the system [30].
+Figure 10. Deployment Flow of the SafeRide System
+Deployment Flow of the SafeRide System, shown in Figure 10, defines the process flow associated with the four main stakeholders – Sensor System, Passenger, Admin, and CI/CD. The first step of the process flow starts with the data collected by the Sensor System and Passenger, where the inputs enter the system through the automated data capture and reports generation. After that, the data will be used to detect events and calculate trust, which will form the basis for the risk score calculation. The risk score calculated here will be saved in the Firebase database. Although the Admin monitors the calculated safety score, the other stakeholder in this case, CI/CD, will ensure the continuous development of these modules by deploying updates.
+Feedback Phase
+The Feedback Phase involves gathering feedback from users and other stakeholders in the system to determine the performance of the system. Following the analysis of the gathered feedback, modifications are made to improve the usability of the system. Besides, maintenance services are provided to solve problems, enhance performance, and introduce new features in the system. It is an ongoing process until the end of the operational life of the system.
+Figure 11. Runtime Use Case Diagram of the Deployed SafeRide System
+The Runtime Use Case Diagram for the deployed SafeRide System, shown in Figure 11, demonstrates the cycle of continuous improvement that plays a significant 
+role in maintaining and managing the operations of the system. The process starts with the gathering of feedback from users and stakeholders about the system, followed by the analysis of whether improvements are needed. Should improvements be needed, the system would undergo a process of updates in order to implement these changes and subsequently push the changes through the CI/CD process. Should there not be any need for changes, the system would continue working based on its maintenance routine.
+Statistical Treatment of Data
+The statistical treatment of the data has been done to provide a systematic method in analyzing and interpreting the gathered data. Statistical tools are used in the quantitative research design to analyze the collected data. One of the most common types of statistical methods used is descriptive statistics in describing the survey results as well as the transportation safety data which were gathered through sensors. This type of statistics plays a vital role in the study since it provides the recognition of patterns and trends found within a set of data, particularly in system evaluation and software performance analysis.
+The frequency and percentage distribution have been chosen to evaluate the detection capability of SafeRide towards detecting the unsafe behaviors performed by the drivers. It involves the identification of the presence of certain driving activities such as speeding, sharp braking, and quick turns. These are considered as ways for determining the recognition of patterns in the domain of transportation safety within the context of public transportation in urbanized cities in Laguna namely 
+Biñan
+ City, Santa Rosa City, 
+Cabuyao
+ City, and Calamba City.
+On the other hand, the weighted mean is used in evaluating the level of satisfaction of the respondents with regards to their perception about the mobile application. The weighted mean can be considered one of the most useful statistical measures when Likert scale evaluations are done. The weighted mean may be 
+defined as the arithmetic mean of response weights. It is often used in measuring the performance evaluation of systems regarding their functional suitability, performance efficiency, reliability, and interaction capability, based on the ISO/IEC 25010:2023 software product quality model [31]. 
+The formula for the calculation of weighted mean is:
+In this formula, 
+ stands for the weighted average, 
+ indicates the frequency of the responses, 
+ indicates the rating scale, 
+ denotes sum of the multiplication of frequency and the scale value, and 
+ denotes the total number of responses. The obtained values are then analyzed using the scale of evaluation that has been developed for this purpose.
+Population and Sampling
+The subjects involved in this study are composed of end users and experts residing in selected urbanized cities in Laguna, including 
+Biñan
+ City, Santa Rosa City, 
+Cabuyao
+ City, and Calamba City. These areas were chosen due to the heavy reliance on public transportation systems and the continuous flow of commuters utilizing jeepneys, tricycles, and motorcycle-based transport services within residential, educational, and business districts. Thus, regular commuters in these selected areas serve as the target user group for testing the SafeRide system.
+The study employed a non-probability purposive sampling design to recruit individuals who meet the requirements relevant to the objectives of the research [28], [30]. Purposive sampling was used to ensure that respondents possess sufficient relevance to the study context and the capability to evaluate the SafeRide application.
+For end users, eligibility criteria include being at least eighteen (18) years of age, actively using public transportation in the selected cities, and owning a smartphone compatible with the SafeRide application and capable of collecting sensor data.
+For experts, the requirement includes having professional or academic experience in information technology, specifically in software systems, mobile computing, or system evaluation.
+In total, thirty (30) individuals participated in the study. Twenty (20) participants served as end users, providing assessments of the system’s functionality and usability during actual trips. The remaining ten (10) participants served as experts, evaluating the technical quality of the system in accordance with the ISO/IEC 25010:2023 software product quality model, specifically focusing on functional suitability, performance efficiency, reliability, and interaction capability.
+Classification
+Number of Participants
+End Users
+20
+Information Technology Experts
+10
+Total
+30
+The participants are also distinguished by their mode of using public transportation. This classification is important as it corresponds to the operational context of the SafeRide system, where users specify the type of vehicle used for each trip. This allows data collection across different transport modes and varying environmental conditions such as traffic density, road quality, and urban setting variations across cities.
+This approach enables a comprehensive evaluation of the SafeRide system through the combined perspectives of both end users and expert evaluators.
+Evaluation and Scoring
+The assessment of the SafeRide system relies on data gathered from surveys conducted during the research. Specifically, the objective of the questionnaire is to determine the level of satisfaction among the end users of the SafeRide mobile application in terms of its quality based on the core characteristics specified in the ISO/IEC 25010:2023 software product quality model. These characteristics include functional suitability, performance efficiency, reliability, and interaction capability.
+The ISO/IEC 25010:2023 model serves as the basis for evaluating the quality of the developed software product. In accordance with its principles, the software application is assessed using standardized software quality criteria to ensure reliable and consistent evaluation results.
+For the measurement method, a 
+four-point Likert scale
+ is used as the primary instrument to determine respondents’ level of agreement with each statement. The use of a forced-choice scale eliminates neutral responses, encouraging respondents to express a clear position. As a result, interpretations are based on definite agreement or disagreement levels aligned with the ISO/IEC 25010:2023 quality characteristics.
+Each response option corresponds to a specific level of agreement, which allows for structured analysis of user satisfaction in terms of functional suitability, performance efficiency, reliability, and interaction capability of the SafeRide application.
+Overall, the measurement of end-user satisfaction contributes to a comprehensive evaluation of the system’s compliance with ISO/IEC 25010:2023 standards and its applicability in real-world transportation settings [31].
+Scale
+Verbal Interpretation
+4
+Strongly Agree
+3
+Agree
+2
+Disagree
+1
+Strongly Disagree
+Ethical Considerations
+The study follows existing standards for conducting research and maintains an ethical code to uphold the rights, confidentiality, and well-being of the research subjects. Because the SafeRide application gathers data about transportation safety, measures are employed to make sure all generated data in the course of research are handled and secured appropriately.
+Informed consent is sought from all research participants before data collection is done. The respondents who are commuters or IT professionals are made aware of the purpose of the study as well as the components of the SafeRide system. The process for gathering data through smartphone sensors such as the GPS, accelerometer, and gyroscope are described. Participation in the study is voluntary, and any participant may leave the research whenever he or she wishes without facing any form of punishment.
+Confidentiality is preserved throughout the duration of the study. No personal identifying information needs to be gathered because each individual participant will receive a universal unique identifier, or UUID. Only output results such as trip-level safety scores and route-level safety evaluation will be analyzed, while raw travel data and personal data are kept confidential and unavailable for public access.
+Data collection begins when a participant turns on the SafeRide mobile app voluntarily. Analysis of transport safety indicators such as speeding, hard braking, and sharp turning will be conducted using the information available from the embedded sensors in a user's smartphone. All the data that are collected will be used exclusively for academic research purposes in assessing transportation safety.
+For data security, encryption is employed in any transmission between client device and server. Access to the stored data will be limited to only those researchers and the thesis adviser. Data will be saved only for as long as needed for analysis. After the study is concluded, collected data will be safely stored in anonymized format or deleted according to institutional data protection guidelines.
+In ensuring a fair process and avoiding biases, both sensor data and passenger data are used in generating the results. Trust weighting of passenger inputs is performed by assigning higher weights to reliable and consistent reports. The process allows for better results and minimization of errors due to inaccuracies in passenger reports. Additionally, various types of public transport such as jeepneys, tricycles, and buses are considered among selected cities in Laguna to get a more representative sample of commuter participants.
+Incentives will be offered to participants in the form of modest monetary allowances and other tokens, but the purpose of incentives is merely to reimburse any potential cost that might be incurred in the study process. Incentives are not used to manipulate the respondents' answers.
+Lastly, the study complies with the provisions set forth by the Data Privacy Act of 2012 or Republic Act No. 10173 and Pamantasan ng 
+Cabuyao
+. All data, theories, models, and applications referred to in this paper, including SafeRide, were accurately cited. The development of SafeRide is intended for assessment and educational research only.
+Literature Cited
+[1] A. Agrawal, F. Pilla, and A. 
+Mölter
+, “Commuters’ perception of safety in public transport: A review of approaches, gaps and emerging research opportunities,” 
+Transport Reviews
+, vol. 45, no. 6, pp. 1048–1084, 2025.
+[2] J. C. 
+Fillone
+ and N. C. C. Tiglao, “Transport data collection and analysis for traffic management in Metro Manila,” 
+Philippine Engineering Journal
+, vol. 37, no. 1, pp. 1–14, 2016.
+[3] A. M. 
+Almazroi
+ et al., “Mobile sensing for road safety: Recent advances and challenges,” 
+Sensors
+, vol. 21, no. 4, 2021.
+[4] M. Saeed et al., “Smartphone-based driver behavior detection: A survey,” 
+IEEE Access
+, vol. 8, 2020.
+[5] M. Cai et al., “Road traffic safety risk estimation method based on vehicle onboard diagnostic data,” 
+Journal of Advanced Transportation
+, 2020.
+[6] G. 
+Castignani
+, T. Derrmann, R. Frank, and T. Engel, “Smartphone sensing for understanding driving behavior: Current practice and challenges,” 
+Information Fusion
+, 2020.
+[7] J. Ferreira Júnior et al., “Driver behavior profiling: An investigation with different smartphone sensors and machine learning,” 
+PLOS ONE
+, vol. 12, no. 4, 2017.
+[8] M. Chen et al., “Closed-loop edge AI systems for intelligent transportation with real-time feedback adaptation,” 
+IEEE Internet of Things Journal
+, 2023.
+[9] J. Chen et al., “Human-in-the-loop intelligent transportation systems: A survey of adaptive and non-linear models,” 
+Information Fusion
+, 2024.
+[10] H. Kim and D. Shin, “Trust-based crowdsourcing framework for smart transportation applications,” 
+Future Generation Computer Systems
+, vol. 130, pp. 153–165, 2022.
+[11] ISO/IEC, 
+ISO/IEC 25010: Systems and Software Engineering — System and Software Quality Models
+. Geneva, Switzerland: ISO, 2011.
+[12] S. Sattar, S. Li, and M. Chapman, “Road surface monitoring using smartphone sensors: A review,” 
+Sensors
+, vol. 18, no. 11, 2018.
+[13] N. 
+Hoseinzadeh
+, 
+Application of Crowdsourced Data in Transportation Operations and Safety
+, Ph.D. dissertation, University of Tennessee, 2020.
+[14] P. Sharma and K. S. Trivedi, “Energy-efficient mobile sensing architectures,” 
+IEEE Internet of Things Journal
+, 2023.
+[15] R. Li, H. Zhao, and L. Chen, “Lightweight driving event detection for mobile devices,” 
+IEEE Access
+, vol. 9, 2021.
+[16] L. Ferreira et al., “Advances on risky driver behavior detection in road vehicles: A systematic literature review,” 
+Artificial Intelligence Review
+, 2026.
+[17] S. Masood et al., “Crowdsourced mobility intelligence for real-time adaptive traffic risk scoring,” 
+Sensors
+, 2024.
+[18] A. Khandakar et al., “Harnessing smartphone sensors for enhanced road safety: A comprehensive dataset and review,” 
+Scientific Data
+, vol. 12, 2025.
+[19] N. 
+Katrakazas
+ et al., “Adaptive, context-aware risk detection,” 
+arXiv
+ preprint
+, 2025.
+[20] National Center for Transportation Studies, 
+Intelligent transportation systems implementation in the Philippines
+, University of the Philippines Diliman, 2024.
+[21] Y. Wang et al., “
+CrowdRadar
+,” 
+Frontiers in Big Data
+, 2025.
+[22] J. C. Guinto et al., “Mobile-based smart transport route optimization and hazard reporting system,” 
+International Journal of Latest Technology in Engineering, Management &amp; Applied Science
+, vol. 14, no. 9, pp. 709–722, 2025.
+[23] B. P. Malang et al., “Road safety awareness among drivers,” 
+International Journal of Multidisciplinary Applied Business and Education Research
+, 2023.
+[24] 
+SmartYatra
+, “Dynamic driver profiling and vehicle monitoring safety shield,” 
+Taylor &amp; Francis
+, 2025.
+[25] “Detecting dangerous driving via computer vision,” 
+International Journal of Sustainable Transportation
+, 2026.
+[26] University of the Philippines Diliman – Institute of Civil Engineering, “Adaptive transport safety monitoring using multi-source data fusion in Philippine road conditions,” 2025.
+[27] F. D. Davis, “Perceived usefulness, perceived ease of use, and user acceptance of information technology,” 
+MIS Quarterly
+, vol. 13, no. 3, pp. 319–340, 1989.
+[28] J. W. Creswell and J. D. Creswell, 
+Research Design: Qualitative, Quantitative, and Mixed Methods Approaches
+, 5th ed. Thousand Oaks, CA, USA: SAGE Publications, 2018.
+[29] N. J. Salkind, 
+Statistics for People Who (Think They) Hate Statistics
+, 6th ed. Thousand Oaks, CA, USA: SAGE Publications, 2019.
+[30] I. Sommerville, 
+Software Engineering
+, 10th ed. Harlow, United Kingdom: Pearson, 2016.
+[31] ISO/IEC, 
+ISO/IEC 25010:2023 Systems and Software Engineering — Systems and Software Quality Requirements and Evaluation (
+SQuaRE
+) — System and software quality models
+. Geneva, Switzerland: ISO, 2023.
+[32] Republic of the Philippines, 
+Data Privacy Act of 2012 (RA 10173)
+, 2012. Available: 
+https://privacy.gov.ph/data-privacy-act/
+[33] Republic of the Philippines, 
+Land Transportation and Traffic Code (RA 4136)
+, 1964. Available: 
+https://lawphil.net/statutes/repacts/ra1964/ra_4136_1964.html
+[34] R. Gupta and A. Sharma, “Kalman-filter-based adaptive sensor fusion for real-time vehicular motion estimation,” 
+IEEE Transactions on Vehicular Technology
+, vol. 72, no. 3, pp. 3105–3117, 2023.
+[35] J. Liu, H. Wang, and D. Zhang, “Non-linear dynamic fusion models for multi-source transportation risk assessment,” 
+IEEE Transactions on Intelligent Transportation Systems
+, vol. 24, no. 6, pp. 6120–6133, 2023.
+[36] M. Al-Hasan and R. Alhajj, “Trust evolution and reputation systems in participatory sensing networks,” 
+IEEE Systems Journal
+, vol. 17, no. 2, pp. 1985–1997, 2023.
+[37] Y. Wang, J. Chen, and H. Li, “Real-time mobile sensor data processing using sliding window techniques for transportation systems,” 
+IEEE Internet of Things Journal
+, vol. 9, no. 14, pp. 12145–12156, 2022.
+[38] S. R. Islam, M. M. Hassan, and G. Fortino, “Edge-based real-time data stream processing for mobile sensing applications,” 
+IEEE Access
+, vol. 10, pp. 88934–88947, 2022.
+[39] C. D. Santos and M. A. Cruz, “Urban traffic sensing and risk estimation in developing countries using mobile crowd data,” 
+IEEE Access
+, vol. 11, pp. 99812–99827, 2023.
+[40] S. Kim and J. Park, “Feedback-driven adaptive systems for intelligent transportation and mobility analytics,” 
+IEEE Internet of Things Journal
+, vol. 10, no. 5, pp. 4021–4034, 2023.
+[41] S. Mekki, E. Bajic, F. 
+Chaxel
+, and F. Meyer, “A comparative study of IoT-based human activity recognition using machine learning,” 
+IEEE Internet of Things Journal
+, vol. 7, no. 12, pp. 11785–11800, 2020.
+[42] M. A. Khandakar, M. S. I. S. Hossain, M. A. Al Mamun, and M. A. Ayari, “Smartphone-based driving behavior detection using inertial sensors,” 
+IEEE Access
+, vol. 8, pp. 185847–185859, 2020.
+[43] A. Saeed, T. 
+Ozcelebi
+, and J. 
+Lukkien
+, “Multi-task self-supervised learning for human activity recognition using wearable sensors,” 
+IEEE Sensors Journal
+, vol. 21, no. 10, pp. 11554–11564, 2021.
+[44] M. Shoaib, H. Scholten, and P. J. M. 
+Havinga
+, “Towards physical activity recognition using smartphone sensors,” 
+IEEE Sensors Journal
+, vol. 14, no. 5, pp. 1571–1581, 2014.
+[45] W. Wang and Y. Bi, “Sliding window-based activity recognition using smartphone sensors,” 
+IEEE Access
+, vol. 7, pp. 143123–143134, 2019.
+[46] J. Liu, Y. Chen, and Y. Dong, “Real-time driving behavior recognition using window-based feature extraction,” 
+IEEE Transactions on Intelligent Transportation Systems
+, vol. 22, no. 9, pp. 5731–5743, 2021.
+[47] O. D. Lara and M. A. Labrador, “A survey on human activity recognition using wearable sensors,” 
+IEEE Communications Surveys &amp; Tutorials
+, vol. 15, no. 3, pp. 1192–1209, 2013.
+[48] N. Ravi, N. Dandekar, P. Mysore, and M. L. Littman, “Activity recognition from accelerometer data,” in 
+Proc. AAAI
+, pp. 1541–1546, 2005.
+[49] I. Mednis, G. 
+Strazdins
+, R. Zviedris, G. 
+Kanonirs
+, and L. 
+Selavo
+, “Real time pothole detection using Android smartphones with accelerometers,” in 
+Proc. Int. Conf. Distributed Computing in Sensor Systems
+, 2011, pp. 1–6.
+[50] S. Eriksson, H. Girod, B. Hull, et al., “The pothole patrol: Using a mobile sensor network for road surface monitoring,” in 
+Proc. 
+MobiSys
+, pp. 29–39, 2008.
+[51] Y. Zheng, X. Xie, and W. Y. Ma, “
+GeoLife
+: A collaborative social networking service among user, location and trajectory,” 
+IEEE Data Engineering Bulletin
+, vol. 33, no. 2, pp. 32–39, 2010.
+[52] H. To, G. Ghinita, and C. Shahabi, “A framework for protecting worker location privacy in spatial crowdsourcing,” 
+IEEE Transactions on Mobile Computing
+, vol. 17, no. 4, pp. 934–948, 2018.
+[53] J. Wang, X. Liu, and H. Xu, “Trust-based incentive mechanisms for crowdsensing systems,” 
+IEEE Transactions on Mobile Computing
+, vol. 18, no. 1, pp. 123–136, 2019.
+[54] H. Wang, J. Li, and D. Jin, “Adaptive sensing and context-aware computing for mobile systems,” 
+IEEE Communications Magazine
+, vol. 56, no. 2, pp. 94–101, 2018.
+[55] J. S. Kim and J. J. Kim, “A smartphone-based driving safety evaluation system using sensor fusion,” 
+IEEE Access
+, vol. 6, pp. 58669–58680, 2018.
+[56] L. Zhang, Q. Yang, and H. Wang, “Big data analytics for intelligent transportation systems,” 
+IEEE Intelligent Transportation Systems Magazine
+, vol. 9, no. 3, pp. 4–14, 2017.
+Appendices
+ Informed Consent Form (PNC PRE-FO-50 Informed Consent Form)
+Report of Language Software
+Curriculum Vitae of Student Researchers

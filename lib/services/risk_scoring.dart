@@ -28,6 +28,15 @@ class SensorReading {
 }
 
 /// Adaptive thresholds for event detection
+enum VehicleType {
+  jeepney(1.00),
+  bus(1.20),
+  tricycle(0.85);
+
+  final double multiplier;
+  const VehicleType(this.multiplier);
+}
+
 class AdaptiveThresholds {
   // Base thresholds
   double thetaSpeedingBase =
@@ -39,6 +48,9 @@ class AdaptiveThresholds {
   double thetaGyroStable = 0.8; // rad/s
   double thetaSpeedMin = 5.0; // minimum speed for pothole detection
 
+  // Vehicle type multiplier (Baseline)
+  double vehicleMultiplier = 1.0;
+
   // Calibration sensitivity parameters
   double alpha = 0.3; // α: road condition sensitivity
   double beta = 0.2; // β: traffic density sensitivity
@@ -49,9 +61,10 @@ class AdaptiveThresholds {
   double contextEnvNoise = 0.0; // E_n(t): environmental noise coefficient
   double contextTraffic = 0.0; // T_d(t): traffic density coefficient
 
-  /// Adaptive threshold: θ(t) = θ_base(v) × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
+  /// Adaptive threshold: θ(t) = θ_base(v) × vehicleMultiplier × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
   double getAdaptiveThreshold(double baseThreshold) {
     return baseThreshold *
+        vehicleMultiplier *
         (1 + alpha * contextRoad) *
         (1 + beta * contextTraffic) *
         (1 + gamma * contextEnvNoise);
