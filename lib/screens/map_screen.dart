@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -5,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../models/trip.dart';
+import '../models/passenger_trust_metrics.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_mini_hud.dart';
@@ -125,143 +128,127 @@ class _MapLayerControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Card(
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          color: colorScheme.surface.withValues(alpha: 0.65),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
-            ),
+    return FloatingActionButton.small(
+      heroTag: 'map_layers_fab_main',
+      backgroundColor: colorScheme.surface,
+      foregroundColor: colorScheme.primary,
+      elevation: 2,
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: colorScheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Map Layers',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                _LayerFilterChip(
-                  selected: showHighRiskAreas,
-                  onSelected: onHighRiskAreasChanged,
-                  label: const Text('High-Risk Areas'),
-                  avatar: Icon(
-                    Icons.warning_rounded,
-                    size: 18,
-                    color: showHighRiskAreas
-                        ? colorScheme.error
-                        : colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                _LayerFilterChip(
-                  selected: showSaferRoutes,
-                  onSelected: onSaferRoutesChanged,
-                  label: const Text('Safer Routes'),
-                  avatar: Icon(
-                    Icons.check_circle_rounded,
-                    size: 18,
-                    color: showSaferRoutes
-                        ? colorScheme.tertiary
-                        : colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                _LayerFilterChip(
-                  selected: showReportedIncidents,
-                  onSelected: onReportedIncidentsChanged,
-                  label: const Text('Incidents'),
-                  avatar: Icon(
-                    Icons.flag_rounded,
-                    size: 18,
-                    color: showReportedIncidents
-                        ? Colors.orange
-                        : colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                _LayerFilterChip(
-                  selected: showCommunitySafety,
-                  onSelected: onCommunitySafetyChanged,
-                  label: const Text('Community Safety'),
-                  avatar: Icon(
-                    Icons.public_rounded,
-                    size: 18,
-                    color: showCommunitySafety
-                        ? colorScheme.primary
-                        : colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    )));
+          builder: (context) {
+            return _LayerBottomSheet(
+              showHighRiskAreas: showHighRiskAreas,
+              showSaferRoutes: showSaferRoutes,
+              showReportedIncidents: showReportedIncidents,
+              showCommunitySafety: showCommunitySafety,
+              onHighRiskAreasChanged: onHighRiskAreasChanged,
+              onSaferRoutesChanged: onSaferRoutesChanged,
+              onReportedIncidentsChanged: onReportedIncidentsChanged,
+              onCommunitySafetyChanged: onCommunitySafetyChanged,
+            );
+          },
+        );
+      },
+      child: const Icon(Icons.layers_rounded),
+    );
   }
 }
 
-class _LayerFilterChip extends StatelessWidget {
-  const _LayerFilterChip({
-    required this.selected,
-    required this.onSelected,
-    required this.label,
-    required this.avatar,
+class _LayerBottomSheet extends StatefulWidget {
+  final bool showHighRiskAreas;
+  final bool showSaferRoutes;
+  final bool showReportedIncidents;
+  final bool showCommunitySafety;
+  final ValueChanged<bool> onHighRiskAreasChanged;
+  final ValueChanged<bool> onSaferRoutesChanged;
+  final ValueChanged<bool> onReportedIncidentsChanged;
+  final ValueChanged<bool> onCommunitySafetyChanged;
+
+  const _LayerBottomSheet({
+    required this.showHighRiskAreas,
+    required this.showSaferRoutes,
+    required this.showReportedIncidents,
+    required this.showCommunitySafety,
+    required this.onHighRiskAreasChanged,
+    required this.onSaferRoutesChanged,
+    required this.onReportedIncidentsChanged,
+    required this.onCommunitySafetyChanged,
   });
 
-  final bool selected;
-  final ValueChanged<bool> onSelected;
-  final Widget label;
-  final Widget avatar;
+  @override
+  State<_LayerBottomSheet> createState() => _LayerBottomSheetState();
+}
+
+class _LayerBottomSheetState extends State<_LayerBottomSheet> {
+  late bool _showHighRiskAreas;
+  late bool _showSaferRoutes;
+  late bool _showReportedIncidents;
+  late bool _showCommunitySafety;
+
+  @override
+  void initState() {
+    super.initState();
+    _showHighRiskAreas = widget.showHighRiskAreas;
+    _showSaferRoutes = widget.showSaferRoutes;
+    _showReportedIncidents = widget.showReportedIncidents;
+    _showCommunitySafety = widget.showCommunitySafety;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
-    final selectedColor = colorScheme.secondaryContainer;
-    final baseColor = colorScheme.surfaceContainerHigh;
-
-    return FilterChip(
-      selected: selected,
-      onSelected: onSelected,
-      label: label,
-      avatar: avatar,
-      showCheckmark: false,
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      avatarBoxConstraints: const BoxConstraints.tightFor(
-        width: 18,
-        height: 18,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 8),
+            child: Text('Map Layers', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+          SwitchListTile(
+            title: const Text('High-Risk Areas'),
+            secondary: const Icon(Icons.warning_rounded, color: Colors.red),
+            value: _showHighRiskAreas,
+            onChanged: (val) {
+              setState(() => _showHighRiskAreas = val);
+              widget.onHighRiskAreasChanged(val);
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Safer Routes'),
+            secondary: const Icon(Icons.check_circle_rounded, color: Colors.green),
+            value: _showSaferRoutes,
+            onChanged: (val) {
+              setState(() => _showSaferRoutes = val);
+              widget.onSaferRoutesChanged(val);
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Incidents'),
+            secondary: const Icon(Icons.flag_rounded, color: Colors.orange),
+            value: _showReportedIncidents,
+            onChanged: (val) {
+              setState(() => _showReportedIncidents = val);
+              widget.onReportedIncidentsChanged(val);
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Community Safety'),
+            secondary: Icon(Icons.public_rounded, color: Theme.of(context).colorScheme.primary),
+            value: _showCommunitySafety,
+            onChanged: (val) {
+              setState(() => _showCommunitySafety = val);
+              widget.onCommunitySafetyChanged(val);
+            },
+          ),
+        ],
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      side: BorderSide(
-        color: selected
-            ? colorScheme.secondary.withValues(alpha: 0.45)
-            : colorScheme.outlineVariant,
-      ),
-      color: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return selectedColor;
-        }
-        if (states.contains(WidgetState.hovered) ||
-            states.contains(WidgetState.focused)) {
-          return hoveredColor;
-        }
-        return baseColor;
-      }),
     );
   }
 }
@@ -335,6 +322,218 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
     _mapController.move(center, _mapController.camera.zoom);
   }
+
+  void _showReportHazardDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
+    String selectedCategory = 'Hazard';
+    int selectedSeverity = 3;
+    final descriptionController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Report Hazard',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: ['Hazard', 'Reckless Driving', 'Accident', 'Pothole', 'Other']
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (val) => setState(() => selectedCategory = val!),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Severity (1-5)', style: Theme.of(context).textTheme.labelLarge),
+                  Slider(
+                    value: selectedSeverity.toDouble(),
+                    min: 1,
+                    max: 5,
+                    divisions: 4,
+                    label: selectedSeverity.toString(),
+                    onChanged: (val) => setState(() => selectedSeverity = val.toInt()),
+                    activeColor: selectedSeverity >= 4 ? colorScheme.error : colorScheme.primary,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description (Optional)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: () {
+                        final pos = widget.controller.currentPosition;
+                        final lat = pos?.latitude ?? _mapController.camera.center.latitude;
+                        final lng = pos?.longitude ?? _mapController.camera.center.longitude;
+
+                        // 1. Instantly render marker on map locally
+                        final reportId = DateTime.now().millisecondsSinceEpoch;
+                        widget.controller.addRemoteReportLocally(
+                          ReportWithTrust(
+                            reportId: reportId,
+                            passengerId: 'guest_user',
+                            category: selectedCategory,
+                            severity: selectedSeverity,
+                            description: descriptionController.text,
+                            latitude: lat,
+                            longitude: lng,
+                            passengerTrust: 1.0,
+                            timestamp: DateTime.now(),
+                          ),
+                        );
+
+                        // 2. Dismiss modal and notify user immediately
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Report submitted successfully!')),
+                        );
+
+                        // 3. Persist to backend asynchronously in background
+                        unawaited(
+                          widget.controller.passengerReportingService
+                              .submitReport(
+                                category: selectedCategory,
+                                severity: selectedSeverity,
+                                description: descriptionController.text,
+                                latitude: lat,
+                                longitude: lng,
+                                tripId: null,
+                              )
+                              .catchError((_) => 'local_fallback'),
+                        );
+                      },
+                      child: const Text('Submit Report'),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showIncidentDetailsBottomSheet(BuildContext context, ReportWithTrust report) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.flag_rounded,
+                    color: report.severity >= 4 ? colorScheme.error : Colors.orange,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${report.category} reported',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _StatChip(label: 'Severity', value: '${report.severity}/5'),
+                  const SizedBox(width: 8),
+                  _StatChip(label: 'Confidence', value: '${(report.passengerTrust * 100).toStringAsFixed(0)}%'),
+                ],
+              ),
+              if (report.description != null && report.description!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text('"${report.description}"', style: const TextStyle(fontStyle: FontStyle.italic)),
+              ],
+              const SizedBox(height: 24),
+              const Text('Is this still accurate?', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        if (report.firestoreId != null) {
+                          await widget.controller.passengerReportingService.flagReport(report.firestoreId!, 'Inaccurate');
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged as inaccurate.')));
+                        }
+                      },
+                      icon: const Icon(Icons.thumb_down_outlined),
+                      label: const Text('No (Flag)'),
+                      style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        if (report.firestoreId != null) {
+                          await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
+                        }
+                      },
+                      icon: const Icon(Icons.thumb_up_outlined),
+                      label: const Text('Yes (Verify)'),
+                      style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
 
   void _handleMapReady() {
     _isMapReady = true;
@@ -578,7 +777,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
     for (final r in controller.remoteReports) {
       if (r.latitude == null || r.longitude == null) continue;
-      final severity = (r.rating).clamp(1, 5);
+      final severity = (r.severity).clamp(1, 5);
       final color = severity >= 4
           ? colorScheme.error
           : (severity == 3 ? Colors.orange : colorScheme.tertiary);
@@ -590,15 +789,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
           height: 46,
           child: GestureDetector(
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${r.category ?? 'Report'} — rating ${r.rating}',
-                  ),
-                  backgroundColor: color,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+              _showIncidentDetailsBottomSheet(context, r);
             },
             child: Container(
               decoration: BoxDecoration(
@@ -623,9 +814,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return markers;
   }
 
-  /// Build an aggregate stats card for all historical trips.
-  Widget _buildTripStatsOverlay(ColorScheme colorScheme) {
-    final trips = widget.controller.completedTrips;
+  Widget _buildCommunitySafetyCard(ColorScheme colorScheme) {
+    final trips = widget.controller.communityTrips;
     if (trips.isEmpty) return const SizedBox.shrink();
 
     final avgSafety =
@@ -638,49 +828,71 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
         ? Colors.green
         : (avgSafety >= 50 ? Colors.orange : colorScheme.error);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Card(
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          color: colorScheme.surface.withValues(alpha: 0.75),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.analytics_outlined, size: 18, color: avgColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Avg Safety: ${avgSafety.toStringAsFixed(1)}%',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: avgColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
+                Icon(Icons.public_rounded, size: 22, color: colorScheme.primary),
+                const SizedBox(width: 8),
                 Text(
-                  '${trips.length} trips · $safeCount safe · $highRiskCount risky',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  'Community Safety',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${avgSafety.toStringAsFixed(0)}%',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: avgColor,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    'Avg Score',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _StatChip(label: 'Analyzed', value: '${trips.length}', color: colorScheme.primary),
+                const SizedBox(width: 8),
+                _StatChip(label: 'High Risk', value: '$highRiskCount', color: Colors.red),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -744,7 +956,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                   polylines: [
                     Polyline<Object>(
                       points: widget.routePoints,
-                      strokeWidth: 4,
+                      strokeWidth: 2.5,
                       color: colorScheme.primary,
                     ),
                   ],
@@ -791,39 +1003,59 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 ),
             ],
           ),
+          // Crowd Alert Banner
+          if (widget.controller.currentAlert != null)
+            Positioned(
+              top: 12,
+              left: 12,
+              right: 60, // Leave room for layer controls
+              child: _CrowdAlertBanner(
+                alert: widget.controller.currentAlert!,
+                onDismiss: () {
+                  // Wait for cooldown to clear
+                },
+              ),
+            ),
           // Layer controls
           Positioned(
             top: 12,
-            left: 12,
             right: 12,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 150),
-              child: SingleChildScrollView(
-                child: _MapLayerControls(
-                  showHighRiskAreas: _showHighRiskAreas,
-                  showSaferRoutes: _showSaferRoutes,
-                  showReportedIncidents: _showReportedIncidents,
-                  showCommunitySafety: _showCommunitySafety,
-                  onHighRiskAreasChanged: (v) {
-                    setState(() => _showHighRiskAreas = v);
-                    widget.onHighRiskAreasChanged(v);
-                  },
-                  onSaferRoutesChanged: (v) {
-                    setState(() => _showSaferRoutes = v);
-                    widget.onSaferRoutesChanged(v);
-                  },
-                  onReportedIncidentsChanged: (v) {
-                    setState(() => _showReportedIncidents = v);
-                    widget.onReportedIncidentsChanged(v);
-                  },
-                  onCommunitySafetyChanged: (v) {
-                    setState(() => _showCommunitySafety = v);
-                    widget.onCommunitySafetyChanged(v);
-                  },
-                ),
-              ),
+            child: _MapLayerControls(
+              showHighRiskAreas: _showHighRiskAreas,
+              showSaferRoutes: _showSaferRoutes,
+              showReportedIncidents: _showReportedIncidents,
+              showCommunitySafety: _showCommunitySafety,
+              onHighRiskAreasChanged: (v) {
+                setState(() => _showHighRiskAreas = v);
+                widget.onHighRiskAreasChanged(v);
+              },
+              onSaferRoutesChanged: (v) {
+                setState(() => _showSaferRoutes = v);
+                widget.onSaferRoutesChanged(v);
+              },
+              onReportedIncidentsChanged: (v) {
+                setState(() => _showReportedIncidents = v);
+                widget.onReportedIncidentsChanged(v);
+              },
+              onCommunitySafetyChanged: (v) {
+                setState(() => _showCommunitySafety = v);
+                widget.onCommunitySafetyChanged(v);
+              },
             ),
           ),
+          // Crowd Alert Banner
+          if (widget.controller.currentAlert != null)
+            Positioned(
+              top: 12,
+              left: 12,
+              right: 60, // Leave room for layer controls
+              child: _CrowdAlertBanner(
+                alert: widget.controller.currentAlert!,
+                onDismiss: () {
+                  // We can't clear it in controller directly without a setter, but it clears itself in 8 seconds.
+                },
+              ),
+            ),
           // Full screen toggle button
           Positioned(
             top: 170, // Placed below the layer controls
@@ -908,11 +1140,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 turningCount: widget.controller.turningCount,
               ),
             ),
-          // Live safety score overlay
+          // Live safety score overlay (top left)
           if (widget.controller.isTracking)
             Positioned(
               top: 12,
-              right: 12,
+              left: 12,
               child: Builder(
                 builder: (context) {
                   final score = widget.controller.liveSafetyScore;
@@ -924,17 +1156,21 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                                   ? Colors.orange
                                   : colorScheme.error));
                   return Card(
-                    elevation: 4,
+                    elevation: 0,
+                    margin: EdgeInsets.zero,
                     color: Theme.of(
                       context,
                     ).colorScheme.surface.withValues(alpha: 0.96),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: colorScheme.outline.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: 16,
+                        vertical: 12,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -943,8 +1179,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Safety Score',
-                                style: TextStyle(fontSize: 12),
+                                'Live Safety',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -957,8 +1193,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                               ),
                             ],
                           ),
-                          const SizedBox(width: 8),
-                          Icon(Icons.shield, color: color),
+                          const SizedBox(width: 12),
+                          Icon(Icons.shield, color: color, size: 28),
                         ],
                       ),
                     ),
@@ -966,110 +1202,35 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 },
               ),
             ),
-          // Trip history stats overlay (bottom-right, when not tracking)
+          // Community Safety Stats (top-left, when not tracking)
           if (!widget.controller.isTracking && hasCompletedTrips)
             Positioned(
-              bottom: 12,
+              top: 12,
               left: 12,
-              child: _buildTripStatsOverlay(colorScheme),
+              child: _buildCommunitySafetyCard(colorScheme),
             ),
+          // Report Hazard FAB
+          Positioned(
+            bottom: 60,
+            right: 12,
+            child: FloatingActionButton(
+              heroTag: 'report_fab',
+              backgroundColor: colorScheme.errorContainer,
+              foregroundColor: colorScheme.onErrorContainer,
+              elevation: 4,
+              onPressed: _showReportHazardDialog,
+              child: const Icon(Icons.warning_rounded),
+            ),
+          ),
           // Legend
           Positioned(
             bottom: 12,
             right: 12,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surface.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.shadow.withValues(alpha: 0.12),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.showHighRiskAreas)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 3,
-                            color: Colors.red.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'High-Risk (<50%)',
-                            style: TextStyle(fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 3,
-                          color: Colors.orange.withValues(alpha: 0.6),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Moderate (50-79%)',
-                          style: TextStyle(fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (widget.showSaferRoutes)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 3,
-                            color: Colors.green.withValues(alpha: 0.7),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Safe (≥80%)',
-                            style: TextStyle(fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (widget.showReportedIncidents)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.flag_rounded,
-                          size: 14,
-                          color: colorScheme.error,
-                        ),
-                        const SizedBox(width: 4),
-                        const Text('Incidents', style: TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                ],
-              ),
+            child: _CollapsibleLegend(
+              showHighRiskAreas: widget.showHighRiskAreas,
+              showSaferRoutes: widget.showSaferRoutes,
+              showReportedIncidents: widget.showReportedIncidents,
+              showCommunitySafety: widget.showCommunitySafety,
             ),
           ),
         ],
@@ -1139,6 +1300,262 @@ class _StaggeredItem extends StatelessWidget {
           end: Offset.zero,
         ).animate(curve),
         child: child,
+      ),
+    );
+  }
+}
+
+class _CollapsibleLegend extends StatefulWidget {
+  final bool showHighRiskAreas;
+  final bool showSaferRoutes;
+  final bool showReportedIncidents;
+  final bool showCommunitySafety;
+
+  const _CollapsibleLegend({
+    required this.showHighRiskAreas,
+    required this.showSaferRoutes,
+    required this.showReportedIncidents,
+    required this.showCommunitySafety,
+  });
+
+  @override
+  State<_CollapsibleLegend> createState() => _CollapsibleLegendState();
+}
+
+class _CollapsibleLegendState extends State<_CollapsibleLegend> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (!_expanded) {
+      return FloatingActionButton.small(
+        heroTag: 'legend_fab',
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.primary,
+        elevation: 2,
+        onPressed: () => setState(() => _expanded = true),
+        child: const Icon(Icons.info_outline_rounded),
+      );
+    }
+
+    final showRouteColors = widget.showHighRiskAreas || widget.showSaferRoutes || widget.showCommunitySafety;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Legend', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () => setState(() => _expanded = false),
+                child: Icon(Icons.close, size: 16, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (showRouteColors) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 12, height: 3, color: Colors.red.withValues(alpha: 0.6)),
+                  const SizedBox(width: 4),
+                  const Text('High-Risk (<50%)', style: TextStyle(fontSize: 11)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 12, height: 3, color: Colors.orange.withValues(alpha: 0.6)),
+                  const SizedBox(width: 4),
+                  const Text('Moderate (50-79%)', style: TextStyle(fontSize: 11)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 12, height: 3, color: Colors.green.withValues(alpha: 0.7)),
+                  const SizedBox(width: 4),
+                  const Text('Safe (≥80%)', style: TextStyle(fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
+          if (widget.showReportedIncidents)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.flag_rounded, size: 14, color: colorScheme.error),
+                const SizedBox(width: 4),
+                const Text('Incidents', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+          if (!showRouteColors && !widget.showReportedIncidents)
+            const Text('No layers selected', style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? color;
+
+  const _StatChip({required this.label, required this.value, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: (color ?? Theme.of(context).colorScheme.primary).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+          const SizedBox(width: 4),
+          Text(value, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CrowdAlertBanner extends StatefulWidget {
+  final ReportWithTrust alert;
+  final VoidCallback onDismiss;
+
+  const _CrowdAlertBanner({required this.alert, required this.onDismiss});
+
+  @override
+  State<_CrowdAlertBanner> createState() => _CrowdAlertBannerState();
+}
+
+class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutBack,
+    ));
+    
+    _animController.forward();
+  }
+
+  @override
+  void didUpdateWidget(_CrowdAlertBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.alert.reportId != widget.alert.reportId) {
+      _animController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SlideTransition(
+      position: _slideAnimation,
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(12),
+        color: colorScheme.errorContainer,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: widget.onDismiss,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: colorScheme.error,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Live Crowd Alert',
+                        style: TextStyle(
+                          color: colorScheme.error,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '${widget.alert.category} ahead',
+                        style: TextStyle(
+                          color: colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'High confidence (${(widget.alert.passengerTrust * 100).toInt()}%)',
+                        style: TextStyle(
+                          color: colorScheme.onErrorContainer.withValues(alpha: 0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

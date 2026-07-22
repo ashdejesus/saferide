@@ -192,7 +192,9 @@ class _AlgoDemoScreenState extends State<AlgoDemoScreen>
     ]);
   }
 
-  double get _lambda  => rs.computeAdaptiveWeight(_totalWindows, 2);
+  double get _lambda  => rs.computeAdaptiveWeight(
+    (_overspeedCount + _brakingCount + _turningCount).toInt(), 2
+  );
   double get _tripRisk => rs.computeTripRiskScore(
     sensorRisk: _sensorRisk, reportRisk: _reportRisk,
     adaptiveWeight: _lambda, inconsistencyPenalty: rs.RiskWeights().phi,

@@ -94,6 +94,7 @@ class PassengerTrustMetrics {
 class ReportWithTrust {
   ReportWithTrust({
     required this.reportId,
+    this.firestoreId,
     required this.passengerId,
     required this.category,
     required this.severity,
@@ -107,6 +108,7 @@ class ReportWithTrust {
   });
 
   final int reportId;
+  final String? firestoreId;
   final String passengerId;
   final String category;
   final int severity;

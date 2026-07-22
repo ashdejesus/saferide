@@ -102,7 +102,7 @@ class RiskWeights {
   double w3 = 0.20; // Sharp turning weight
   double w4 = 0.15; // Pothole weight
   double w5 = 0.10; // Slope weight
-  double phi = 0.15; // Inconsistency penalty weight
+  double phi = 0.10; // Inconsistency penalty weight (tunable coefficient)
 
   RiskWeights() {
     // Normalize: w1 + w2 + w3 + w4 + w5 = 1
@@ -310,11 +310,14 @@ double computeReportRiskScore(List<PassengerReport> reports) {
 }
 
 /// Adaptive weight for sensor vs report data
-/// λ(t) = N_sensor(t) / (N_sensor(t) + N_report(t))
-double computeAdaptiveWeight(int sensorDataPoints, int reportDataPoints) {
-  final total = sensorDataPoints + reportDataPoints;
-  if (total == 0) return 0.5; // Default to equal weight
-  return sensorDataPoints / total;
+/// λ(t) = N_sensor_events(t) / (N_sensor_events(t) + N_report(t))
+double computeAdaptiveWeight(int sensorEventCount, int reportCount) {
+  if (reportCount == 0) return 1.0;
+  // Use a baseline of 20 sensor events to prevent a single report from drastically
+  // affecting the score when there are few or no sensor events (safe driving).
+  final effectiveSensorCount = sensorEventCount + 20.0;
+  final total = effectiveSensorCount + reportCount;
+  return effectiveSensorCount / total;
 }
 
 /// Compute trip-level risk using nonlinear fusion

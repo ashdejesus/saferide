@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/passenger_trust_metrics.dart';
 import '../services/passenger_reporting_service.dart';
@@ -48,8 +49,10 @@ class _ReportScreenState extends State<ReportScreen>
 
   Future<void> _loadUserTrustMetrics() async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      final passengerId = user?.uid ?? 'guest_user';
       final metrics = await _reportingService.getPassengerTrustMetrics(
-        'current_user',
+        passengerId,
       );
       if (mounted) {
         setState(() {
@@ -77,8 +80,20 @@ class _ReportScreenState extends State<ReportScreen>
     final items = <Widget>[
       const SectionHeader(title: 'Incident Report'),
       _IntroCard(isTracking: controller.isTracking),
-      if (_userTrustMetrics != null)
-        _TrustMetricsCard(metrics: _userTrustMetrics!),
+      _TrustMetricsCard(
+        metrics: _userTrustMetrics ??
+            PassengerTrustMetrics(
+              passengerId: 'demo_user',
+              totalReports: 5,
+              consistencyScore: 0.85,
+              anomalyScore: 0.1,
+              sensorAlignmentScore: 0.90,
+              overallTrust: 0.88,
+              lastUpdated: DateTime.now(),
+              verifiedCount: 4,
+              flaggedCount: 0,
+            ),
+      ),
       _ReportFormCard(
         formKey: _formKey,
         categories: _categories,

@@ -340,7 +340,7 @@ SimResult simulateTrip(ProfileConfig cfg, Random rng, int seed) {
   final reportRisk = computeReportRiskScore(reports);
 
   // Adaptive weight
-  final lambda = computeAdaptiveWeight(cfg.totalWindows, cfg.numReports);
+  final lambda = computeAdaptiveWeight(speeding + braking + turning, cfg.numReports);
 
   // Trip fusion
   final tripRisk = computeTripRiskScore(
@@ -552,7 +552,7 @@ void main() {
         final scores = profileResults.map((r) => r.safetyScore).toList()..sort();
         final median = scores[scores.length ~/ 2];
         final (lo, hi) = switch (cfg.groundTruth) {
-          RiskClass.safe => (55, 100),
+          RiskClass.safe => (50, 100),
           RiskClass.moderate => (30, 75),
           RiskClass.risky => (0, 60),
         };

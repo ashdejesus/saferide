@@ -16,6 +16,8 @@ import '../services/notification_service.dart';
 import '../services/risk_scoring.dart' as risk_scoring;
 import '../services/firestore_service.dart';
 import '../services/sensor_service.dart';
+import '../services/passenger_reporting_service.dart';
+import '../models/passenger_trust_metrics.dart';
 
 class TripController extends ChangeNotifier {
   TripController({
@@ -23,11 +25,14 @@ class TripController extends ChangeNotifier {
     LocationService? locationService,
     SensorService? sensorService,
     FirestoreService? firestoreService,
+    PassengerReportingService? passengerReportingService,
   }) : _database = database,
        _locationService = locationService ?? LocationService(),
        _sensorService = sensorService ?? SensorService(),
-       _firestoreService = firestoreService ?? FirestoreService();
+       _firestoreService = firestoreService ?? FirestoreService(),
+       _passengerReportingService = passengerReportingService ?? PassengerReportingService();
   final FirestoreService _firestoreService;
+  final PassengerReportingService _passengerReportingService;
 
   final AppDatabase _database;
   final LocationService _locationService;
@@ -48,8 +53,8 @@ class TripController extends ChangeNotifier {
   int _reportSeveritySum = 0;
   int _consecutiveEventsInWindow = 0; // For rapid-fire event detection
   DateTime? _lastNotificationTime; // Throttle notifications
-  List<RemoteReport> _remoteReports = [];
-  StreamSubscription<List<RemoteReport>>? _remoteReportsSub;
+  List<ReportWithTrust> _remoteReports = [];
+  StreamSubscription<List<ReportWithTrust>>? _remoteReportsSub;
 
   final risk_scoring.SlidingWindow _accelWindow = risk_scoring.SlidingWindow(
     size: 15,
@@ -69,6 +74,13 @@ class TripController extends ChangeNotifier {
   DateTime? _lastPotholeEvent; // Cooldown for pothole detection
   double _lastRecordedSpeed = 0;
   int _turningStreak = 0;
+
+  // Real-time crowd alerts
+  ReportWithTrust? _currentAlert;
+  DateTime? _lastAlertTime;
+  final Set<int> _alertedReportIds = {};
+
+  ReportWithTrust? get currentAlert => _currentAlert;
 
   // Slope calculation state: S(t) = (h(t) - h(t-1)) / d(t)
   double _lastAltitude = 0;
@@ -107,7 +119,15 @@ class TripController extends ChangeNotifier {
   int get potholeCount => _potholeCount;
   double get totalSlopeDeviation => _totalSlopeDeviation;
   int get reportSeveritySum => _reportSeveritySum;
-  List<RemoteReport> get remoteReports => List.unmodifiable(_remoteReports);
+  List<ReportWithTrust> get remoteReports => List.unmodifiable(_remoteReports);
+  
+  void addRemoteReportLocally(ReportWithTrust report) {
+    _remoteReports = [..._remoteReports, report];
+    _reportSeveritySum += report.severity;
+    notifyListeners();
+  }
+
+  PassengerReportingService get passengerReportingService => _passengerReportingService;
   List<risk_scoring.UnsafeEvent> get recentEvents =>
       List.unmodifiable(_recentEvents);
 
@@ -227,12 +247,17 @@ class TripController extends ChangeNotifier {
     );
 
     final reportRiskReports = _remoteReports
-        .map(FirestoreService.toRiskReport)
+        .map((r) => risk_scoring.PassengerReport(
+              riskRating: r.severity,
+              trust: r.passengerTrust,
+              timestamp: r.timestamp,
+            ))
         .toList();
     final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
 
+    final sensorEventCount = _speedingCount + _brakingCount + _turningCount;
     final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
-      _tripDurationWindows,
+      sensorEventCount,
       _remoteReports.length,
     );
 
@@ -326,6 +351,10 @@ class TripController extends ChangeNotifier {
       _hasLastAltitude = false;
       _lastVerticalAccel = 0;
       _isTracking = true;
+      
+      _alertedReportIds.clear();
+      _currentAlert = null;
+      _lastAlertTime = null;
 
       // Apply baseline vehicle thresholds before starting
       _adaptiveThresholds.vehicleMultiplier = vehicleMultiplier;
@@ -377,12 +406,17 @@ class TripController extends ChangeNotifier {
 
     // Map remote reports to risk_scoring.PassengerReport and compute report risk
     final reportRiskReports = _remoteReports
-        .map((r) => FirestoreService.toRiskReport(r))
+        .map((r) => risk_scoring.PassengerReport(
+              riskRating: r.severity,
+              trust: r.passengerTrust,
+              timestamp: r.timestamp,
+            ))
         .toList();
     final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
 
+    final sensorEventCount = _speedingCount + _brakingCount + _turningCount;
     final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
-      _tripDurationWindows,
+      sensorEventCount,
       _remoteReports.length,
     );
 
@@ -424,16 +458,12 @@ class TripController extends ChangeNotifier {
 
   void _subscribeToRemoteReports(int tripId) {
     _remoteReportsSub?.cancel();
-    _remoteReportsSub = _firestoreService.reportsStream(tripId: tripId).listen((
-      reports,
-    ) {
+    _remoteReportsSub = _passengerReportingService.getReportsForTrip(tripId).listen((reports) {
       _remoteReports = reports;
-      // Update severity sum to reflect remote reports as well
-      _reportSeveritySum = _remoteReports.fold(0, (sum, r) => sum + (r.rating));
+      _reportSeveritySum = _remoteReports.fold(0, (sum, r) => sum + (r.severity));
       notifyListeners();
     }, onError: (error) {
       debugPrint('Error subscribing to remote reports: $error');
-      // Gracefully handle missing index by falling back to empty reports.
       _remoteReports = [];
       _reportSeveritySum = 0;
       notifyListeners();
@@ -533,7 +563,42 @@ class TripController extends ChangeNotifier {
     _hasLastAltitude = true;
 
     _lastRecordedSpeed = _currentSpeed;
+    
+    _checkForProximityAlerts(position);
+    
     notifyListeners();
+  }
+  void _checkForProximityAlerts(Position position) {
+    if (_lastAlertTime != null && DateTime.now().difference(_lastAlertTime!).inSeconds < 30) {
+      // Clear alert after 8 seconds
+      if (_currentAlert != null && DateTime.now().difference(_lastAlertTime!).inSeconds > 8) {
+        _currentAlert = null;
+        notifyListeners();
+      }
+      return; // Cooldown between showing new alerts
+    }
+
+    for (final report in _remoteReports) {
+      if (report.latitude == null || report.longitude == null) continue;
+      if (report.severity < 4) continue; // Only alert for severe hazards
+      if (_alertedReportIds.contains(report.reportId)) continue; // Don't alert twice for same report
+
+      final distanceKm = _haversineDistance(
+        position.latitude,
+        position.longitude,
+        report.latitude!,
+        report.longitude!,
+      ) / 1000.0; // Convert meters to km
+
+      if (distanceKm < 0.5) {
+        // Within 500 meters
+        _currentAlert = report;
+        _lastAlertTime = DateTime.now();
+        _alertedReportIds.add(report.reportId);
+        notifyListeners();
+        break; // Only show one alert at a time
+      }
+    }
   }
 
   void _onUserAccelerometer(UserAccelerometerEvent event) {
@@ -611,7 +676,6 @@ class TripController extends ChangeNotifier {
       notifyListeners();
     }
   }
-
   void _recordEvent(risk_scoring.UnsafeEventType type) {
     _recentEvents.insert(
       0,
