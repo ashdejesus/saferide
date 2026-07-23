@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,6 +37,8 @@ class _ReportScreenState extends State<ReportScreen>
     'Other',
   ];
 
+  StreamSubscription<PassengerTrustMetrics?>? _trustMetricsSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -44,28 +47,26 @@ class _ReportScreenState extends State<ReportScreen>
       duration: const Duration(milliseconds: 900),
     )..forward();
     _reportingService = PassengerReportingService();
-    _loadUserTrustMetrics();
+    _startListeningToTrustMetrics();
   }
 
-  Future<void> _loadUserTrustMetrics() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      final passengerId = user?.uid ?? 'guest_user';
-      final metrics = await _reportingService.getPassengerTrustMetrics(
-        passengerId,
-      );
+  void _startListeningToTrustMetrics() {
+    final user = FirebaseAuth.instance.currentUser;
+    final passengerId = user?.uid ?? 'guest_user';
+    _trustMetricsSubscription = _reportingService
+        .streamPassengerTrustMetrics(passengerId)
+        .listen((metrics) {
       if (mounted) {
         setState(() {
           _userTrustMetrics = metrics;
         });
       }
-    } catch (e) {
-      // Silently handle error - trust metrics optional
-    }
+    });
   }
 
   @override
   void dispose() {
+    _trustMetricsSubscription?.cancel();
     _descriptionController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -135,7 +136,6 @@ class _ReportScreenState extends State<ReportScreen>
                     content: Text('Report submitted and syncing to community.'),
                   ),
                 );
-                await _loadUserTrustMetrics();
               }
             : null,
         controller: controller,

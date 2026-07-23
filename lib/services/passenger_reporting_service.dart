@@ -108,6 +108,31 @@ class PassengerReportingService {
     }
   }
 
+  /// Stream trust metrics for a specific passenger in real-time
+  Stream<PassengerTrustMetrics?> streamPassengerTrustMetrics(String passengerId) {
+    return _firestore
+        .collection('passenger_trust_metrics')
+        .doc(passengerId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      final data = doc.data() as Map<String, dynamic>;
+      return PassengerTrustMetrics(
+        passengerId: passengerId,
+        totalReports: data['totalReports'] ?? 0,
+        consistencyScore: (data['consistencyScore'] ?? 0.5).toDouble(),
+        anomalyScore: (data['anomalyScore'] ?? 0.0).toDouble(),
+        sensorAlignmentScore: (data['sensorAlignmentScore'] ?? 0.5).toDouble(),
+        overallTrust: (data['overallTrust'] ?? 0.5).toDouble(),
+        lastUpdated: data['lastUpdated'] != null
+            ? (data['lastUpdated'] as Timestamp).toDate()
+            : DateTime.now(),
+        verifiedCount: data['verifiedCount'] ?? 0,
+        flaggedCount: data['flaggedCount'] ?? 0,
+      );
+    });
+  }
+
   /// Get reports for a specific trip with trust scores
   Stream<List<ReportWithTrust>> getReportsForTrip(int tripId) {
     return _firestore

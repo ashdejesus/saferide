@@ -56,6 +56,7 @@ class TripActionSheet {
                           .toList(),
                       enableSearch: true,
                       enableFilter: true,
+                      requestFocusOnTap: true,
                       width: MediaQuery.of(sheetContext).size.width - 40,
                       onSelected: (String? value) async {
                         if (value != null) {
