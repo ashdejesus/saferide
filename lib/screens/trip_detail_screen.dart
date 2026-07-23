@@ -5,8 +5,6 @@ import 'package:latlong2/latlong.dart';
 import '../models/trip.dart';
 import '../services/passenger_reporting_service.dart';
 import '../widgets/section_header.dart';
-import '../widgets/split_button.dart';
-
 class TripDetailScreen extends StatelessWidget {
   const TripDetailScreen({super.key, required this.trip});
 
@@ -26,47 +24,6 @@ class TripDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // Share Actions
-          SplitButton(
-            label: 'Share',
-            icon: Icons.share,
-            size: SplitButtonSize.medium,
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sharing trip summary...')),
-              );
-            },
-            menuItems: [
-              SplitButtonMenuItem(
-                label: 'Export as PDF',
-                icon: Icons.picture_as_pdf,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Exporting as PDF...')),
-                  );
-                },
-              ),
-              SplitButtonMenuItem(
-                label: 'Export as CSV',
-                icon: Icons.table_chart,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Exporting as CSV...')),
-                  );
-                },
-              ),
-              SplitButtonMenuItem(
-                label: 'Share via email',
-                icon: Icons.email,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opening email...')),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           // Risk Score Card
           Card(
             color: _getRiskColor(trip.riskScore, colorScheme),
@@ -106,13 +63,13 @@ class TripDetailScreen extends StatelessWidget {
                         ? '${duration.inMinutes} minutes'
                         : 'In progress',
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 12),
                   _InfoRow(
                     icon: Icons.calendar_today,
                     label: 'Date',
                     value: _formatDate(trip.startTime),
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 12),
                   _InfoRow(
                     icon: Icons.schedule,
                     label: 'Time',
@@ -137,14 +94,14 @@ class TripDetailScreen extends StatelessWidget {
                     count: trip.speedingCount,
                     color: colorScheme.error,
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 12),
                   _EventRow(
                     icon: Icons.warning_amber,
                     label: 'Harsh Braking',
                     count: trip.brakingCount,
                     color: colorScheme.tertiary,
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 12),
                   _EventRow(
                     icon: Icons.turn_right,
                     label: 'Sharp Turns',

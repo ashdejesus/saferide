@@ -284,13 +284,14 @@ class TripController extends ChangeNotifier {
     String? routeName,
     double vehicleMultiplier = 1.0,
   }) async {
-    try {
-      // Initialize notifications at trip start (network-optional, errors ignored)
-      await _notificationService.initialize();
-      await _notificationService.subscribeToTopic('critical_incidents');
-    } catch (e) {
+    // Initialize notifications at trip start (network-optional, errors ignored)
+    // Run asynchronously without awaiting to prevent blocking if offline
+    _notificationService.initialize().catchError((e) {
       debugPrint('TripController: Notification init failed ($e)');
-    }
+    });
+    _notificationService.subscribeToTopic('critical_incidents').catchError((e) {
+      debugPrint('TripController: Topic subscribe failed ($e)');
+    });
 
     try {
       // --- 1. Location permission (required — can't track without it) ---
@@ -307,7 +308,7 @@ class TripController extends ChangeNotifier {
       // satellites lock, usually within 30–60 s outdoors.
       Position? position;
       try {
-        position = await _locationService.currentPosition();
+        position = await Geolocator.getLastKnownPosition();
       } catch (e) {
         debugPrint('TripController: Initial GPS fix failed ($e). '
             'Starting trip without initial position — stream will fill in.');
@@ -378,8 +379,10 @@ class TripController extends ChangeNotifier {
       return;
     }
 
-    // Unsubscribe from notification topics
-    await _notificationService.unsubscribeFromTopic('critical_incidents');
+    // Unsubscribe from notification topics asynchronously so it doesn't block
+    _notificationService.unsubscribeFromTopic('critical_incidents').catchError((e) {
+      debugPrint('TripController: Topic unsubscribe failed ($e)');
+    });
 
     await _positionSub?.cancel();
     await _accelSub?.cancel();

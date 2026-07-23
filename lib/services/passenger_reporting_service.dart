@@ -113,40 +113,53 @@ class PassengerReportingService {
     return _firestore
         .collection('passenger_reports')
         .where('tripId', isEqualTo: tripId)
-        .orderBy('timestamp', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
-          final reports = <ReportWithTrust>[];
+          final trustCache = <String, double>{};
+          final fetchTasks = <Future<void>>[];
 
           for (final doc in snapshot.docs) {
-            final data = doc.data();
-            final passengerId = data['passengerId'] as String;
-
-            // Get passenger trust metrics
-            final trustMetrics = await getPassengerTrustMetrics(passengerId);
-            final passengerTrust = trustMetrics?.overallTrust ?? 0.5;
-
-            reports.add(
-              ReportWithTrust(
-                reportId: doc.id.hashCode,
-                firestoreId: doc.id,
-                passengerId: passengerId,
-                category: data['category'] as String,
-                severity: data['severity'] as int,
-                description: data['description'] as String?,
-                latitude: (data['latitude'] as num?)?.toDouble(),
-                longitude: (data['longitude'] as num?)?.toDouble(),
-                timestamp: data['timestamp'] != null
-                    ? (data['timestamp'] as Timestamp).toDate()
-                    : DateTime.parse(data['createdAt'] as String),
-                passengerTrust: passengerTrust,
-                isVerified: data['isVerified'] as bool? ?? false,
-                isFlagged: data['isFlagged'] as bool? ?? false,
-              ),
-            );
+            final passengerId = doc.data()['passengerId'] as String;
+            if (!trustCache.containsKey(passengerId)) {
+              trustCache[passengerId] = 0.5;
+              fetchTasks.add(
+                getPassengerTrustMetrics(passengerId).then((metrics) {
+                  if (metrics != null) {
+                    trustCache[passengerId] = metrics.overallTrust;
+                  }
+                }).catchError((_) {}),
+              );
+            }
           }
 
-          return reports;
+          await Future.wait(fetchTasks);
+
+          final parsedList = snapshot.docs.map((doc) {
+            final data = doc.data();
+            final passengerId = data['passengerId'] as String;
+            final passengerTrust = trustCache[passengerId] ?? 0.5;
+
+            return ReportWithTrust(
+              reportId: doc.id.hashCode,
+              firestoreId: doc.id,
+              passengerId: passengerId,
+              category: data['category'] as String,
+              severity: data['severity'] as int,
+              description: data['description'] as String?,
+              latitude: (data['latitude'] as num?)?.toDouble(),
+              longitude: (data['longitude'] as num?)?.toDouble(),
+              timestamp: data['timestamp'] != null
+                  ? (data['timestamp'] as Timestamp).toDate()
+                  : DateTime.parse(data['createdAt'] as String),
+              passengerTrust: passengerTrust,
+              isVerified: data['isVerified'] as bool? ?? false,
+              isFlagged: data['isFlagged'] as bool? ?? false,
+            );
+          }).toList();
+          
+          parsedList.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          
+          return parsedList;
         });
   }
 

@@ -198,6 +198,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SegmentedButton<risk_scoring.VehicleType>(
+                    showSelectedIcon: false,
                     segments: const [
                       ButtonSegment(
                         value: risk_scoring.VehicleType.jeepney,
@@ -359,44 +360,51 @@ class _DashboardScreenState extends State<DashboardScreen>
                 SizedBox(
                   width: 110,
                   height: 110,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CustomPaint(
-                        size: const Size(110, 110),
-                        painter: _SafetyRingPainter(
-                          value: score / 100,
-                          color: ringColor,
-                          trackColor: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: score.toDouble()),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, animValue, child) {
+                      return Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            '$score',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          CustomPaint(
+                            size: const Size(110, 110),
+                            painter: _SafetyRingPainter(
+                              value: animValue / 100,
                               color: ringColor,
+                              trackColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
                             ),
                           ),
-                          Text(
-                            '/ 100',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${animValue.toInt()}',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: ringColor,
+                                ),
+                              ),
+                              Text(
+                                '/ 100',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 24),
