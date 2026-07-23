@@ -46,6 +46,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _controller;
+  risk_scoring.VehicleType _selectedVehicle = risk_scoring.VehicleType.jeepney;
 
   @override
   void initState() {
@@ -168,7 +169,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Expanded(
                   child: Text(
                     controller.isTracking
-                        ? 'Trip in progress'
+                        ? (controller.activeTrip?.routeName?.isNotEmpty == true
+                            ? 'Traveling to ${controller.activeTrip!.routeName!}'
+                            : 'Trip in progress')
                         : 'Ready to start a trip',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -191,44 +194,76 @@ class _DashboardScreenState extends State<DashboardScreen>
                 label: const Text('End Trip'),
               )
             else
-              SplitButton(
-                label: 'Start Trip',
-                icon: Icons.play_circle_fill,
-                size: SplitButtonSize.medium,
-                onPressed: () async {
-                  final started = await controller.startTrip();
-                  if (!context.mounted) return;
-                  if (!started) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Could not start trip. Location permission required '
-                          'or GPS unavailable on this platform.',
-                        ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedButton<risk_scoring.VehicleType>(
+                    segments: const [
+                      ButtonSegment(
+                        value: risk_scoring.VehicleType.jeepney,
+                        label: Text('Jeepney'),
                       ),
-                    );
-                  }
-                },
-                menuItems: [
-                  SplitButtonMenuItem(
-                    label: 'Start with route name',
-                    icon: Icons.edit_road,
-                    onPressed: () => TripActionSheet.show(context),
+                      ButtonSegment(
+                        value: risk_scoring.VehicleType.bus,
+                        label: Text('Bus'),
+                      ),
+                      ButtonSegment(
+                        value: risk_scoring.VehicleType.tricycle,
+                        label: Text('Tricycle'),
+                      ),
+                    ],
+                    selected: {_selectedVehicle},
+                    onSelectionChanged: (Set<risk_scoring.VehicleType> newSelection) {
+                      setState(() {
+                        _selectedVehicle = newSelection.first;
+                      });
+                    },
                   ),
-                  SplitButtonMenuItem(
-                    label: 'Quick start',
-                    icon: Icons.bolt,
+                  const SizedBox(height: 16),
+                  SplitButton(
+                    label: 'Start Trip',
+                    icon: Icons.play_circle_fill,
+                    size: SplitButtonSize.medium,
                     onPressed: () async {
-                      final started = await controller.startTrip();
+                      final started = await controller.startTrip(
+                        vehicleMultiplier: _selectedVehicle.multiplier,
+                      );
                       if (!context.mounted) return;
                       if (!started) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Location permission is required.'),
+                            content: Text(
+                              'Could not start trip. Location permission required '
+                              'or GPS unavailable on this platform.',
+                            ),
                           ),
                         );
                       }
                     },
+                    menuItems: [
+                      SplitButtonMenuItem(
+                        label: 'Start with route name',
+                        icon: Icons.edit_road,
+                        onPressed: () => TripActionSheet.show(context, vehicle: _selectedVehicle),
+                      ),
+                      SplitButtonMenuItem(
+                        label: 'Quick start',
+                        icon: Icons.bolt,
+                        onPressed: () async {
+                          final started = await controller.startTrip(
+                            vehicleMultiplier: _selectedVehicle.multiplier,
+                          );
+                          if (!context.mounted) return;
+                          if (!started) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Location permission is required.'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -1003,19 +1003,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 ),
             ],
           ),
-          // Crowd Alert Banner
-          if (widget.controller.currentAlert != null)
-            Positioned(
-              top: 12,
-              left: 12,
-              right: 60, // Leave room for layer controls
-              child: _CrowdAlertBanner(
-                alert: widget.controller.currentAlert!,
-                onDismiss: () {
-                  // Wait for cooldown to clear
-                },
-              ),
-            ),
+
           // Layer controls
           Positioned(
             top: 12,
@@ -1046,7 +1034,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
           // Crowd Alert Banner
           if (widget.controller.currentAlert != null)
             Positioned(
-              top: 12,
+              top: widget.controller.isTracking ? 100 : 12,
               left: 12,
               right: 60, // Leave room for layer controls
               child: _CrowdAlertBanner(

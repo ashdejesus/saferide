@@ -177,18 +177,67 @@ class AppDatabase {
         is_verified INTEGER DEFAULT 0,
         is_flagged INTEGER DEFAULT 0,
         sync_status TEXT
-      );
+      ) 
     ''');
   }
 
+  static final List<Trip> _webTrips = [
+    Trip(
+      id: 1,
+      startTime: DateTime.now().subtract(const Duration(days: 1)),
+      endTime: DateTime.now().subtract(const Duration(days: 1, hours: -1)),
+      startLat: 37.422,
+      startLng: -122.084,
+      endLat: 37.425,
+      endLng: -122.080,
+      riskScore: 20, // Safe trip (80% safety)
+      routePoints: [
+        {'lat': 37.422, 'lng': -122.084},
+        {'lat': 37.423, 'lng': -122.083},
+        {'lat': 37.424, 'lng': -122.081},
+        {'lat': 37.425, 'lng': -122.080},
+      ],
+    ),
+    Trip(
+      id: 2,
+      startTime: DateTime.now().subtract(const Duration(days: 2)),
+      endTime: DateTime.now().subtract(const Duration(days: 2, hours: -1)),
+      startLat: 37.422,
+      startLng: -122.084,
+      endLat: 37.420,
+      endLng: -122.088,
+      riskScore: 60, // Risky trip (40% safety)
+      speedingCount: 3,
+      brakingCount: 1,
+      turningCount: 2,
+      routePoints: [
+        {'lat': 37.422, 'lng': -122.084},
+        {'lat': 37.421, 'lng': -122.086},
+        {'lat': 37.420, 'lng': -122.088},
+      ],
+    ),
+  ];
+
   Future<int> insertTrip(Trip trip) async {
-    if (kIsWeb) return DateTime.now().millisecondsSinceEpoch;
+    if (kIsWeb) {
+      final newId = DateTime.now().millisecondsSinceEpoch;
+      _webTrips.add(trip.copyWith(id: newId));
+      return newId;
+    }
     final db = await database;
     return db.insert('trips', trip.toMap());
   }
 
   Future<void> updateTrip(Trip trip) async {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      final index = _webTrips.indexWhere((t) => t.id == trip.id);
+      if (index != -1) {
+        _webTrips[index] = trip;
+      } else {
+        _webTrips.add(trip);
+      }
+      return;
+    }
     final db = await database;
     await db.update(
       'trips',
@@ -200,42 +249,7 @@ class AppDatabase {
 
   Future<List<Trip>> getTrips() async {
     if (kIsWeb) {
-      return [
-        Trip(
-          id: 1,
-          startTime: DateTime.now().subtract(const Duration(days: 1)),
-          endTime: DateTime.now().subtract(const Duration(days: 1, hours: -1)),
-          startLat: 37.422,
-          startLng: -122.084,
-          endLat: 37.425,
-          endLng: -122.080,
-          riskScore: 20, // Safe trip (80% safety)
-          routePoints: [
-            {'lat': 37.422, 'lng': -122.084},
-            {'lat': 37.423, 'lng': -122.083},
-            {'lat': 37.424, 'lng': -122.081},
-            {'lat': 37.425, 'lng': -122.080},
-          ],
-        ),
-        Trip(
-          id: 2,
-          startTime: DateTime.now().subtract(const Duration(days: 2)),
-          endTime: DateTime.now().subtract(const Duration(days: 2, hours: -1)),
-          startLat: 37.422,
-          startLng: -122.084,
-          endLat: 37.420,
-          endLng: -122.088,
-          riskScore: 60, // Risky trip (40% safety)
-          speedingCount: 3,
-          brakingCount: 1,
-          turningCount: 0,
-          routePoints: [
-            {'lat': 37.422, 'lng': -122.084},
-            {'lat': 37.421, 'lng': -122.086},
-            {'lat': 37.420, 'lng': -122.088},
-          ],
-        ),
-      ];
+      return _webTrips.toList().reversed.toList();
     }
     final db = await database;
     final results = await db.query('trips', orderBy: 'start_time DESC');

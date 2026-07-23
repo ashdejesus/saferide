@@ -14,13 +14,19 @@ class AuthService {
 
   Future<UserCredential> registerWithEmail(
     String email,
-    String password,
-  ) async {
+    String password, {
+    String? name,
+  }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
-    await _createOrUpdateUserDoc(cred.user);
+    
+    if (name != null && name.trim().isNotEmpty) {
+      await cred.user?.updateDisplayName(name.trim());
+    }
+    
+    await _createOrUpdateUserDoc(cred.user, name: name);
     return cred;
   }
 
@@ -34,11 +40,13 @@ class AuthService {
   }
 
 
-  Future<void> _createOrUpdateUserDoc(User? user) async {
+  Future<void> _createOrUpdateUserDoc(User? user, {String? name}) async {
     if (user == null) return;
     final users = FirebaseFirestore.instance.collection('users');
     final doc = users.doc(user.uid);
     final snapshot = await doc.get();
+
+    final displayName = name?.trim() ?? user.displayName ?? '';
 
     final data = {
       'uid': user.uid,
@@ -46,8 +54,7 @@ class AuthService {
       'updatedAt': FieldValue.serverTimestamp(),
       if (!snapshot.exists) 'createdAt': FieldValue.serverTimestamp(),
       'role': 'user',
-      // placeholder for future inputs
-      'profile': {},
+      'profile': displayName.isNotEmpty ? {'name': displayName} : {},
     };
 
     await doc.set(data, SetOptions(merge: true));

@@ -18,7 +18,7 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final _formKey = GlobalKey<FormState>();
-  String _category = _categories.first;
+  String? _category;
   double _severity = 3;
   final TextEditingController _descriptionController = TextEditingController();
   late final AnimationController _animationController;
@@ -113,8 +113,14 @@ class _ReportScreenState extends State<ReportScreen>
         },
         onSave: controller.isTracking
             ? () async {
+                if (_category == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select an incident category.')),
+                  );
+                  return;
+                }
                 await controller.addReport(
-                  category: _category,
+                  category: _category!,
                   severity: _severity.round(),
                   description: _descriptionController.text,
                 );
@@ -122,7 +128,7 @@ class _ReportScreenState extends State<ReportScreen>
                 _descriptionController.clear();
                 setState(() {
                   _severity = 3;
-                  _category = _categories.first;
+                  _category = null;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -137,7 +143,7 @@ class _ReportScreenState extends State<ReportScreen>
           setState(() {
             _descriptionController.clear();
             _severity = 3;
-            _category = _categories.first;
+            _category = null;
           });
         },
       ),
@@ -498,7 +504,7 @@ class _ReportFormCard extends StatelessWidget {
 
   final GlobalKey<FormState> formKey;
   final List<String> categories;
-  final String category;
+  final String? category;
   final double severity;
   final TextEditingController descriptionController;
   final bool isTracking;
@@ -601,8 +607,14 @@ class _ReportFormCard extends StatelessWidget {
                     icon: Icons.warning,
                     onPressed: () async {
                       if (isTracking) {
+                        if (category == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please select an incident category.')),
+                          );
+                          return;
+                        }
                         await controller.addReport(
-                          category: category,
+                          category: category!,
                           severity: 5,
                           description: descriptionController.text,
                         );

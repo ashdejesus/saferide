@@ -21,10 +21,11 @@ class TripsScreen extends StatefulWidget {
 
 class _TripsScreenState extends State<TripsScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  late final AnimationController _animationController;
   late Future<List<Trip>> _tripsFuture;
-  bool _initialized = false;
+  late final AnimationController _animationController;
   int _lastTripHistoryVersion = -1;
+  bool _initialized = false;
+  int _routeViewIndex = 0;
 
   @override
   void initState() {
@@ -62,6 +63,13 @@ class _TripsScreenState extends State<TripsScreen>
         final trips = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
+        final Map<String, List<Trip>> routesMap = {};
+        for (var t in trips) {
+          if (t.routeName != null && t.routeName!.trim().isNotEmpty) {
+            routesMap.putIfAbsent(t.routeName!.trim(), () => []).add(t);
+          }
+        }
+
         final items = <Widget>[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -71,6 +79,25 @@ class _TripsScreenState extends State<TripsScreen>
             ],
           ),
           _TripsOverview(trips: trips, isLoading: isLoading),
+          const SizedBox(height: 16),
+            Center(
+              child: Wrap(
+                spacing: 12,
+                children: [
+                  FilterChip(
+                    label: const Text('Individual Trips'),
+                    selected: _routeViewIndex == 0,
+                    onSelected: (val) => setState(() => _routeViewIndex = 0),
+                  ),
+                  FilterChip(
+                    label: const Text('By Route'),
+                    selected: _routeViewIndex == 1,
+                    onSelected: (val) => setState(() => _routeViewIndex = 1),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 16),
           if (!isLoading && trips.isEmpty)
             EmptyState(
               icon: Icons.route,
@@ -80,7 +107,15 @@ class _TripsScreenState extends State<TripsScreen>
               ctaLabel: 'Start Trip',
               onCtaPressed: () => TripActionSheet.show(context),
             ),
-          if (trips.isNotEmpty) ...trips.map((trip) => _TripCard(trip: trip)),
+          if (trips.isNotEmpty && _routeViewIndex == 0)
+            ...trips.map((trip) => _TripCard(trip: trip)),
+          if (trips.isNotEmpty && _routeViewIndex == 1 && routesMap.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text('No named routes found. Add a route name when completing a trip!'),
+            ),
+          if (trips.isNotEmpty && _routeViewIndex == 1)
+            ...routesMap.entries.map((e) => _RouteCard(routeName: e.key, routeTrips: e.value)),
           const SizedBox(height: 80),
         ];
 
@@ -407,3 +442,72 @@ class _StaggeredItem extends StatelessWidget {
     );
   }
 }
+
+class _RouteCard extends StatelessWidget {
+  const _RouteCard({required this.routeName, required this.routeTrips});
+
+  final String routeName;
+  final List<Trip> routeTrips;
+
+  @override
+  Widget build(BuildContext context) {
+    if (routeTrips.isEmpty) return const SizedBox.shrink();
+
+    final avgScore = routeTrips.fold(0.0, (sum, t) => sum + t.riskScore) / routeTrips.length;
+    final badge = _RiskBadge.fromScore(context, avgScore);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.route, color: colorScheme.onSecondaryContainer),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          routeName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          '${routeTrips.length} Aggregated Trips',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Route Safety Score:', style: Theme.of(context).textTheme.titleSmall),
+                  badge,
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

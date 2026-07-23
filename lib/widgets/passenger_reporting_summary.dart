@@ -231,8 +231,8 @@ class _ReportCardState extends State<_ReportCard> {
                               );
                               try {
                                 setState(() => _isLoading = true);
-                                final reportId = widget.report.reportId
-                                    .toString();
+                                final reportId = widget.report.firestoreId;
+                                if (reportId == null) throw Exception('Cannot update a local report');
                                 await _reportingService.verifyReport(reportId);
                                 if (!mounted) return;
                                 setState(() => _isVerified = true);
@@ -269,8 +269,8 @@ class _ReportCardState extends State<_ReportCard> {
                               );
                               try {
                                 setState(() => _isLoading = true);
-                                final reportId = widget.report.reportId
-                                    .toString();
+                                final reportId = widget.report.firestoreId;
+                                if (reportId == null) throw Exception('Cannot update a local report');
                                 await _reportingService.flagReport(
                                   reportId,
                                   'Flagged by community member',

@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/trip.dart';
+import '../services/passenger_reporting_service.dart';
 import '../widgets/section_header.dart';
 import '../widgets/split_button.dart';
 

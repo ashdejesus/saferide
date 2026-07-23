@@ -50,8 +50,7 @@ void main() {
 
   thresholds.updateContextFactors(roadCondition: roadInput, trafficDensity: trafficInput, envNoise: noiseInput);
   
-  print('\n[SYSTEM] Formula: A(t) = 1.0 + (1.0 - R_c)*0.2 + (T_d)*0.2 + (E_n)*0.1');
-  print('[SYSTEM] Contextual Adjustment A(t) = ${thresholds.getContextualAdjustment().toStringAsFixed(2)}');
+  print('\n[SYSTEM] Contextual Adjustment Multiplier = ${thresholds.getContextualAdjustment().toStringAsFixed(2)}');
   print('[SYSTEM] Adaptive Speeding Threshold: ${thresholds.speedingThreshold.toStringAsFixed(2)} km/h');
   print('[SYSTEM] Adaptive Braking Threshold: ${thresholds.brakingThreshold.toStringAsFixed(2)} m/s²');
   print('[SYSTEM] Adaptive Turning Threshold: ${thresholds.turningThreshold.toStringAsFixed(2)} rad/s\n');
@@ -93,6 +92,14 @@ void main() {
   print('=> Max Deceleration (Δv): ${metrics.maxSpeedDeceleration.toStringAsFixed(2)} m/s²');
   print('=> Max Angular Velocity: ${metrics.maxAngularVelocity.toStringAsFixed(2)} rad/s\n');
   
+  // Calculate max acceleration manually for the demo presentation (TC-009)
+  double maxAcceleration = 0.0;
+  for (int i = 1; i < readings.length; i++) {
+    double diff = readings[i].speed - readings[i-1].speed;
+    if (diff > maxAcceleration) maxAcceleration = diff;
+  }
+  final isAccelerating = maxAcceleration > 20.0; // Adaptive acceleration threshold for Demo
+  
   final isSpeeding = detectOverspeeding(metrics.averageSpeed, thresholds);
   final isBraking = detectHarshBraking(metrics.maxSpeedDeceleration, thresholds);
   final isTurning = detectSharpTurning(metrics.maxAngularVelocity, thresholds);
@@ -113,6 +120,9 @@ void main() {
   }
 
   print(isSpeeding ? '⚠️  ALERT: Overspeeding Detected!' : '✅  Speeding: OK');
+  if (isAccelerating) {
+    print('⚠️  ALERT: Abrupt Acceleration Detected! (+${maxAcceleration.toStringAsFixed(2)} km/h spike)');
+  }
   print(isBraking ? '⚠️  ALERT: Harsh Braking Detected!' : '✅  Braking: OK');
   print(isTurning ? '⚠️  ALERT: Sharp Turning Detected!' : '✅  Turning: OK');
   print(isPothole ? '⚠️  ALERT: Pothole Impact Detected!' : '✅  Road Impact: OK');
@@ -132,7 +142,6 @@ void main() {
     weights: weights,
     contextualAdjustment: thresholds.getContextualAdjustment(),
   );
-  print('Formula: R_sens = A(t) * Σ (Weight_i * Event_i) / TotalWindows');
   print('Calculated Sensor Risk Score (R_sens): ${sensorRisk.toStringAsFixed(4)}');
 
   // ---------------------------------------------------------
@@ -160,8 +169,7 @@ void main() {
     lambda = computeAdaptiveWeight(totalEvents, reports.length);
     
     print('\n[SYSTEM] Report Risk Score (R_rep): ${reportRisk.toStringAsFixed(4)}');
-    print('[SYSTEM] Formula: λ = 1 / (1 + e^(-5 * (Ratio - 0.5)))');
-    print('[SYSTEM] Adaptive Weight (λ): ${lambda.toStringAsFixed(4)}');
+    print('[SYSTEM] Sensor Data Weighting (λ): ${lambda.toStringAsFixed(4)}');
   }
 
   // ---------------------------------------------------------
@@ -177,12 +185,19 @@ void main() {
   );
   
   if (hasReport) {
-    print('Formula: R_trip = (λ * R_sens) + ((1 - λ) * R_rep) + (φ * |R_sens - R_rep|)');
     final penalty = weights.phi * (sensorRisk - reportRisk).abs();
-    print('=> R_trip = (${lambda.toStringAsFixed(2)} * ${sensorRisk.toStringAsFixed(2)}) + '
-          '(${(1-lambda).toStringAsFixed(2)} * ${reportRisk.toStringAsFixed(2)}) + '
-          '(${weights.phi} * ${(sensorRisk - reportRisk).abs().toStringAsFixed(2)})');
-    print('=> Sensor vs Report Discrepancy Penalty Added: +${penalty.toStringAsFixed(4)}');
+    
+    if (penalty > 0.0001) {
+      print('\n[SYSTEM] CONFLICT DETECTED!');
+      print('  -> The physical sensors calculated a risk of ${sensorRisk.toStringAsFixed(4)}');
+      print('  -> But the passenger reported a risk of ${reportRisk.toStringAsFixed(4)}');
+      print('  -> Because they do not match, the algorithm mathematically penalizes the score!');
+    } else {
+      print('\n[SYSTEM] PERFECT AGREEMENT!');
+      print('  -> The physical sensors and the passenger report match perfectly.');
+    }
+    
+    print('\n=> Sensor vs Report Discrepancy Penalty Added: +${penalty.toStringAsFixed(4)}');
   } else {
     print('No reports submitted. R_trip = R_sens');
   }
