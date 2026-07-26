@@ -36,8 +36,19 @@ class _MapScreenState extends State<MapScreen>
     )..forward();
 
     // Load completed trips for map display
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TripController>().loadCompletedTrips();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await context.read<TripController>().loadCompletedTrips();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Weak connection: Community data may be delayed.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     });
   }
 
@@ -325,8 +336,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
   void _showReportHazardDialog() {
     final colorScheme = Theme.of(context).colorScheme;
-    String selectedCategory = 'Hazard';
-    int selectedSeverity = 3;
+    final recentEvent = widget.controller.getRecentSensorEventCategory();
+    String selectedCategory = recentEvent ?? 'Hazard';
+    int selectedSeverity = recentEvent != null ? 4 : 3;
     final descriptionController = TextEditingController();
 
     showModalBottomSheet(
@@ -355,6 +367,31 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                     'Report Hazard',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
+                  if (recentEvent != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, size: 14, color: colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Auto-detected from sensors',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     value: selectedCategory,
@@ -362,7 +399,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                       labelText: 'Category',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    items: ['Hazard', 'Reckless Driving', 'Accident', 'Pothole', 'Other']
+                    items: ['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other']
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (val) => setState(() => selectedCategory = val!),
@@ -484,6 +521,13 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                   _StatChip(label: 'Severity', value: '${report.severity}/5'),
                   const SizedBox(width: 8),
                   _StatChip(label: 'Confidence', value: '${(report.passengerTrust * 100).toStringAsFixed(0)}%'),
+                  if (report.isVerified) ...[
+                    const SizedBox(width: 8),
+                    const _StatChip(label: 'Status', value: 'Verified', color: Colors.green),
+                  ] else if (report.isFlagged) ...[
+                    const SizedBox(width: 8),
+                    const _StatChip(label: 'Status', value: 'Flagged', color: Colors.orange),
+                  ],
                 ],
               ),
               if (report.description != null && report.description!.isNotEmpty) ...[
@@ -1032,19 +1076,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               },
             ),
           ),
-          // Crowd Alert Banner
-          if (widget.controller.currentAlert != null)
-            Positioned(
-              top: widget.controller.isTracking ? 100 : 12,
-              left: 12,
-              right: 60, // Leave room for layer controls
-              child: _CrowdAlertBanner(
-                alert: widget.controller.currentAlert!,
-                onDismiss: () {
-                  // We can't clear it in controller directly without a setter, but it clears itself in 8 seconds.
-                },
-              ),
-            ),
+          // (Crowd Alert Banner moved to end of Stack to prevent overlay issues)
           // Full screen toggle button
           Positioned(
             top: 170, // Placed below the layer controls
@@ -1222,6 +1254,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               showCommunitySafety: widget.showCommunitySafety,
             ),
           ),
+          // Crowd Alert Banner (Placed at end of Stack so it stays on top of other HUDs)
+          if (widget.controller.currentAlert != null)
+            Positioned(
+              top: 90,
+              left: 12,
+              right: 60,
+              child: _CrowdAlertBanner(
+                alert: widget.controller.currentAlert!,
+                onDismiss: () {
+                  // Clears automatically in controller after 8s
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -1516,7 +1561,7 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Live Crowd Alert',
+                        '${widget.alert.category} Reported',
                         style: TextStyle(
                           color: colorScheme.error,
                           fontWeight: FontWeight.bold,
@@ -1524,7 +1569,9 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
                         ),
                       ),
                       Text(
-                        '${widget.alert.category} ahead',
+                        widget.alert.description?.isNotEmpty == true
+                            ? '"${widget.alert.description}"'
+                            : 'Hazard ahead',
                         style: TextStyle(
                           color: colorScheme.onErrorContainer,
                           fontWeight: FontWeight.bold,
@@ -1532,7 +1579,7 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
                         ),
                       ),
                       Text(
-                        'High confidence (${(widget.alert.passengerTrust * 100).toInt()}%)',
+                        'Confidence: ${(widget.alert.passengerTrust * 100).toInt()}% • Severity: ${widget.alert.severity}/5',
                         style: TextStyle(
                           color: colorScheme.onErrorContainer.withValues(alpha: 0.8),
                           fontSize: 12,

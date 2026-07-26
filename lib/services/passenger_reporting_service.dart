@@ -8,10 +8,19 @@ import '../models/passenger_trust_metrics.dart';
 import 'risk_scoring.dart';
 import 'trust_scoring_service.dart';
 
+class _CachedTrust {
+  final PassengerTrustMetrics metrics;
+  final DateTime timestamp;
+  _CachedTrust(this.metrics, this.timestamp);
+}
+
 /// Service for managing passenger reports and trust metrics
 class PassengerReportingService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+
+  final Map<String, _CachedTrust> _trustCache = {};
+  static const _cacheTtl = Duration(minutes: 5);
 
   PassengerReportingService({FirebaseFirestore? firestore, FirebaseAuth? auth})
     : _firestore = firestore ?? FirebaseFirestore.instance,
@@ -65,11 +74,12 @@ class PassengerReportingService {
           .timeout(const Duration(seconds: 3));
 
       // Update passenger trust metrics with real sensor context (RQ 2.2)
-      await _updatePassengerTrustMetrics(
+      // Fire-and-forget: we do not await this to avoid blocking the submission
+      unawaited(_updatePassengerTrustMetrics(
         passengerId,
         latestSensorRisk: tripSensorRisk,
         latestEventCount: tripEventCount,
-      ).timeout(const Duration(seconds: 3)).catchError((_) {});
+      ).timeout(const Duration(seconds: 10)).catchError((_) {}));
 
       return docRef.id;
     } catch (e) {
@@ -82,6 +92,11 @@ class PassengerReportingService {
     String passengerId,
   ) async {
     try {
+      final cached = _trustCache[passengerId];
+      if (cached != null && DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+        return cached.metrics;
+      }
+
       final doc = await _firestore
           .collection('passenger_trust_metrics')
           .doc(passengerId)
@@ -90,7 +105,7 @@ class PassengerReportingService {
       if (!doc.exists) return null;
 
       final data = doc.data() as Map<String, dynamic>;
-      return PassengerTrustMetrics(
+      final metrics = PassengerTrustMetrics(
         passengerId: passengerId,
         totalReports: data['totalReports'] ?? 0,
         consistencyScore: (data['consistencyScore'] ?? 0.5).toDouble(),
@@ -103,6 +118,9 @@ class PassengerReportingService {
         verifiedCount: data['verifiedCount'] ?? 0,
         flaggedCount: data['flaggedCount'] ?? 0,
       );
+      
+      _trustCache[passengerId] = _CachedTrust(metrics, DateTime.now());
+      return metrics;
     } catch (e) {
       throw Exception('Failed to fetch trust metrics: $e');
     }
@@ -117,7 +135,7 @@ class PassengerReportingService {
         .map((doc) {
       if (!doc.exists) return null;
       final data = doc.data() as Map<String, dynamic>;
-      return PassengerTrustMetrics(
+      final metrics = PassengerTrustMetrics(
         passengerId: passengerId,
         totalReports: data['totalReports'] ?? 0,
         consistencyScore: (data['consistencyScore'] ?? 0.5).toDouble(),
@@ -130,6 +148,8 @@ class PassengerReportingService {
         verifiedCount: data['verifiedCount'] ?? 0,
         flaggedCount: data['flaggedCount'] ?? 0,
       );
+      _trustCache[passengerId] = _CachedTrust(metrics, DateTime.now());
+      return metrics;
     });
   }
 
@@ -206,6 +226,25 @@ class PassengerReportingService {
         )
         .snapshots()
         .asyncMap((snapshot) async {
+          final trustCacheMap = <String, double>{};
+          final fetchTasks = <Future<void>>[];
+
+          for (final doc in snapshot.docs) {
+            final passengerId = doc.data()['passengerId'] as String;
+            if (!trustCacheMap.containsKey(passengerId)) {
+              trustCacheMap[passengerId] = 0.5;
+              fetchTasks.add(
+                getPassengerTrustMetrics(passengerId).then((metrics) {
+                  if (metrics != null) {
+                    trustCacheMap[passengerId] = metrics.overallTrust;
+                  }
+                }).catchError((_) {}),
+              );
+            }
+          }
+
+          await Future.wait(fetchTasks);
+
           final reports = <ReportWithTrust>[];
 
           for (final doc in snapshot.docs) {
@@ -220,8 +259,7 @@ class PassengerReportingService {
             if (distance > radiusKm) continue;
 
             final passengerId = data['passengerId'] as String;
-            final trustMetrics = await getPassengerTrustMetrics(passengerId);
-            final passengerTrust = trustMetrics?.overallTrust ?? 0.5;
+            final passengerTrust = trustCacheMap[passengerId] ?? 0.5;
 
             reports.add(
               ReportWithTrust(
@@ -431,6 +469,8 @@ class PassengerReportingService {
             'verifiedCount': totalVerified,
             'flaggedCount': totalFlagged,
           }, SetOptions(merge: true));
+          
+      _trustCache.remove(passengerId);
     } catch (e) {
       // Silently handle error – trust metrics update is non-critical
     }
@@ -539,6 +579,8 @@ class PassengerReportingService {
         'sensorAlignmentScore': currentAlignment,
         'lastUpdated': FieldValue.serverTimestamp(),
       });
+      
+      _trustCache.remove(passengerId);
       
       // We should ideally recalculate the overall trust as well,
       // but the overall trust is typically refreshed on next report submission.

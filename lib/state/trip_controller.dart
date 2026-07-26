@@ -55,6 +55,7 @@ class TripController extends ChangeNotifier {
   DateTime? _lastNotificationTime; // Throttle notifications
   List<ReportWithTrust> _remoteReports = [];
   StreamSubscription<List<ReportWithTrust>>? _remoteReportsSub;
+  StreamSubscription<List<ReportWithTrust>>? _areaReportsSub;
 
   final risk_scoring.SlidingWindow _accelWindow = risk_scoring.SlidingWindow(
     size: 15,
@@ -131,6 +132,34 @@ class TripController extends ChangeNotifier {
   List<risk_scoring.UnsafeEvent> get recentEvents =>
       List.unmodifiable(_recentEvents);
 
+  /// Returns the category of the most recent sensor event (if it happened within [windowSeconds]).
+  String? getRecentSensorEventCategory({int windowSeconds = 60}) {
+    if (!_isTracking) return null;
+    
+    final now = DateTime.now();
+    final events = <String, DateTime?>{
+      'Sudden Braking': _lastBrakeEvent,
+      'Sharp Turning': _lastTurnEvent,
+      'Speeding': _lastSpeedEvent,
+      'Pothole': _lastPotholeEvent,
+    };
+    
+    String? mostRecentCategory;
+    DateTime? mostRecentTime;
+    
+    for (final entry in events.entries) {
+      final time = entry.value;
+      if (time != null && now.difference(time).inSeconds <= windowSeconds) {
+        if (mostRecentTime == null || time.isAfter(mostRecentTime)) {
+          mostRecentTime = time;
+          mostRecentCategory = entry.key;
+        }
+      }
+    }
+    
+    return mostRecentCategory;
+  }
+
   double get currentAcceleration => _currentAcceleration;
   double get currentTurnRate => _currentTurnRate;
   double get averageAcceleration => _accelWindow.average;
@@ -162,7 +191,14 @@ class TripController extends ChangeNotifier {
     _completedTrips = allTrips
         .where((t) => t.endTime != null && t.routePoints.isNotEmpty)
         .toList();
-        
+    Position? pos;
+    try {
+      pos = await _locationService.currentPosition();
+      subscribeToAreaReports(pos.latitude, pos.longitude);
+    } catch (e) {
+      debugPrint('Failed to get location for area reports: $e');
+    }
+
     if (kIsWeb) {
       _communityTrips = [
         Trip(
@@ -198,8 +234,7 @@ class TripController extends ChangeNotifier {
       ];
       
       // Shift all dummy trips (historical and community) to the user's actual location!
-      try {
-        final pos = await _locationService.currentPosition();
+      if (pos != null) {
         final latOffset = pos.latitude - 37.422;
         final lngOffset = pos.longitude - (-122.084);
         
@@ -212,8 +247,6 @@ class TripController extends ChangeNotifier {
         
         for (final t in _completedTrips) shiftTrip(t);
         for (final t in _communityTrips) shiftTrip(t);
-      } catch (e) {
-        debugPrint('Failed to shift dummy trips: $e');
       }
     } else {
       final user = FirebaseAuth.instance.currentUser;
@@ -222,6 +255,8 @@ class TripController extends ChangeNotifier {
           _communityTrips = await _firestoreService.getCommunityTrips(user.uid);
         } catch (e) {
           debugPrint('Failed to load community trips: $e');
+          notifyListeners();
+          throw Exception('network_error');
         }
       }
     }
@@ -449,17 +484,24 @@ class TripController extends ChangeNotifier {
     // Unsubscribe reports listener
     await _remoteReportsSub?.cancel();
     _remoteReportsSub = null;
+    
+    // If there is an area sub we can let it be, or refresh it
+    // When stopping a trip, we revert back to area mode.
+    if (_currentPosition != null) {
+      subscribeToAreaReports(_currentPosition!.latitude, _currentPosition!.longitude);
+    }
 
     _activeTrip = null;
     _isTracking = false;
     _currentSpeed = 0;
     _tripHistoryVersion++;
     // Refresh completed trips so the map shows the new trip immediately
-    unawaited(loadCompletedTrips());
+    loadCompletedTrips().catchError((_) {});
     notifyListeners();
   }
 
   void _subscribeToRemoteReports(int tripId) {
+    _areaReportsSub?.cancel(); // Cancel area reports when tracking trip
     _remoteReportsSub?.cancel();
     _remoteReportsSub = _passengerReportingService.getReportsForTrip(tripId).listen((reports) {
       _remoteReports = reports;
@@ -470,6 +512,25 @@ class TripController extends ChangeNotifier {
       _remoteReports = [];
       _reportSeveritySum = 0;
       notifyListeners();
+    });
+  }
+
+  void subscribeToAreaReports(double lat, double lng, {double radiusKm = 10.0}) {
+    if (_isTracking) return; // Only listen to area if not on an active trip
+    
+    _areaReportsSub?.cancel();
+    _areaReportsSub = _passengerReportingService.getReportsInArea(
+      centerLat: lat,
+      centerLng: lng,
+      radiusKm: radiusKm,
+    ).listen((reports) {
+      if (!_isTracking) {
+        _remoteReports = reports;
+        _reportSeveritySum = _remoteReports.fold(0, (sum, r) => sum + (r.severity));
+        notifyListeners();
+      }
+    }, onError: (error) {
+      debugPrint('Error subscribing to area reports: $error');
     });
   }
 

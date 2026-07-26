@@ -28,12 +28,12 @@ class _ReportScreenState extends State<ReportScreen>
 
   static const List<String> _categories = [
     'Speeding',
-    'Reckless Overtaking',
     'Sudden Braking',
     'Sharp Turning',
-    'Overcrowding',
-    'Harassment / Security',
-    'Vehicle Condition',
+    'Pothole',
+    'Reckless Driving',
+    'Accident',
+    'Hazard',
     'Other',
   ];
 
@@ -78,6 +78,10 @@ class _ReportScreenState extends State<ReportScreen>
     final controller = context.watch<TripController>();
     final colorScheme = Theme.of(context).colorScheme;
 
+    final recentEvent = controller.getRecentSensorEventCategory();
+    final displayCategory = _category ?? recentEvent;
+    final displaySeverity = _category == null && recentEvent != null ? 4.0 : _severity;
+
     final items = <Widget>[
       const SectionHeader(title: 'Incident Report'),
       _IntroCard(isTracking: controller.isTracking),
@@ -98,10 +102,12 @@ class _ReportScreenState extends State<ReportScreen>
       _ReportFormCard(
         formKey: _formKey,
         categories: _categories,
-        category: _category,
-        severity: _severity,
+        category: displayCategory,
+        severity: displaySeverity,
         descriptionController: _descriptionController,
         isTracking: controller.isTracking,
+        recentEvent: recentEvent,
+        isAutoDetected: _category == null && recentEvent != null,
         onCategoryChanged: (value) {
           setState(() {
             _category = value;
@@ -114,15 +120,16 @@ class _ReportScreenState extends State<ReportScreen>
         },
         onSave: controller.isTracking
             ? () async {
-                if (_category == null) {
+                final finalCategory = _category ?? recentEvent;
+                if (finalCategory == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please select an incident category.')),
                   );
                   return;
                 }
                 await controller.addReport(
-                  category: _category!,
-                  severity: _severity.round(),
+                  category: finalCategory,
+                  severity: _category == null && recentEvent != null ? 4 : _severity.round(),
                   description: _descriptionController.text,
                 );
                 if (!context.mounted) return;
@@ -500,6 +507,8 @@ class _ReportFormCard extends StatelessWidget {
     required this.onSave,
     required this.controller,
     required this.onReset,
+    this.recentEvent,
+    this.isAutoDetected = false,
   });
 
   final GlobalKey<FormState> formKey;
@@ -513,6 +522,8 @@ class _ReportFormCard extends StatelessWidget {
   final Future<void> Function()? onSave;
   final TripController controller;
   final VoidCallback onReset;
+  final String? recentEvent;
+  final bool isAutoDetected;
 
   @override
   Widget build(BuildContext context) {
@@ -524,7 +535,36 @@ class _ReportFormCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Category', style: Theme.of(context).textTheme.titleMedium),
+              Row(
+                children: [
+                  Text('Category', style: Theme.of(context).textTheme.titleMedium),
+                  if (isAutoDetected) ...[
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Auto-detected',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
