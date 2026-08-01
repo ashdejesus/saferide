@@ -127,9 +127,232 @@ class _ReportScreenState extends State<ReportScreen>
                   );
                   return;
                 }
+                
+                final int finalSeverity = _category == null && recentEvent != null ? 4 : _severity.round();
+                
+                final bool? confirm = await showModalBottomSheet<bool>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) {
+                    final theme = Theme.of(context);
+                    final colorScheme = theme.colorScheme;
+                    
+                    Color severityColor;
+                    if (finalSeverity >= 5) {
+                      severityColor = Colors.red;
+                    } else if (finalSeverity == 4) {
+                      severityColor = Colors.orange;
+                    } else if (finalSeverity == 3) {
+                      severityColor = Colors.amber.shade700;
+                    } else if (finalSeverity == 2) {
+                      severityColor = Colors.lightGreen;
+                    } else {
+                      severityColor = Colors.green;
+                    }
+                    
+                    IconData catIcon = Icons.report;
+                    switch(finalCategory) {
+                      case 'Speeding': catIcon = Icons.speed; break;
+                      case 'Sudden Braking': catIcon = Icons.car_crash; break;
+                      case 'Sharp Turning': catIcon = Icons.turn_sharp_right; break;
+                      case 'Pothole': catIcon = Icons.moving; break;
+                      case 'Reckless Driving': catIcon = Icons.warning_amber; break;
+                      case 'Accident': catIcon = Icons.medical_services; break;
+                      case 'Hazard': catIcon = Icons.construction; break;
+                    }
+
+                    return SafeArea(
+                      child: Container(
+                        padding: EdgeInsets.only(
+                          left: 24,
+                          right: 24,
+                          top: 16,
+                          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: severityColor.withValues(alpha: 0.15),
+                              blurRadius: 24,
+                              offset: const Offset(0, -8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: severityColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(catIcon, size: 48, color: severityColor),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Confirm Report',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.category, color: colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      finalCategory,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.monitor_heart, color: colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Severity: $finalSeverity of 5',
+                                          style: theme.textTheme.titleSmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: List.generate(5, (index) {
+                                            return Expanded(
+                                              child: Container(
+                                                margin: const EdgeInsets.only(right: 4),
+                                                height: 6,
+                                                decoration: BoxDecoration(
+                                                  color: index < finalSeverity ? severityColor : colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                                  borderRadius: BorderRadius.circular(3),
+                                                ),
+                                              ),
+                                            );
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_descriptionController.text.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.notes, size: 18, color: colorScheme.onSurfaceVariant),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Notes',
+                                          style: theme.textTheme.titleSmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _descriptionController.text,
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 32),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: const Text('Edit'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: FilledButton.icon(
+                                    icon: const Icon(Icons.send, size: 18),
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    label: const Text('Submit Report'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: severityColor,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+                
+                if (confirm != true) return;
+
                 await controller.addReport(
                   category: finalCategory,
-                  severity: _category == null && recentEvent != null ? 4 : _severity.round(),
+                  severity: finalSeverity,
                   description: _descriptionController.text,
                 );
                 if (!context.mounted) return;

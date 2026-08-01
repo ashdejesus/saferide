@@ -13,7 +13,7 @@ import '../models/trip.dart';
 
 class AppDatabase {
   static const _databaseBaseName = 'saferide';
-  static const _databaseVersion = 2;
+  static const _databaseVersion = 3;
 
   Database? _database;
   String _activeStorageKey = 'signed_out';
@@ -117,7 +117,8 @@ class AppDatabase {
         braking_count INTEGER,
         turning_count INTEGER,
         route_points TEXT,
-        sync_status TEXT
+        sync_status TEXT,
+        vehicle_type TEXT
       );
     ''');
 
@@ -142,6 +143,9 @@ class AppDatabase {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2 && newVersion >= 2) {
       await _createTrustMetricsTables(db);
+    }
+    if (oldVersion < 3 && newVersion >= 3) {
+      await db.execute('ALTER TABLE trips ADD COLUMN vehicle_type TEXT;');
     }
   }
 

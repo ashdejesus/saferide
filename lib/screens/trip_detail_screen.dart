@@ -56,6 +56,14 @@ class TripDetailScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  if (trip.vehicleType != null) ...[
+                    _InfoRow(
+                      icon: Icons.directions_car,
+                      label: 'Vehicle',
+                      value: '${trip.vehicleType![0].toUpperCase()}${trip.vehicleType!.substring(1)}',
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _InfoRow(
                     icon: Icons.access_time,
                     label: 'Duration',

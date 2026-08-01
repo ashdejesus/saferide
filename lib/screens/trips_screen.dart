@@ -230,6 +230,8 @@ class _TripCard extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
+                      if (trip.vehicleType != null)
+                        _MetricChip(label: '${trip.vehicleType![0].toUpperCase()}${trip.vehicleType!.substring(1)}'),
                       _MetricChip(label: 'Speed ${trip.speedingCount}'),
                       _MetricChip(label: 'Brake ${trip.brakingCount}'),
                       _MetricChip(label: 'Turn ${trip.turningCount}'),

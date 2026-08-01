@@ -69,6 +69,7 @@ class TripActionSheet {
                           final started = await controller.startTrip(
                             routeName: routeName.isEmpty ? null : routeName,
                             vehicleMultiplier: vehicle.multiplier,
+                            vehicleType: vehicle.name,
                           );
                           
                           if (!context.mounted) return;
@@ -131,6 +132,7 @@ class TripActionSheet {
                           final started = await controller.startTrip(
                             routeName: routeName.isEmpty ? null : routeName,
                             vehicleMultiplier: vehicle.multiplier,
+                            vehicleType: vehicle.name,
                           );
                           if (!context.mounted) return;
                           if (!started) {

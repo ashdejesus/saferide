@@ -159,8 +159,8 @@ class FirestoreService {
       }
       return trips;
     } catch (e) {
-      // If collectionGroup index is missing, this will fail. We return empty list.
-      return [];
+      // Allow the controller to handle network or index errors so it can show the offline SnackBar
+      rethrow;
     }
   }
 }

@@ -17,6 +17,7 @@ import 'screens/trips_screen.dart';
 import 'widgets/trip_action_sheet.dart';
 import 'widgets/sync_widgets.dart';
 import 'screens/auth_screen.dart';
+import 'widgets/offline_banner.dart';
 import 'widgets/data_collection_agreement_dialog.dart';
 
 class SafeRideApp extends StatefulWidget {
@@ -223,6 +224,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
                         ),
                       ),
                       const SyncStatusIndicator(),
+                      const OfflineBanner(),
                     ],
                   );
                 },

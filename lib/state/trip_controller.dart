@@ -318,6 +318,7 @@ class TripController extends ChangeNotifier {
   Future<bool> startTrip({
     String? routeName,
     double vehicleMultiplier = 1.0,
+    String? vehicleType,
   }) async {
     // Initialize notifications at trip start (network-optional, errors ignored)
     // Run asynchronously without awaiting to prevent blocking if offline
@@ -363,6 +364,7 @@ class TripController extends ChangeNotifier {
           startLat: position?.latitude,
           startLng: position?.longitude,
           routeName: routeName,
+          vehicleType: vehicleType,
         ),
       );
 
@@ -372,6 +374,7 @@ class TripController extends ChangeNotifier {
         startLat: position?.latitude,
         startLng: position?.longitude,
         routeName: routeName,
+        vehicleType: vehicleType,
         routePoints: List.of(_routePoints),
         syncStatus: SyncStatus.pending,
       );

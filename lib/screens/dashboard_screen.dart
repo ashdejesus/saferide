@@ -228,6 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     onPressed: () async {
                       final started = await controller.startTrip(
                         vehicleMultiplier: _selectedVehicle.multiplier,
+                        vehicleType: _selectedVehicle.name,
                       );
                       if (!context.mounted) return;
                       if (!started) {
@@ -253,6 +254,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         onPressed: () async {
                           final started = await controller.startTrip(
                             vehicleMultiplier: _selectedVehicle.multiplier,
+                            vehicleType: _selectedVehicle.name,
                           );
                           if (!context.mounted) return;
                           if (!started) {
