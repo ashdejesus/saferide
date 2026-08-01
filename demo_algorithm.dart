@@ -143,6 +143,7 @@ void main() {
     contextualAdjustment: thresholds.getContextualAdjustment(),
   );
   print('Calculated Sensor Risk Score (R_sens): ${sensorRisk.toStringAsFixed(4)}');
+  print('   (Legend: 0.0 to 0.20 = Low Risk | 0.21 to 0.65 = Moderate Risk | 0.66 to 1.0 = High Risk)');
 
   // ---------------------------------------------------------
   // 6. PASSENGER CROWDSOURCING (R_rep)
@@ -158,7 +159,8 @@ void main() {
     stdout.write('  Enter Passenger Rating (1=Safe to 5=Dangerous): ');
     final rating = int.tryParse(stdin.readLineSync() ?? '1') ?? 1;
     
-    stdout.write('  Enter Passenger Trust Score (0.0 to 1.0): ');
+    stdout.write('  Enter Passenger Trust Score (0.0 to 1.0)\n');
+    stdout.write('  [0.8-1.0: Highly Trusted | 0.6-0.79: Trusted | 0.4-0.59: Moderate | 0.0-0.39: Building]: ');
     final trust = double.tryParse(stdin.readLineSync() ?? '0.8') ?? 0.8;
     
     final reports = [PassengerReport(riskRating: rating, trust: trust, timestamp: DateTime.now())];
@@ -206,6 +208,7 @@ void main() {
   
   final safetyScore = computeSafetyScore(tripRisk);
   print('\n>> FINAL TRANSLATED SAFETY SCORE: $safetyScore / 100 <<');
+  print('   (Legend: 80-100 = Safe | 35-79 = Moderate | 0-34 = Risky)');
   
   print('\n======================================================');
   print('                    DEMO COMPLETE                     ');

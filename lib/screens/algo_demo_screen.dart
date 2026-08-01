@@ -413,6 +413,14 @@ class _AlgoDemoScreenState extends State<AlgoDemoScreen>
 
         // Current safety score banner
         _ScoreBanner(score: _safetyScore, label: 'Current Safety Score', cs: cs),
+        const SizedBox(height: 12),
+        _ScoreLegend(
+          items: const [
+            (color: Colors.green, label: '80-100 Safe'),
+            (color: Colors.orange, label: '35-79 Moderate'),
+            (color: Colors.red, label: '0-34 Risky'),
+          ],
+        ),
         const SizedBox(height: 24),
 
         // Event detection
@@ -574,6 +582,15 @@ class _AlgoDemoScreenState extends State<AlgoDemoScreen>
         const SizedBox(height: 20),
 
         _ScoreBanner(score: (_overallTrust * 100).round(), label: 'Current Passenger Trust', cs: cs),
+        const SizedBox(height: 12),
+        _ScoreLegend(
+          items: const [
+            (color: Colors.green, label: '80-100 Highly Trusted'),
+            (color: Colors.orange, label: '60-79 Trusted'),
+            (color: Colors.amber, label: '40-59 Moderate'),
+            (color: Colors.red, label: '0-39 New/Building'),
+          ],
+        ),
         const SizedBox(height: 24),
 
         // Frequency
@@ -1816,4 +1833,41 @@ class _LegendDot extends StatelessWidget {
           Text(range, style: TextStyle(fontSize: 9, color: color)),
         ]),
       ]);
+}
+
+class _ScoreLegend extends StatelessWidget {
+  const _ScoreLegend({required this.items});
+
+  final List<({Color color, String label})> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: items.map((item) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: item.color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              item.label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
 }
