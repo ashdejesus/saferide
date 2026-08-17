@@ -148,55 +148,76 @@ class TripDetailScreen extends StatelessWidget {
                         style: textTheme.bodyMedium,
                       ),
                     )
-                  : FlutterMap(
-                      options: MapOptions(
-                        initialCenter: routePoints.first,
-                        initialZoom: 13,
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate: Theme.of(context).brightness == Brightness.dark
-                              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                              : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                          subdomains: const ['a', 'b', 'c', 'd'],
-                          userAgentPackageName: 'com.saferide.app',
-                        ),
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: routePoints,
-                              strokeWidth: 4,
-                              color: colorScheme.primary,
+                  : TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.easeInOut,
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      builder: (context, animValue, child) {
+                        final pointCount = (routePoints.length * animValue).toInt();
+                        final animatedPoints = routePoints.sublist(0, pointCount);
+
+                        // Determine the ending color based on risk score
+                        Color endColor = Colors.green;
+                        if (trip.riskScore >= 40) endColor = Colors.red;
+                        else if (trip.riskScore >= 20) endColor = Colors.orange;
+
+                        return FlutterMap(
+                          options: MapOptions(
+                            initialCenter: routePoints.first,
+                            initialZoom: 13,
+                            initialCameraFit: routePoints.length > 1
+                                ? CameraFit.bounds(
+                                    bounds: LatLngBounds.fromPoints(routePoints),
+                                    padding: const EdgeInsets.all(40),
+                                  )
+                                : null,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate: Theme.of(context).brightness == Brightness.dark
+                                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                                  : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                              subdomains: const ['a', 'b', 'c', 'd'],
+                              userAgentPackageName: 'com.saferide.app',
+                            ),
+                            PolylineLayer(
+                              polylines: [
+                                Polyline(
+                                  points: animatedPoints,
+                                  strokeWidth: 5,
+                                  gradientColors: [Colors.green, endColor],
+                                ),
+                              ],
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                if (routePoints.isNotEmpty)
+                                  Marker(
+                                    point: routePoints.first,
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.green,
+                                      size: 36,
+                                    ),
+                                  ),
+                                if (animatedPoints.length == routePoints.length && routePoints.length > 1)
+                                  Marker(
+                                    point: routePoints.last,
+                                    width: 40,
+                                    height: 40,
+                                    child: Icon(
+                                      Icons.flag,
+                                      color: endColor,
+                                      size: 36,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            if (routePoints.isNotEmpty)
-                              Marker(
-                                point: routePoints.first,
-                                width: 40,
-                                height: 40,
-                                child: Icon(
-                                  Icons.location_on,
-                                  color: colorScheme.tertiary,
-                                  size: 36,
-                                ),
-                              ),
-                            if (routePoints.length > 1)
-                              Marker(
-                                point: routePoints.last,
-                                width: 40,
-                                height: 40,
-                                child: Icon(
-                                  Icons.location_on,
-                                  color: colorScheme.primary,
-                                  size: 36,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                        );
+                      },
                     ),
             ),
           ),
