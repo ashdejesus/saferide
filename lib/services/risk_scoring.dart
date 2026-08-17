@@ -62,9 +62,9 @@ class AdaptiveThresholds {
   double contextTraffic = 0.0; // T_d(t): traffic density coefficient
 
   /// Adaptive threshold: θ(t) = θ_base(v) × vehicleMultiplier × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
-  double getAdaptiveThreshold(double baseThreshold) {
+  double getAdaptiveThreshold(double baseThreshold, {bool applyVehicleMultiplier = true}) {
     return baseThreshold *
-        vehicleMultiplier *
+        (applyVehicleMultiplier ? vehicleMultiplier : 1.0) *
         (1 + alpha * contextRoad) *
         (1 + beta * contextTraffic) *
         (1 + gamma * contextEnvNoise);
@@ -90,7 +90,7 @@ class AdaptiveThresholds {
   }
 
   /// Get thresholds for event detection
-  double get speedingThreshold => getAdaptiveThreshold(thetaSpeedingBase);
+  double get speedingThreshold => getAdaptiveThreshold(thetaSpeedingBase, applyVehicleMultiplier: false);
   double get brakingThreshold => getAdaptiveThreshold(thetaBrakingBase);
   double get turningThreshold => getAdaptiveThreshold(thetaTurningBase);
 }
@@ -245,7 +245,7 @@ WindowMetrics extractWindowMetrics(
 /// Event detection: E_v(w) = 1 if v_w > θ_v
 bool detectOverspeeding(double windowSpeed, AdaptiveThresholds thresholds) {
   return windowSpeed >
-      thresholds.getAdaptiveThreshold(thresholds.thetaSpeedingBase);
+      thresholds.getAdaptiveThreshold(thresholds.thetaSpeedingBase, applyVehicleMultiplier: false);
 }
 
 /// Event detection: E_b(w) = 1 if Δv(k) < -θ_b

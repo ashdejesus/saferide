@@ -74,6 +74,7 @@ class TripController extends ChangeNotifier {
   DateTime? _lastSpeedEvent;
   DateTime? _lastPotholeEvent; // Cooldown for pothole detection
   double _lastRecordedSpeed = 0;
+  double? _lastFilteredSpeed;
   int _turningStreak = 0;
 
   // Real-time crowd alerts
@@ -199,65 +200,14 @@ class TripController extends ChangeNotifier {
       debugPrint('Failed to get location for area reports: $e');
     }
 
-    if (kIsWeb) {
-      _communityTrips = [
-        Trip(
-          id: 101,
-          startTime: DateTime.now().subtract(const Duration(hours: 5)),
-          endTime: DateTime.now().subtract(const Duration(hours: 4)),
-          startLat: 37.422,
-          startLng: -122.084,
-          endLat: 37.421,
-          endLng: -122.083,
-          riskScore: 30, // 70% safety
-          routePoints: [
-            {'lat': 37.422, 'lng': -122.084},
-            {'lat': 37.421, 'lng': -122.083},
-            {'lat': 37.422, 'lng': -122.085},
-          ],
-        ),
-        Trip(
-          id: 102,
-          startTime: DateTime.now().subtract(const Duration(hours: 1)),
-          endTime: DateTime.now(),
-          startLat: 37.420,
-          startLng: -122.088,
-          endLat: 37.422,
-          endLng: -122.084,
-          riskScore: 80, // 20% safety (high risk)
-          routePoints: [
-            {'lat': 37.420, 'lng': -122.088},
-            {'lat': 37.421, 'lng': -122.087},
-            {'lat': 37.422, 'lng': -122.084},
-          ],
-        ),
-      ];
-      
-      // Shift all dummy trips (historical and community) to the user's actual location!
-      if (pos != null) {
-        final latOffset = pos.latitude - 37.422;
-        final lngOffset = pos.longitude - (-122.084);
-        
-        void shiftTrip(Trip t) {
-          for (var p in t.routePoints) {
-            p['lat'] = (p['lat'] ?? 0) + latOffset;
-            p['lng'] = (p['lng'] ?? 0) + lngOffset;
-          }
-        }
-        
-        for (final t in _completedTrips) shiftTrip(t);
-        for (final t in _communityTrips) shiftTrip(t);
-      }
-    } else {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        try {
-          _communityTrips = await _firestoreService.getCommunityTrips(user.uid);
-        } catch (e) {
-          debugPrint('Failed to load community trips: $e');
-          notifyListeners();
-          throw Exception('network_error');
-        }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        _communityTrips = await _firestoreService.getCommunityTrips(user.uid);
+      } catch (e) {
+        debugPrint('Failed to load community trips: $e');
+        notifyListeners();
+        throw Exception('network_error');
       }
     }
     
@@ -397,6 +347,11 @@ class TripController extends ChangeNotifier {
 
       // Apply baseline vehicle thresholds before starting
       _adaptiveThresholds.vehicleMultiplier = vehicleMultiplier;
+      if (vehicleType?.toLowerCase() == risk_scoring.VehicleType.bus.name.toLowerCase()) {
+        _adaptiveThresholds.thetaSpeedingBase = 30.0; // RA 4136 strict limit for buses in city
+      } else {
+        _adaptiveThresholds.thetaSpeedingBase = 40.0; // RA 4136 limit for cars/jeepneys in city
+      }
 
       // --- 4. Start sensor + report streams ---
       _listenToSensors();
@@ -561,6 +516,11 @@ class TripController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isRecentPothole() {
+    if (_lastPotholeEvent == null) return false;
+    return DateTime.now().difference(_lastPotholeEvent!).inSeconds < 2;
+  }
+
   void _listenToSensors() {
     _positionSub = _locationService.positionStream().listen(_onPosition);
     _accelSub = _sensorService.userAccelerometerStream().listen(
@@ -584,7 +544,7 @@ class TripController extends ChangeNotifier {
     }
 
     // Detect overspeeding using adaptive threshold
-    if (risk_scoring.detectOverspeeding(avgSpeedKmh, _adaptiveThresholds)) {
+    if (!_isRecentPothole() && risk_scoring.detectOverspeeding(avgSpeedKmh, _adaptiveThresholds)) {
       if (_cooldownElapsed(_lastSpeedEvent)) {
         _speedingCount++;
         _lastSpeedEvent = DateTime.now();
@@ -594,8 +554,11 @@ class TripController extends ChangeNotifier {
 
     // Detect harsh braking using speed variation: Δv(k) = ṽ(k) - ṽ(k-1)
     // Formula: E_b(w) = 1 if Δv(k) < -θ_b
-    final speedDelta = _currentSpeed - _lastRecordedSpeed;
-    if (risk_scoring.detectHarshBraking(speedDelta, _adaptiveThresholds) &&
+    final currentFilteredSpeed = _speedWindow.average;
+    final speedDelta = _lastFilteredSpeed != null ? currentFilteredSpeed - _lastFilteredSpeed! : 0.0;
+    _lastFilteredSpeed = currentFilteredSpeed;
+    
+    if (!_isRecentPothole() && risk_scoring.detectHarshBraking(speedDelta, _adaptiveThresholds) &&
         (_testMode || _currentSpeed > _adaptiveThresholds.thetaSpeedMin)) {
       if (_cooldownElapsed(_lastBrakeEvent)) {
         _brakingCount++;
@@ -720,7 +683,7 @@ class TripController extends ChangeNotifier {
     // Requires: (1) sufficient vehicle speed, (2) high gyro, (3) sustained duration
     final maxGyro = _gyroWindow.max;
     final isMoving = _testMode || _currentSpeed >= 3.0; // ~11 km/h minimum to avoid stationary false positives
-    if (isMoving && risk_scoring.detectSharpTurning(maxGyro, _adaptiveThresholds)) {
+    if (!_isRecentPothole() && isMoving && risk_scoring.detectSharpTurning(maxGyro, _adaptiveThresholds)) {
       _turningStreak++;
       if (_turningCooldownElapsed(_lastTurnEvent)) {
         if (_turningStreak >= 10) {

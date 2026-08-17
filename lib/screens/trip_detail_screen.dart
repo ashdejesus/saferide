@@ -48,6 +48,17 @@ class TripDetailScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildLegendItem('Low (<20)', Colors.green.shade100, textTheme),
+              const SizedBox(width: 12),
+              _buildLegendItem('Medium (20-39)', Colors.orange.shade100, textTheme),
+              const SizedBox(width: 12),
+              _buildLegendItem('High (≥40)', Colors.red.shade100, textTheme),
+            ],
+          ),
           const SizedBox(height: 20),
           const SectionHeader(title: 'Trip Information'),
           const SizedBox(height: 12),
@@ -191,10 +202,29 @@ class TripDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildLegendItem(String label, Color color, TextTheme textTheme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: textTheme.bodySmall),
+      ],
+    );
+  }
+
   Color _getRiskColor(double score, ColorScheme colorScheme) {
-    if (score >= 40) return colorScheme.errorContainer;
-    if (score >= 20) return colorScheme.tertiaryContainer;
-    return colorScheme.secondaryContainer;
+    if (score >= 40) return Colors.red.shade100;
+    if (score >= 20) return Colors.orange.shade100;
+    return Colors.green.shade100;
   }
 
   String _getRiskLabel(double score) {

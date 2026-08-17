@@ -211,6 +211,23 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
   }
 
   @override
+  void didUpdateWidget(covariant _LayerBottomSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showHighRiskAreas != widget.showHighRiskAreas) {
+      _showHighRiskAreas = widget.showHighRiskAreas;
+    }
+    if (oldWidget.showSaferRoutes != widget.showSaferRoutes) {
+      _showSaferRoutes = widget.showSaferRoutes;
+    }
+    if (oldWidget.showReportedIncidents != widget.showReportedIncidents) {
+      _showReportedIncidents = widget.showReportedIncidents;
+    }
+    if (oldWidget.showCommunitySafety != widget.showCommunitySafety) {
+      _showCommunitySafety = widget.showCommunitySafety;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -301,6 +318,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   late final MapController _mapController;
   LatLng? _lastCenteredLocation;
   bool _isMapReady = false;
+  double _currentZoom = 15.0;
 
   late bool _showHighRiskAreas;
   late bool _showSaferRoutes;
@@ -588,6 +606,20 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   @override
   void didUpdateWidget(covariant _FullScreenMapCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
+    if (oldWidget.showHighRiskAreas != widget.showHighRiskAreas) {
+      _showHighRiskAreas = widget.showHighRiskAreas;
+    }
+    if (oldWidget.showSaferRoutes != widget.showSaferRoutes) {
+      _showSaferRoutes = widget.showSaferRoutes;
+    }
+    if (oldWidget.showReportedIncidents != widget.showReportedIncidents) {
+      _showReportedIncidents = widget.showReportedIncidents;
+    }
+    if (oldWidget.showCommunitySafety != widget.showCommunitySafety) {
+      _showCommunitySafety = widget.showCommunitySafety;
+    }
+
 
     _syncMapCenter(force: false);
 
@@ -655,30 +687,141 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return Colors.red;
   }
 
-  /// Build circle markers for completed trips, color-coded by safety score.
-  List<CircleMarker> _buildHistoricalTripHeatmap(ColorScheme colorScheme) {
+  /// Build polylines for completed trips, color-coded by safety score.
+  List<Polyline<Object>> _buildHistoricalTripPolylines(ColorScheme colorScheme, bool isZoomedOut) {
     final completedTrips = widget.controller.completedTrips;
-    final circles = <CircleMarker>[];
+    final polylines = <Polyline<Object>>[];
 
     for (final trip in completedTrips) {
       if (trip.routePoints.isEmpty) continue;
+      
+      // If zoomed out, only show high-risk trips to declutter
+      final safetyScore = 100.0 - trip.riskScore;
+      if (isZoomedOut && safetyScore >= 50) continue;
 
       final color = _tripRouteColor(trip);
+      final points = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
 
-      for (final p in trip.routePoints) {
-        circles.add(
-          CircleMarker(
-            point: LatLng(p['lat']!, p['lng']!),
-            color: color.withValues(alpha: 0.25),
-            borderStrokeWidth: 0,
-            useRadiusInMeter: false,
-            radius: 15, // Fixed 15px radius for better visibility at all zoom levels
-          ),
-        );
+      // Use a gradient for high risk trips to simulate event heatmaps along the route
+      List<Color>? gradient;
+      if (safetyScore < 50 && points.length >= 3) {
+        gradient = [
+          Colors.green.withValues(alpha: 0.8),
+          color.withValues(alpha: 0.8),
+          color.withValues(alpha: 0.8),
+          Colors.green.withValues(alpha: 0.8),
+        ];
       }
+
+      polylines.add(
+        Polyline<Object>(
+          points: points,
+          color: color.withValues(alpha: 0.8),
+          strokeWidth: isZoomedOut ? 3.0 : 6.0,
+          borderStrokeWidth: isZoomedOut ? 1.0 : 2.5,
+          borderColor: color,
+          gradientColors: gradient,
+          strokeCap: StrokeCap.round,
+          strokeJoin: StrokeJoin.round,
+        ),
+      );
     }
 
-    return circles;
+    return polylines;
+  }
+
+  /// Build interactive markers (info and directional arrows) for routes
+  List<Marker> _buildRouteInteractiveMarkers(ColorScheme colorScheme, bool isZoomedOut) {
+    final completedTrips = widget.controller.completedTrips;
+    final markers = <Marker>[];
+
+    if (isZoomedOut) return markers; // Hide when zoomed out
+
+    for (final trip in completedTrips) {
+      if (trip.routePoints.length < 2) continue;
+
+      final safetyScore = 100.0 - trip.riskScore;
+      final points = trip.routePoints;
+      final start = LatLng(points[0]['lat']!, points[0]['lng']!);
+      final end = LatLng(points.last['lat']!, points.last['lng']!);
+      
+      // Info Marker at start
+      markers.add(
+        Marker(
+          point: start,
+          width: 32,
+          height: 32,
+          child: GestureDetector(
+            onTap: () {
+              _showTripSummaryBottomSheet(trip, safetyScore, colorScheme);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: _tripRouteColor(trip), width: 2),
+              ),
+              child: Icon(Icons.info_outline, size: 20, color: _tripRouteColor(trip)),
+            ),
+          ),
+        ),
+      );
+
+      // Directional arrow at end
+      final preEnd = LatLng(points[points.length - 2]['lat']!, points[points.length - 2]['lng']!);
+      final dy = end.latitude - preEnd.latitude;
+      final dx = end.longitude - preEnd.longitude;
+      final angle = atan2(dx, dy);
+
+      markers.add(
+        Marker(
+          point: end,
+          width: 24,
+          height: 24,
+          child: Transform.rotate(
+            angle: angle,
+            child: Icon(Icons.navigation, size: 20, color: _tripRouteColor(trip)),
+          ),
+        ),
+      );
+    }
+    return markers;
+  }
+
+  void _showTripSummaryBottomSheet(Trip trip, double safetyScore, ColorScheme colorScheme) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Trip Summary', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.security, color: _tripRouteColor(trip)),
+                title: Text('Safety Score: ${safetyScore.toStringAsFixed(0)}%'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.speed, color: Colors.orange),
+                title: Text('Speeding Events: ${trip.speedingCount}'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.warning, color: Colors.red),
+                title: Text('Harsh Braking: ${trip.brakingCount}'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// Build high-risk markers from actual trip data — marks the start/end
@@ -761,10 +904,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     );
   }
 
-  /// Build safer route circles — completed trips with safety score >= 80.
-  List<CircleMarker> _buildSaferRoutesHeatmap(ColorScheme colorScheme) {
+  /// Build safer route polylines — completed trips with safety score >= 80.
+  List<Polyline<Object>> _buildSaferRoutesPolylines(ColorScheme colorScheme) {
     final completedTrips = widget.controller.completedTrips;
-    final circles = <CircleMarker>[];
+    final polylines = <Polyline<Object>>[];
 
     for (final trip in completedTrips) {
       final safetyScore = 100.0 - trip.riskScore;
@@ -772,44 +915,72 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
       if (trip.routePoints.isEmpty) continue;
 
-      for (final p in trip.routePoints) {
-        circles.add(
-          CircleMarker(
-            point: LatLng(p['lat']!, p['lng']!),
-            color: colorScheme.tertiary.withValues(alpha: 0.35),
-            borderStrokeWidth: 0,
-            useRadiusInMeter: false,
-            radius: 15,
-          ),
-        );
-      }
+      final points = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
+
+      polylines.add(
+        Polyline<Object>(
+          points: points,
+          color: colorScheme.tertiary.withValues(alpha: 0.8),
+          strokeWidth: 6.0,
+          borderStrokeWidth: 2.5,
+          borderColor: colorScheme.tertiary,
+          strokeCap: StrokeCap.round,
+          strokeJoin: StrokeJoin.round,
+        ),
+      );
     }
 
-    return circles;
+    return polylines;
   }
 
-  /// Build community routes as a circle-based heatmap
-  List<CircleMarker> _buildCommunityHeatmap(ColorScheme colorScheme) {
+  /// Build community routes as a polyline-based heatmap
+  List<Polyline<Object>> _buildCommunityPolylines(ColorScheme colorScheme) {
     final communityTrips = widget.controller.communityTrips;
-    final circles = <CircleMarker>[];
+    final polylines = <Polyline<Object>>[];
 
     for (final trip in communityTrips) {
       if (trip.routePoints.isEmpty) continue;
 
       final color = _tripRouteColor(trip);
+      final points = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
 
-      // Add a circle for every point in the route to create a heatmap effect
-      for (final p in trip.routePoints) {
-        circles.add(
-          CircleMarker(
-            point: LatLng(p['lat']!, p['lng']!),
-            color: color.withValues(alpha: 0.15),
-            borderStrokeWidth: 0,
-            useRadiusInMeter: false,
-            radius: 15, // Fixed 15px radius for visibility at all zoom levels
-          ),
-        );
-      }
+      polylines.add(
+        Polyline<Object>(
+          points: points,
+          color: color.withValues(alpha: 0.6),
+          strokeWidth: 5.0,
+          borderStrokeWidth: 2.0,
+          borderColor: color,
+          strokeCap: StrokeCap.round,
+          strokeJoin: StrokeJoin.round,
+        ),
+      );
+    }
+
+    return polylines;
+  }
+
+  /// Build reported incident heatmap circles from real Firestore data.
+  List<CircleMarker> _buildReportedIncidentHeatmap(ColorScheme colorScheme) {
+    final circles = <CircleMarker>[];
+    final controller = widget.controller;
+
+    for (final r in controller.remoteReports) {
+      if (r.latitude == null || r.longitude == null) continue;
+      final severity = (r.severity).clamp(1, 5);
+      final color = severity >= 4
+          ? colorScheme.error
+          : (severity == 3 ? Colors.orange : colorScheme.tertiary);
+
+      circles.add(
+        CircleMarker(
+          point: LatLng(r.latitude!, r.longitude!),
+          color: color.withValues(alpha: 0.25),
+          borderStrokeWidth: 0,
+          useRadiusInMeter: false,
+          radius: 40 + (severity * 5.0), 
+        ),
+      );
     }
 
     return circles;
@@ -949,22 +1120,30 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final hasRealTripRoute = widget.routePoints.length >= 2;
     final hasCompletedTrips = widget.controller.completedTrips.isNotEmpty;
 
+    final isZoomedOut = _currentZoom < 13.0;
+    
     // Build layers from real data
-    final List<CircleMarker> historicalHeatmap = _buildHistoricalTripHeatmap(
+    final List<Polyline<Object>> historicalPolylines = _buildHistoricalTripPolylines(
       colorScheme,
+      isZoomedOut
     );
+    final List<Marker> routeInteractiveMarkers = _buildRouteInteractiveMarkers(colorScheme, isZoomedOut);
+
     final List<Marker> highRiskMarkers = _showHighRiskAreas
         ? _buildHighRiskAreaMarkers(colorScheme)
         : <Marker>[];
-    final List<CircleMarker> saferRoutesHeatmap = _showSaferRoutes
-        ? _buildSaferRoutesHeatmap(colorScheme)
-        : <CircleMarker>[];
+    final List<Polyline<Object>> saferRoutesPolylines = _showSaferRoutes
+        ? _buildSaferRoutesPolylines(colorScheme)
+        : <Polyline<Object>>[];
     final List<Marker> incidentMarkers = _showReportedIncidents
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
-    final List<CircleMarker> communityHeatmap = _showCommunitySafety
-        ? _buildCommunityHeatmap(colorScheme)
+    final List<CircleMarker> incidentHeatmap = _showReportedIncidents
+        ? _buildReportedIncidentHeatmap(colorScheme)
         : <CircleMarker>[];
+    final List<Polyline<Object>> communityPolylines = _showCommunitySafety
+        ? _buildCommunityPolylines(colorScheme)
+        : <Polyline<Object>>[];
 
     final mapCenter = _resolveMapCenter();
 
@@ -978,6 +1157,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               initialCenter: mapCenter,
               initialZoom: hasRealTripRoute || hasCompletedTrips ? 15 : 2,
               onMapReady: _handleMapReady,
+              onPositionChanged: (position, hasGesture) {
+                final newZoom = position.zoom;
+                if (newZoom != null && newZoom != _currentZoom) {
+                  setState(() => _currentZoom = newZoom as double);
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -988,21 +1173,29 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 userAgentPackageName: 'com.saferide.app',
               ),
               // Historical trip routes (color-coded by safety score)
-              CircleLayer(circles: historicalHeatmap),
-              // Community heatmap circles
-              CircleLayer(circles: communityHeatmap),
+              PolylineLayer<Object>(polylines: historicalPolylines),
+              // Community heatmap polylines
+              PolylineLayer<Object>(polylines: communityPolylines),
               // Safer routes layer (green, score >= 80)
-              CircleLayer(circles: saferRoutesHeatmap),
+              PolylineLayer<Object>(polylines: saferRoutesPolylines),
               // High-risk area markers
               MarkerLayer(markers: highRiskMarkers),
+              // Route interactive markers (info + arrows)
+              MarkerLayer(markers: routeInteractiveMarkers),
+              // Reported incidents heatmap (below lines and markers)
+              CircleLayer(circles: incidentHeatmap),
               // Active trip polyline (on top)
               if (hasRealTripRoute)
                 PolylineLayer<Object>(
                   polylines: [
                     Polyline<Object>(
                       points: widget.routePoints,
-                      strokeWidth: 2.5,
-                      color: colorScheme.primary,
+                      strokeWidth: 7.0,
+                      color: colorScheme.primary.withValues(alpha: 0.9),
+                      borderStrokeWidth: 3.0,
+                      borderColor: colorScheme.primary,
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
                     ),
                   ],
                 ),
@@ -1091,24 +1284,30 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                 } else {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => Scaffold(
-                        body: SafeArea(
-                          child: _FullScreenMapCard(
-                            isTracking: widget.isTracking,
-                            routePoints: widget.routePoints,
-                            controller: widget.controller,
-                            showHighRiskAreas: _showHighRiskAreas,
-                            showSaferRoutes: _showSaferRoutes,
-                            showReportedIncidents: _showReportedIncidents,
-                            showCommunitySafety: _showCommunitySafety,
-                            onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
-                            onSaferRoutesChanged: widget.onSaferRoutesChanged,
-                            onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
-                            onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
-                            isFullScreen: true,
+                      builder: (context) {
+                        final ctrl = context.watch<TripController>();
+                        final points = ctrl.routePoints
+                            .map((p) => LatLng(p['lat']!, p['lng']!))
+                            .toList();
+                        return Scaffold(
+                          body: SafeArea(
+                            child: _FullScreenMapCard(
+                              isTracking: ctrl.isTracking,
+                              routePoints: points,
+                              controller: ctrl,
+                              showHighRiskAreas: _showHighRiskAreas,
+                              showSaferRoutes: _showSaferRoutes,
+                              showReportedIncidents: _showReportedIncidents,
+                              showCommunitySafety: _showCommunitySafety,
+                              onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
+                              onSaferRoutesChanged: widget.onSaferRoutesChanged,
+                              onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
+                              onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
+                              isFullScreen: true,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   );
                 }
@@ -1408,6 +1607,10 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
           ),
           const SizedBox(height: 8),
           if (showRouteColors) ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 6, top: 2),
+              child: Text('Safety/Risk Score', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(

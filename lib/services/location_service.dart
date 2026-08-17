@@ -59,13 +59,13 @@ class LocationService {
   Stream<Position> positionStream() {
     LocationSettings locationSettings = const LocationSettings(
       accuracy: LocationAccuracy.best,
-      distanceFilter: 5,
+      distanceFilter: 0,
     );
 
     if (!kIsWeb && Platform.isAndroid) {
       locationSettings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5,
+        distanceFilter: 0,
         intervalDuration: const Duration(seconds: 2),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'SafeRide trip running',
@@ -80,7 +80,7 @@ class LocationService {
     } else if (!kIsWeb && Platform.isIOS) {
       locationSettings = AppleSettings(
         accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 5,
+        distanceFilter: 0,
         activityType: ActivityType.automotiveNavigation,
         allowBackgroundLocationUpdates: true,
         showBackgroundLocationIndicator: true,
@@ -105,7 +105,7 @@ class LocationService {
       if (!kIsWeb && Platform.isAndroid) {
         return AndroidSettings(
           accuracy: accuracy,
-          distanceFilter: 5,
+          distanceFilter: 0,
           intervalDuration: const Duration(seconds: 2),
           foregroundNotificationConfig: const ForegroundNotificationConfig(
             notificationTitle: 'SafeRide trip running',
@@ -120,14 +120,14 @@ class LocationService {
       } else if (!kIsWeb && Platform.isIOS) {
         return AppleSettings(
           accuracy: accuracy,
-          distanceFilter: 5,
+          distanceFilter: 0,
           activityType: ActivityType.automotiveNavigation,
           allowBackgroundLocationUpdates: true,
           showBackgroundLocationIndicator: true,
           pauseLocationUpdatesAutomatically: false,
         );
       }
-      return LocationSettings(accuracy: accuracy, distanceFilter: 5);
+      return LocationSettings(accuracy: accuracy, distanceFilter: 0);
     }
 
     // --- Attempt 1: preferred accuracy, 10-second timeout ---
