@@ -110,6 +110,7 @@ class TripDetailScreen extends StatelessWidget {
                   _EventRow(
                     icon: Icons.speed,
                     label: 'Speeding Incidents',
+                    description: 'Exceeding safe speed limits',
                     count: trip.speedingCount,
                     color: colorScheme.error,
                   ),
@@ -117,6 +118,7 @@ class TripDetailScreen extends StatelessWidget {
                   _EventRow(
                     icon: Icons.warning_amber,
                     label: 'Harsh Braking',
+                    description: 'Sudden decelerations indicating reckless driving',
                     count: trip.brakingCount,
                     color: colorScheme.tertiary,
                   ),
@@ -124,6 +126,7 @@ class TripDetailScreen extends StatelessWidget {
                   _EventRow(
                     icon: Icons.turn_right,
                     label: 'Sharp Turns',
+                    description: 'Aggressive cornering or swerving',
                     count: trip.turningCount,
                     color: colorScheme.primary,
                   ),
@@ -292,12 +295,14 @@ class _EventRow extends StatelessWidget {
   const _EventRow({
     required this.icon,
     required this.label,
+    required this.description,
     required this.count,
     required this.color,
   });
 
   final IconData icon;
   final String label;
+  final String description;
   final int count;
   final Color color;
 
@@ -316,7 +321,20 @@ class _EventRow extends StatelessWidget {
           child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Text(label, style: textTheme.bodyMedium)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: textTheme.bodySmall?.copyWith(color: textTheme.bodySmall?.color?.withValues(alpha: 0.7)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(

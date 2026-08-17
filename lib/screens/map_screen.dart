@@ -11,6 +11,7 @@ import '../models/passenger_trust_metrics.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_mini_hud.dart';
+import 'trip_detail_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -791,31 +792,89 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   void _showTripSummaryBottomSheet(Trip trip, double safetyScore, ColorScheme colorScheme) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Trip Summary', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Icon(Icons.security, color: _tripRouteColor(trip)),
-                title: Text('Safety Score: ${safetyScore.toStringAsFixed(0)}%'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      trip.routeName ?? 'Trip Summary',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _tripRouteColor(trip).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${safetyScore.toStringAsFixed(0)}% Safe',
+                      style: TextStyle(
+                        color: _tripRouteColor(trip),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.speed, color: Colors.orange),
-                title: Text('Speeding Events: ${trip.speedingCount}'),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _SummaryStat(
+                    icon: Icons.speed,
+                    label: 'Speeding',
+                    value: trip.speedingCount.toString(),
+                    color: Colors.red,
+                  ),
+                  _SummaryStat(
+                    icon: Icons.warning_amber,
+                    label: 'Braking',
+                    value: trip.brakingCount.toString(),
+                    color: Colors.orange,
+                  ),
+                  _SummaryStat(
+                    icon: Icons.turn_right,
+                    label: 'Turns',
+                    value: trip.turningCount.toString(),
+                    color: colorScheme.primary,
+                  ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.warning, color: Colors.red),
-                title: Text('Harsh Braking: ${trip.brakingCount}'),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TripDetailScreen(trip: trip),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.analytics_outlined),
+                  label: const Text('View Full Details'),
+                ),
               ),
             ],
           ),
@@ -1796,6 +1855,48 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SummaryStat extends StatelessWidget {
+  const _SummaryStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }

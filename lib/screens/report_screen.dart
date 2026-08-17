@@ -523,11 +523,17 @@ class _TrustMetricsCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Text(
-                  '${(metrics.overallTrust * 100).toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: trustColor,
-                    fontWeight: FontWeight.bold,
+                TweenAnimationBuilder<double>(
+                  key: ValueKey(metrics.overallTrust),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween<double>(begin: 0.0, end: metrics.overallTrust),
+                  builder: (context, val, _) => Text(
+                    '${(val * 100).toStringAsFixed(0)}%',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: trustColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -600,7 +606,6 @@ class _TrustMetricRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percentage = (value * 100).toStringAsFixed(0);
     return Row(
       children: [
         Icon(icon, size: 20),
@@ -613,17 +618,35 @@ class _TrustMetricRow extends StatelessWidget {
               const SizedBox(height: 4),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(value: value, minHeight: 6),
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey(value),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween<double>(begin: 0.0, end: value),
+                  builder: (context, val, _) => LinearProgressIndicator(
+                    value: val,
+                    minHeight: 6,
+                  ),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          '$percentage%',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        TweenAnimationBuilder<double>(
+          key: ValueKey(value),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutCubic,
+          tween: Tween<double>(begin: 0.0, end: value),
+          builder: (context, val, _) {
+            final percentage = (val * 100).toStringAsFixed(0);
+            return Text(
+              '$percentage%',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            );
+          },
         ),
       ],
     );
