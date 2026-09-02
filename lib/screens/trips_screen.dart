@@ -119,19 +119,19 @@ class _TripsScreenState extends State<TripsScreen>
           const SizedBox(height: 80),
         ];
 
-        return ListView(
+        return ListView.builder(
           padding: const EdgeInsets.all(20),
-          children: [
-            for (var i = 0; i < items.length; i++)
-              _StaggeredItem(
-                index: i,
-                animation: _animationController,
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
-                  child: items[i],
-                ),
+          itemCount: items.length,
+          itemBuilder: (context, i) {
+            return _StaggeredItem(
+              index: i,
+              animation: _animationController,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
+                child: items[i],
               ),
-          ],
+            );
+          },
         );
       },
     );

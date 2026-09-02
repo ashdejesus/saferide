@@ -5,28 +5,51 @@ import 'package:latlong2/latlong.dart';
 import '../models/trip.dart';
 import '../services/passenger_reporting_service.dart';
 import '../widgets/section_header.dart';
-class TripDetailScreen extends StatelessWidget {
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+class TripDetailScreen extends StatefulWidget {
   const TripDetailScreen({super.key, required this.trip});
 
   final Trip trip;
 
   @override
+  State<TripDetailScreen> createState() => _TripDetailScreenState();
+}
+
+class _TripDetailScreenState extends State<TripDetailScreen> {
+  late final MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final duration = trip.endTime?.difference(trip.startTime);
-    final routePoints = trip.routePoints
+    final duration = widget.trip.endTime?.difference(widget.trip.startTime);
+    final routePoints = widget.trip.routePoints
         .map((point) => LatLng(point['lat']!, point['lng']!))
         .toList();
 
+    final apiKey = dotenv.env['CARTO_API_KEY'] ?? '';
+    final keyParam = apiKey.isNotEmpty ? '?key=$apiKey' : '';
+
     return Scaffold(
-      appBar: AppBar(title: Text(trip.routeName ?? 'Trip Details')),
+      appBar: AppBar(title: Text(widget.trip.routeName ?? 'Trip Details')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           // Risk Score Card
           Card(
-            color: _getRiskColor(trip.riskScore, colorScheme),
+            color: _getRiskColor(widget.trip.riskScore, colorScheme),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -34,14 +57,14 @@ class TripDetailScreen extends StatelessWidget {
                   Text('Risk Score', style: textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(
-                    trip.riskScore.toStringAsFixed(0),
+                    widget.trip.riskScore.toStringAsFixed(0),
                     style: textTheme.displayLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _getRiskLabel(trip.riskScore),
+                    _getRiskLabel(widget.trip.riskScore),
                     style: textTheme.titleSmall,
                   ),
                 ],
@@ -67,11 +90,11 @@ class TripDetailScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  if (trip.vehicleType != null) ...[
+                  if (widget.trip.vehicleType != null) ...[
                     _InfoRow(
                       icon: Icons.directions_car,
                       label: 'Vehicle',
-                      value: '${trip.vehicleType![0].toUpperCase()}${trip.vehicleType!.substring(1)}',
+                      value: '${widget.trip.vehicleType![0].toUpperCase()}${widget.trip.vehicleType!.substring(1)}',
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -86,14 +109,14 @@ class TripDetailScreen extends StatelessWidget {
                   _InfoRow(
                     icon: Icons.calendar_today,
                     label: 'Date',
-                    value: _formatDate(trip.startTime),
+                    value: _formatDate(widget.trip.startTime),
                   ),
                   const SizedBox(height: 12),
                   _InfoRow(
                     icon: Icons.schedule,
                     label: 'Time',
                     value:
-                        '${_formatTime(trip.startTime)} - ${trip.endTime != null ? _formatTime(trip.endTime!) : 'Ongoing'}',
+                        '${_formatTime(widget.trip.startTime)} - ${widget.trip.endTime != null ? _formatTime(widget.trip.endTime!) : 'Ongoing'}',
                   ),
                 ],
               ),
@@ -111,7 +134,7 @@ class TripDetailScreen extends StatelessWidget {
                     icon: Icons.speed,
                     label: 'Speeding Incidents',
                     description: 'Exceeding safe speed limits',
-                    count: trip.speedingCount,
+                    count: widget.trip.speedingCount,
                     color: colorScheme.error,
                   ),
                   const SizedBox(height: 12),
@@ -119,7 +142,7 @@ class TripDetailScreen extends StatelessWidget {
                     icon: Icons.warning_amber,
                     label: 'Harsh Braking',
                     description: 'Sudden decelerations indicating reckless driving',
-                    count: trip.brakingCount,
+                    count: widget.trip.brakingCount,
                     color: colorScheme.tertiary,
                   ),
                   const SizedBox(height: 12),
@@ -127,7 +150,7 @@ class TripDetailScreen extends StatelessWidget {
                     icon: Icons.turn_right,
                     label: 'Sharp Turns',
                     description: 'Aggressive cornering or swerving',
-                    count: trip.turningCount,
+                    count: widget.trip.turningCount,
                     color: colorScheme.primary,
                   ),
                 ],
@@ -148,20 +171,10 @@ class TripDetailScreen extends StatelessWidget {
                         style: textTheme.bodyMedium,
                       ),
                     )
-                  : TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 1500),
-                      curve: Curves.easeInOut,
-                      tween: Tween<double>(begin: 0.0, end: 1.0),
-                      builder: (context, animValue, child) {
-                        final pointCount = (routePoints.length * animValue).toInt();
-                        final animatedPoints = routePoints.sublist(0, pointCount);
-
-                        // Determine the ending color based on risk score
-                        Color endColor = Colors.green;
-                        if (trip.riskScore >= 40) endColor = Colors.red;
-                        else if (trip.riskScore >= 20) endColor = Colors.orange;
-
-                        return FlutterMap(
+                  : Stack(
+                      children: [
+                        FlutterMap(
+                          mapController: _mapController,
                           options: MapOptions(
                             initialCenter: routePoints.first,
                             initialZoom: 13,
@@ -173,52 +186,111 @@ class TripDetailScreen extends StatelessWidget {
                                 : null,
                           ),
                           children: [
-                            TileLayer(
-                              urlTemplate: Theme.of(context).brightness == Brightness.dark
-                                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                                  : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                              subdomains: const ['a', 'b', 'c', 'd'],
-                              userAgentPackageName: 'com.saferide.app',
-                            ),
-                            PolylineLayer(
-                              polylines: [
-                                Polyline(
-                                  points: animatedPoints,
-                                  strokeWidth: 5,
-                                  gradientColors: [Colors.green, endColor],
+                        TileLayer(
+                          urlTemplate: Theme.of(context).brightness == Brightness.dark
+                              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png$keyParam'
+                              : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png$keyParam',
+                          subdomains: const ['a', 'b', 'c', 'd'],
+                          userAgentPackageName: 'com.saferide.app',
+                        ),
+                        TweenAnimationBuilder<double>(
+                          duration: const Duration(milliseconds: 1500),
+                          curve: Curves.easeInOut,
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          builder: (context, animValue, child) {
+                            final pointCount = (routePoints.length * animValue).toInt();
+                            final animatedPoints = routePoints.sublist(0, pointCount);
+
+                            // Determine the ending color based on risk score
+                            Color endColor = Colors.green;
+                            if (widget.trip.riskScore >= 40) endColor = Colors.red;
+                            else if (widget.trip.riskScore >= 20) endColor = Colors.orange;
+
+                            return Stack(
+                              children: [
+                                PolylineLayer(
+                                  polylines: [
+                                    Polyline(
+                                      points: animatedPoints,
+                                      strokeWidth: 5,
+                                      gradientColors: [Colors.green, endColor],
+                                    ),
+                                  ],
+                                ),
+                                MarkerLayer(
+                                  markers: [
+                                    if (routePoints.isNotEmpty)
+                                      Marker(
+                                        point: routePoints.first,
+                                        width: 40,
+                                        height: 40,
+                                        child: const Icon(
+                                          Icons.location_on,
+                                          color: Colors.green,
+                                          size: 36,
+                                        ),
+                                      ),
+                                    if (animatedPoints.length == routePoints.length && routePoints.length > 1)
+                                      Marker(
+                                        point: routePoints.last,
+                                        width: 40,
+                                        height: 40,
+                                        child: Icon(
+                                          Icons.flag,
+                                          color: endColor,
+                                          size: 36,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    if (routePoints.isNotEmpty)
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Column(
+                          children: [
+                            FloatingActionButton.small(
+                              heroTag: 'trip_detail_my_location',
+                              backgroundColor: colorScheme.surface,
+                              foregroundColor: colorScheme.primary,
+                              onPressed: () {
+                                if (routePoints.length > 1) {
+                                  _mapController.move(routePoints.first, _mapController.camera.zoom);
+                                }
+                              },
+                              child: const Icon(Icons.my_location),
                             ),
-                            MarkerLayer(
-                              markers: [
-                                if (routePoints.isNotEmpty)
-                                  Marker(
-                                    point: routePoints.first,
-                                    width: 40,
-                                    height: 40,
-                                    child: const Icon(
-                                      Icons.location_on,
-                                      color: Colors.green,
-                                      size: 36,
-                                    ),
-                                  ),
-                                if (animatedPoints.length == routePoints.length && routePoints.length > 1)
-                                  Marker(
-                                    point: routePoints.last,
-                                    width: 40,
-                                    height: 40,
-                                    child: Icon(
-                                      Icons.flag,
-                                      color: endColor,
-                                      size: 36,
-                                    ),
-                                  ),
-                              ],
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'trip_detail_zoom_in',
+                              backgroundColor: colorScheme.surface,
+                              foregroundColor: colorScheme.primary,
+                              onPressed: () {
+                                _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
+                              },
+                              child: const Icon(Icons.add),
+                            ),
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'trip_detail_zoom_out',
+                              backgroundColor: colorScheme.surface,
+                              foregroundColor: colorScheme.primary,
+                              onPressed: () {
+                                _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
+                              },
+                              child: const Icon(Icons.remove),
                             ),
                           ],
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                  ],
+                ),
             ),
           ),
         ],

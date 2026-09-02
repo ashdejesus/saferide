@@ -12,6 +12,7 @@ import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_mini_hud.dart';
 import 'trip_detail_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -1179,6 +1180,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final hasRealTripRoute = widget.routePoints.length >= 2;
     final hasCompletedTrips = widget.controller.completedTrips.isNotEmpty;
 
+    final apiKey = dotenv.env['CARTO_API_KEY'] ?? '';
+    final keyParam = apiKey.isNotEmpty ? '?key=$apiKey' : '';
+
     final isZoomedOut = _currentZoom < 13.0;
     
     // Build layers from real data
@@ -1226,8 +1230,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             children: [
               TileLayer(
                 urlTemplate: Theme.of(context).brightness == Brightness.dark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png$keyParam'
+                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png$keyParam',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.saferide.app',
               ),
@@ -1301,79 +1305,109 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
             ],
           ),
 
-          // Layer controls
+          // Map Controls
           Positioned(
             top: 12,
             right: 12,
-            child: _MapLayerControls(
-              showHighRiskAreas: _showHighRiskAreas,
-              showSaferRoutes: _showSaferRoutes,
-              showReportedIncidents: _showReportedIncidents,
-              showCommunitySafety: _showCommunitySafety,
-              onHighRiskAreasChanged: (v) {
-                setState(() => _showHighRiskAreas = v);
-                widget.onHighRiskAreasChanged(v);
-              },
-              onSaferRoutesChanged: (v) {
-                setState(() => _showSaferRoutes = v);
-                widget.onSaferRoutesChanged(v);
-              },
-              onReportedIncidentsChanged: (v) {
-                setState(() => _showReportedIncidents = v);
-                widget.onReportedIncidentsChanged(v);
-              },
-              onCommunitySafetyChanged: (v) {
-                setState(() => _showCommunitySafety = v);
-                widget.onCommunitySafetyChanged(v);
-              },
-            ),
-          ),
-          // (Crowd Alert Banner moved to end of Stack to prevent overlay issues)
-          // Full screen toggle button
-          Positioned(
-            top: 170, // Placed below the layer controls
-            right: 12,
-            child: FloatingActionButton.small(
-              heroTag: 'map_fullscreen_btn_${widget.isFullScreen}',
-              backgroundColor: colorScheme.surface,
-              foregroundColor: colorScheme.primary,
-              onPressed: () {
-                if (widget.isFullScreen) {
-                  Navigator.of(context).pop();
-                } else {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) {
-                        final ctrl = context.watch<TripController>();
-                        final points = ctrl.routePoints
-                            .map((p) => LatLng(p['lat']!, p['lng']!))
-                            .toList();
-                        return Scaffold(
-                          body: SafeArea(
-                            child: _FullScreenMapCard(
-                              isTracking: ctrl.isTracking,
-                              routePoints: points,
-                              controller: ctrl,
-                              showHighRiskAreas: _showHighRiskAreas,
-                              showSaferRoutes: _showSaferRoutes,
-                              showReportedIncidents: _showReportedIncidents,
-                              showCommunitySafety: _showCommunitySafety,
-                              onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
-                              onSaferRoutesChanged: widget.onSaferRoutesChanged,
-                              onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
-                              onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
-                              isFullScreen: true,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }
-              },
-              child: Icon(
-                widget.isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _MapLayerControls(
+                  showHighRiskAreas: _showHighRiskAreas,
+                  showSaferRoutes: _showSaferRoutes,
+                  showReportedIncidents: _showReportedIncidents,
+                  showCommunitySafety: _showCommunitySafety,
+                  onHighRiskAreasChanged: (v) {
+                    setState(() => _showHighRiskAreas = v);
+                    widget.onHighRiskAreasChanged(v);
+                  },
+                  onSaferRoutesChanged: (v) {
+                    setState(() => _showSaferRoutes = v);
+                    widget.onSaferRoutesChanged(v);
+                  },
+                  onReportedIncidentsChanged: (v) {
+                    setState(() => _showReportedIncidents = v);
+                    widget.onReportedIncidentsChanged(v);
+                  },
+                  onCommunitySafetyChanged: (v) {
+                    setState(() => _showCommunitySafety = v);
+                    widget.onCommunitySafetyChanged(v);
+                  },
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'map_my_location_${widget.isFullScreen}',
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.primary,
+                  onPressed: () {
+                    _syncMapCenter(force: true);
+                  },
+                  child: const Icon(Icons.my_location),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'map_zoom_in_${widget.isFullScreen}',
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.primary,
+                  onPressed: () {
+                    _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
+                  },
+                  child: const Icon(Icons.add),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'map_zoom_out_${widget.isFullScreen}',
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.primary,
+                  onPressed: () {
+                    _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
+                  },
+                  child: const Icon(Icons.remove),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'map_fullscreen_btn_${widget.isFullScreen}',
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.primary,
+                  onPressed: () {
+                    if (widget.isFullScreen) {
+                      Navigator.of(context).pop();
+                    } else {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) {
+                            final ctrl = context.watch<TripController>();
+                            final points = ctrl.routePoints
+                                .map((p) => LatLng(p['lat']!, p['lng']!))
+                                .toList();
+                            return Scaffold(
+                              body: SafeArea(
+                                child: _FullScreenMapCard(
+                                  isTracking: ctrl.isTracking,
+                                  routePoints: points,
+                                  controller: ctrl,
+                                  showHighRiskAreas: _showHighRiskAreas,
+                                  showSaferRoutes: _showSaferRoutes,
+                                  showReportedIncidents: _showReportedIncidents,
+                                  showCommunitySafety: _showCommunitySafety,
+                                  onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
+                                  onSaferRoutesChanged: widget.onSaferRoutesChanged,
+                                  onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
+                                  onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
+                                  isFullScreen: true,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    }
+                  },
+                  child: Icon(
+                    widget.isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                  ),
+                ),
+              ],
             ),
           ),
           // Live tracking chip

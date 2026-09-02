@@ -66,6 +66,9 @@ class TripController extends ChangeNotifier {
   final risk_scoring.SlidingWindow _gyroWindow = risk_scoring.SlidingWindow(
     size: 10,
   );
+  final risk_scoring.SlidingWindow _zAxisWindow = risk_scoring.SlidingWindow(
+    size: 5,
+  );
   final List<risk_scoring.UnsafeEvent> _recentEvents = [];
   final risk_scoring.AdaptiveThresholds _adaptiveThresholds =
       risk_scoring.AdaptiveThresholds();
@@ -308,15 +311,18 @@ class TripController extends ChangeNotifier {
 
       // --- 3. Save trip to local SQLite (no internet needed) ---
       final startTime = DateTime.now();
-      final tripId = await _database.insertTrip(
-        Trip(
-          startTime: startTime,
-          startLat: position?.latitude,
-          startLng: position?.longitude,
-          routeName: routeName,
-          vehicleType: vehicleType,
-        ),
-      );
+      int? tripId;
+      if (!_testMode) {
+        tripId = await _database.insertTrip(
+          Trip(
+            startTime: startTime,
+            startLat: position?.latitude,
+            startLng: position?.longitude,
+            routeName: routeName,
+            vehicleType: vehicleType,
+          ),
+        );
+      }
 
       _activeTrip = Trip(
         id: tripId,
@@ -437,7 +443,9 @@ class TripController extends ChangeNotifier {
       syncStatus: SyncStatus.pending,
     );
 
-    await _database.updateTrip(completedTrip);
+    if (!_testMode) {
+      await _database.updateTrip(completedTrip);
+    }
 
     // Unsubscribe reports listener
     await _remoteReportsSub?.cancel();
@@ -641,7 +649,14 @@ class TripController extends ChangeNotifier {
 
     // Store vertical acceleration for pothole detection
     // az(k) is the Z-axis component (vertical)
-    _lastVerticalAccel = event.z.abs();
+    final currentZ = event.z.abs();
+    _zAxisWindow.add(currentZ);
+    final baselineVibration = _zAxisWindow.average;
+    
+    // Calculate the spike above the baseline vibration
+    // This helps mitigate false positives from constant engine shaking in jeepneys/tricycles
+    final verticalSpike = (currentZ - baselineVibration).abs();
+    _lastVerticalAccel = verticalSpike;
 
     // Pothole detection: P(k) = 1 if az(k) > θ_p ∧ g(k) < θ_g ∧ v(k) > θ_v
     // Combines vertical acceleration spike with low gyro (not a turn) and moving

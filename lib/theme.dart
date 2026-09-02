@@ -11,9 +11,9 @@ ThemeData buildSafeRideTheme() {
   final base = ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
-    fontFamily: GoogleFonts.robotoFlex().fontFamily,
+    fontFamily: GoogleFonts.inter().fontFamily,
   );
-  final expressiveTextTheme = GoogleFonts.robotoFlexTextTheme(base.textTheme);
+  final expressiveTextTheme = GoogleFonts.interTextTheme(base.textTheme);
 
   return base.copyWith(
     scaffoldBackgroundColor: colorScheme.surface,

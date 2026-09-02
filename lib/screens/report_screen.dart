@@ -56,12 +56,12 @@ class _ReportScreenState extends State<ReportScreen>
     _trustMetricsSubscription = _reportingService
         .streamPassengerTrustMetrics(passengerId)
         .listen((metrics) {
-      if (mounted) {
-        setState(() {
-          _userTrustMetrics = metrics;
+          if (mounted) {
+            setState(() {
+              _userTrustMetrics = metrics;
+            });
+          }
         });
-      }
-    });
   }
 
   @override
@@ -80,13 +80,16 @@ class _ReportScreenState extends State<ReportScreen>
 
     final recentEvent = controller.getRecentSensorEventCategory();
     final displayCategory = _category ?? recentEvent;
-    final displaySeverity = _category == null && recentEvent != null ? 4.0 : _severity;
+    final displaySeverity = _category == null && recentEvent != null
+        ? 4.0
+        : _severity;
 
     final items = <Widget>[
       const SectionHeader(title: 'Incident Report'),
       _IntroCard(isTracking: controller.isTracking),
       _TrustMetricsCard(
-        metrics: _userTrustMetrics ??
+        metrics:
+            _userTrustMetrics ??
             PassengerTrustMetrics(
               passengerId: 'demo_user',
               totalReports: 5,
@@ -123,13 +126,18 @@ class _ReportScreenState extends State<ReportScreen>
                 final finalCategory = _category ?? recentEvent;
                 if (finalCategory == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please select an incident category.')),
+                    const SnackBar(
+                      content: Text('Please select an incident category.'),
+                    ),
                   );
                   return;
                 }
-                
-                final int finalSeverity = _category == null && recentEvent != null ? 4 : _severity.round();
-                
+
+                final int finalSeverity =
+                    _category == null && recentEvent != null
+                    ? 4
+                    : _severity.round();
+
                 final bool? confirm = await showModalBottomSheet<bool>(
                   context: context,
                   isScrollControlled: true,
@@ -137,7 +145,7 @@ class _ReportScreenState extends State<ReportScreen>
                   builder: (context) {
                     final theme = Theme.of(context);
                     final colorScheme = theme.colorScheme;
-                    
+
                     Color severityColor;
                     if (finalSeverity >= 5) {
                       severityColor = Colors.red;
@@ -150,16 +158,30 @@ class _ReportScreenState extends State<ReportScreen>
                     } else {
                       severityColor = Colors.green;
                     }
-                    
+
                     IconData catIcon = Icons.report;
-                    switch(finalCategory) {
-                      case 'Speeding': catIcon = Icons.speed; break;
-                      case 'Sudden Braking': catIcon = Icons.car_crash; break;
-                      case 'Sharp Turning': catIcon = Icons.turn_sharp_right; break;
-                      case 'Pothole': catIcon = Icons.moving; break;
-                      case 'Reckless Driving': catIcon = Icons.warning_amber; break;
-                      case 'Accident': catIcon = Icons.medical_services; break;
-                      case 'Hazard': catIcon = Icons.construction; break;
+                    switch (finalCategory) {
+                      case 'Speeding':
+                        catIcon = Icons.speed;
+                        break;
+                      case 'Sudden Braking':
+                        catIcon = Icons.car_crash;
+                        break;
+                      case 'Sharp Turning':
+                        catIcon = Icons.turn_sharp_right;
+                        break;
+                      case 'Pothole':
+                        catIcon = Icons.moving;
+                        break;
+                      case 'Reckless Driving':
+                        catIcon = Icons.warning_amber;
+                        break;
+                      case 'Accident':
+                        catIcon = Icons.medical_services;
+                        break;
+                      case 'Hazard':
+                        catIcon = Icons.construction;
+                        break;
                     }
 
                     return SafeArea(
@@ -172,7 +194,9 @@ class _ReportScreenState extends State<ReportScreen>
                         ),
                         decoration: BoxDecoration(
                           color: colorScheme.surface,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(32),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: severityColor.withValues(alpha: 0.15),
@@ -188,7 +212,9 @@ class _ReportScreenState extends State<ReportScreen>
                               width: 48,
                               height: 6,
                               decoration: BoxDecoration(
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                                color: colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.4,
+                                ),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -199,7 +225,11 @@ class _ReportScreenState extends State<ReportScreen>
                                 color: severityColor.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(catIcon, size: 48, color: severityColor),
+                              child: Icon(
+                                catIcon,
+                                size: 48,
+                                color: severityColor,
+                              ),
                             ),
                             const SizedBox(height: 20),
                             Text(
@@ -210,21 +240,29 @@ class _ReportScreenState extends State<ReportScreen>
                             ),
                             const SizedBox(height: 24),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                color: colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.category, color: colorScheme.onSurfaceVariant),
+                                  Icon(
+                                    Icons.category,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
                                       finalCategory,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                 ],
@@ -232,36 +270,55 @@ class _ReportScreenState extends State<ReportScreen>
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                               decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                color: colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.monitor_heart, color: colorScheme.onSurfaceVariant),
+                                  Icon(
+                                    Icons.monitor_heart,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Severity: $finalSeverity of 5',
-                                          style: theme.textTheme.titleSmall?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
                                         const SizedBox(height: 8),
                                         Row(
                                           children: List.generate(5, (index) {
                                             return Expanded(
                                               child: Container(
-                                                margin: const EdgeInsets.only(right: 4),
+                                                margin: const EdgeInsets.only(
+                                                  right: 4,
+                                                ),
                                                 height: 6,
                                                 decoration: BoxDecoration(
-                                                  color: index < finalSeverity ? severityColor : colorScheme.outlineVariant.withValues(alpha: 0.3),
-                                                  borderRadius: BorderRadius.circular(3),
+                                                  color: index < finalSeverity
+                                                      ? severityColor
+                                                      : colorScheme
+                                                            .outlineVariant
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(3),
                                                 ),
                                               ),
                                             );
@@ -279,7 +336,8 @@ class _ReportScreenState extends State<ReportScreen>
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                  color: colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Column(
@@ -287,14 +345,20 @@ class _ReportScreenState extends State<ReportScreen>
                                   children: [
                                     Row(
                                       children: [
-                                        Icon(Icons.notes, size: 18, color: colorScheme.onSurfaceVariant),
+                                        Icon(
+                                          Icons.notes,
+                                          size: 18,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
                                         const SizedBox(width: 12),
                                         Text(
                                           'Notes',
-                                          style: theme.textTheme.titleSmall?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -312,9 +376,12 @@ class _ReportScreenState extends State<ReportScreen>
                               children: [
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: () => Navigator.of(context).pop(false),
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -327,12 +394,15 @@ class _ReportScreenState extends State<ReportScreen>
                                   flex: 2,
                                   child: FilledButton.icon(
                                     icon: const Icon(Icons.send, size: 18),
-                                    onPressed: () => Navigator.of(context).pop(true),
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true),
                                     label: const Text('Submit Report'),
                                     style: FilledButton.styleFrom(
                                       backgroundColor: severityColor,
                                       foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -347,7 +417,7 @@ class _ReportScreenState extends State<ReportScreen>
                     );
                   },
                 );
-                
+
                 if (confirm != true) return;
 
                 await controller.addReport(
@@ -419,6 +489,46 @@ class _IntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    if (!isTracking) {
+      return Card(
+        color: colorScheme.errorContainer.withValues(alpha: 0.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: colorScheme.error.withValues(alpha: 0.3)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Icon(Icons.location_off, color: colorScheme.error, size: 28),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Trip Required',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: colorScheme.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'You must start a trip on the Dashboard to submit incident reports.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -427,12 +537,12 @@ class _IntroCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.secondaryContainer,
+                color: colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
-                Icons.report,
-                color: colorScheme.onSecondaryContainer,
+                Icons.report_gmailerrorred,
+                color: colorScheme.onPrimaryContainer,
               ),
             ),
             const SizedBox(width: 16),
@@ -448,9 +558,7 @@ class _IntroCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    isTracking
-                        ? 'Reports are tied to your current trip.'
-                        : 'Start a trip to enable reporting.',
+                    'Reports are tied to your current trip.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -512,12 +620,37 @@ class _TrustMetricsCard extends StatelessWidget {
                         'Your Trust Score',
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getTrustLabel(metrics.overallTrust),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: trustColor,
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: trustColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: trustColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _getTrustLabel(metrics.overallTrust),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: trustColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -554,7 +687,7 @@ class _TrustMetricsCard extends StatelessWidget {
             _TrustMetricRow(
               label: 'Anomaly Detection',
               value: 1.0 - metrics.anomalyScore,
-              icon: Icons.notification_important,
+              icon: Icons.notifications,
             ),
             if (metrics.totalReports > 0)
               Padding(
@@ -564,15 +697,25 @@ class _TrustMetricsCard extends StatelessWidget {
                   children: [
                     Chip(
                       label: Text('${metrics.totalReports} reports'),
-                      avatar: Icon(Icons.assignment, size: 18),
+                      avatar: const Icon(
+                        Icons.assignment,
+                        size: 16,
+                        color: Colors.green,
+                      ),
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      side: BorderSide.none,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
                     Chip(
                       label: Text('${metrics.verifiedCount} verified'),
-                      avatar: Icon(
+                      avatar: const Icon(
                         Icons.check_circle,
-                        size: 18,
+                        size: 16,
                         color: Colors.green,
                       ),
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      side: BorderSide.none,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
                     if (metrics.flaggedCount > 0)
                       Chip(
@@ -623,10 +766,8 @@ class _TrustMetricRow extends StatelessWidget {
                   duration: const Duration(milliseconds: 800),
                   curve: Curves.easeOutCubic,
                   tween: Tween<double>(begin: 0.0, end: value),
-                  builder: (context, val, _) => LinearProgressIndicator(
-                    value: val,
-                    minHeight: 6,
-                  ),
+                  builder: (context, val, _) =>
+                      LinearProgressIndicator(value: val, minHeight: 6),
                 ),
               ),
             ],
@@ -660,35 +801,34 @@ class _ReportingGuidelinesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: colorScheme.primary),
-                const SizedBox(width: 12),
-                Text(
-                  'Reporting Tips',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          childrenPadding: const EdgeInsets.only(
+            left: 20,
+            right: 20,
+            bottom: 20,
+          ),
+          leading: Icon(Icons.lightbulb_outline, color: colorScheme.primary),
+          title: Text(
+            'Reporting Guidelines',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          children: const [
             _GuidelineItem(
               title: 'Be Accurate',
               description: 'Accurate reports build your trust score.',
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 12),
             _GuidelineItem(
               title: 'Stay Consistent',
               description:
                   'Consistent reporting patterns increase community trust.',
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 12),
             _GuidelineItem(
               title: 'Add Details',
               description: 'More context helps validate your report.',
@@ -783,32 +923,61 @@ class _ReportFormCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('Category', style: Theme.of(context).textTheme.titleMedium),
-                  if (isAutoDetected) ...[
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Auto-detected',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                  Text(
+                    'Category',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: anim,
+                      child: FadeTransition(opacity: anim, child: child),
                     ),
-                  ],
+                    child: isAutoDetected
+                        ? Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Container(
+                              key: const ValueKey('auto-badge'),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome,
+                                    size: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Auto-detected',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(key: ValueKey('empty-badge')),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -817,8 +986,41 @@ class _ReportFormCard extends StatelessWidget {
                 runSpacing: 8,
                 children: categories.map((item) {
                   final isSelected = category == item;
-                  return FilterChip(
+
+                  IconData icon = Icons.report;
+                  switch (item) {
+                    case 'Speeding':
+                      icon = Icons.speed;
+                      break;
+                    case 'Sudden Braking':
+                      icon = Icons.car_crash;
+                      break;
+                    case 'Sharp Turning':
+                      icon = Icons.turn_sharp_right;
+                      break;
+                    case 'Pothole':
+                      icon = Icons.moving;
+                      break;
+                    case 'Reckless Driving':
+                      icon = Icons.warning_amber;
+                      break;
+                    case 'Accident':
+                      icon = Icons.medical_services;
+                      break;
+                    case 'Hazard':
+                      icon = Icons.construction;
+                      break;
+                  }
+
+                  return ChoiceChip(
                     label: Text(item),
+                    avatar: Icon(
+                      icon,
+                      size: 18,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                     selected: isSelected,
                     onSelected: (_) => onCategoryChanged(item),
                   );
@@ -829,30 +1031,54 @@ class _ReportFormCard extends StatelessWidget {
                 'Severity: ${severity.toStringAsFixed(0)}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
-              SegmentedButton<int>(
-                segments: [
-                  for (var value = 1; value <= 5; value++)
-                    ButtonSegment<int>(
-                      value: value,
-                      label: Text(value.toString()),
+              const SizedBox(height: 12),
+              Row(
+                children: List.generate(5, (index) {
+                  final val = index + 1;
+                  final isSelected = severity.round() == val;
+                  Color color;
+                  if (val == 5)
+                    color = Colors.red;
+                  else if (val == 4)
+                    color = Colors.orange;
+                  else if (val == 3)
+                    color = Colors.amber.shade700;
+                  else if (val == 2)
+                    color = Colors.lightGreen;
+                  else
+                    color = Colors.green;
+
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => onSeverityChanged(val.toDouble()),
+                      child: Container(
+                        margin: EdgeInsets.only(right: index < 4 ? 8 : 0),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? color
+                              : color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? color
+                                : color.withValues(alpha: 0.3),
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          val.toString(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isSelected ? Colors.white : color,
+                          ),
+                        ),
+                      ),
                     ),
-                ],
-                selected: {severity.round()},
-                onSelectionChanged: (selection) {
-                  if (selection.isNotEmpty) {
-                    onSeverityChanged(selection.first.toDouble());
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              Slider(
-                value: severity,
-                min: 1,
-                max: 5,
-                divisions: 4,
-                label: severity.toStringAsFixed(0),
-                onChanged: onSeverityChanged,
+                  );
+                }),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -895,7 +1121,11 @@ class _ReportFormCard extends StatelessWidget {
                       if (isTracking) {
                         if (category == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please select an incident category.')),
+                            const SnackBar(
+                              content: Text(
+                                'Please select an incident category.',
+                              ),
+                            ),
                           );
                           return;
                         }

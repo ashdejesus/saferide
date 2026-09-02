@@ -17,7 +17,8 @@ class TripMiniHud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isHighSpeed = speed > 20;
+    final speedKmh = speed * 3.6;
+    final isHighSpeed = speedKmh > 40;
     
     return Card(
       elevation: 8,
@@ -51,7 +52,7 @@ class TripMiniHud extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${speed.toStringAsFixed(1)} m/s',
+                      '${speedKmh.toStringAsFixed(1)} km/h',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: isHighSpeed ? colorScheme.error : null,
                             fontWeight: FontWeight.bold,
