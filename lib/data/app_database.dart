@@ -251,6 +251,19 @@ class AppDatabase {
     );
   }
 
+  Future<void> deleteTrip(int id) async {
+    if (kIsWeb) {
+      _webTrips.removeWhere((t) => t.id == id);
+      return;
+    }
+    final db = await database;
+    await db.delete(
+      'trips',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<List<Trip>> getTrips() async {
     if (kIsWeb) {
       return _webTrips.toList().reversed.toList();

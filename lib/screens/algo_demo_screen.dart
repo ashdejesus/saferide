@@ -1181,7 +1181,7 @@ class _PotholeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c1 = az > thresholds.thetaPothole;
+    final c1 = az > thresholds.potholeThreshold;
     final c2 = gyroMag < thresholds.thetaGyroStable;
     final c3 = speed > thresholds.thetaSpeedMin;
     final color = detected ? const Color(0xFFDC2626) : const Color(0xFF16A34A);
@@ -1222,7 +1222,7 @@ class _PotholeCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(14),
           child: Column(children: [
-            _CondRow('az = ${az.toStringAsFixed(2)} m/s²', '> θ_p = ${thresholds.thetaPothole}  (vertical spike?)', c1, 'Vertical acceleration is high enough', cs),
+            _CondRow('az = ${az.toStringAsFixed(2)} m/s²', '> θ_p = ${thresholds.potholeThreshold.toStringAsFixed(2)}  (vertical spike?)', c1, 'Vertical acceleration is high enough', cs),
             const SizedBox(height: 8),
             _CondRow('g̃  = ${gyroMag.toStringAsFixed(2)} rad/s', '< θ_g = ${thresholds.thetaGyroStable}  (not turning?)', c2, 'Phone is not rotating (not a turn)', cs),
             const SizedBox(height: 8),

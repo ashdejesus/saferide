@@ -13,6 +13,9 @@ import '../widgets/section_header.dart';
 import '../widgets/trip_mini_hud.dart';
 import 'trip_detail_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_compass/flutter_compass.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import '../services/risk_scoring.dart' as risk_scoring;
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -316,16 +319,21 @@ class _FullScreenMapCard extends StatefulWidget {
   State<_FullScreenMapCard> createState() => _FullScreenMapCardState();
 }
 
-class _FullScreenMapCardState extends State<_FullScreenMapCard> {
+class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProviderStateMixin {
   late final MapController _mapController;
   LatLng? _lastCenteredLocation;
   bool _isMapReady = false;
   double _currentZoom = 15.0;
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  double _heading = 0.0;
 
   late bool _showHighRiskAreas;
   late bool _showSaferRoutes;
   late bool _showReportedIncidents;
   late bool _showCommunitySafety;
+
+  final List<_Ping> _activePings = [];
+  final Set<DateTime> _pingedTimestamps = {};
 
   @override
   void initState() {
@@ -335,6 +343,20 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     _showSaferRoutes = widget.showSaferRoutes;
     _showReportedIncidents = widget.showReportedIncidents;
     _showCommunitySafety = widget.showCommunitySafety;
+
+    _compassSubscription = FlutterCompass.events?.listen((event) {
+      if (mounted) {
+        setState(() {
+          _heading = event.heading ?? 0.0;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _compassSubscription?.cancel();
+    super.dispose();
   }
 
   void _syncMapCenter({required bool force}) {
@@ -351,154 +373,221 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
       return;
     }
 
-    _mapController.move(center, _mapController.camera.zoom);
+    _animatedMapMove(center, _mapController.camera.zoom);
   }
 
-  void _showReportHazardDialog() {
-    final colorScheme = Theme.of(context).colorScheme;
-    final recentEvent = widget.controller.getRecentSensorEventCategory();
-    String selectedCategory = recentEvent ?? 'Hazard';
-    int selectedSeverity = recentEvent != null ? 4 : 3;
+  void _animatedMapMove(LatLng destLocation, double destZoom) {
+    if (!mounted) return;
+    final latTween = Tween<double>(
+        begin: _mapController.camera.center.latitude,
+        end: destLocation.latitude);
+    final lngTween = Tween<double>(
+        begin: _mapController.camera.center.longitude,
+        end: destLocation.longitude);
+    final zoomTween = Tween<double>(
+        begin: _mapController.camera.zoom, end: destZoom);
+
+    final controller = AnimationController(
+        duration: const Duration(milliseconds: 500), vsync: this);
+
+    final Animation<double> animation = CurvedAnimation(
+        parent: controller, curve: Curves.fastOutSlowIn);
+
+    controller.addListener(() {
+      if (mounted) {
+        _mapController.move(
+            LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
+            zoomTween.evaluate(animation));
+      }
+    });
+
+    animation.addStatusListener((status) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
+        controller.dispose();
+      }
+    });
+
+    controller.forward();
+  }
+
+  void _showReportHazardDialog(BuildContext context, risk_scoring.UnsafeEvent? recentEvent) {
+    if (widget.controller.currentPosition == null && widget.routePoints.isEmpty) return;
+
+    final lat = widget.controller.currentPosition?.latitude ?? widget.routePoints.last.latitude;
+    final lng = widget.controller.currentPosition?.longitude ?? widget.routePoints.last.longitude;
+
+    String selectedCategory = recentEvent?.type.name.split('.').last.replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m.group(0)}').trim() ?? 'Hazard';
+    if (!['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other'].contains(selectedCategory)) {
+      selectedCategory = 'Other';
+    }
+
     final descriptionController = TextEditingController();
+    double selectedSeverity = 3.0; // Default severity
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 20,
-              right: 20,
-              top: 20,
-            ),
-            child: StatefulBuilder(
-              builder: (context, setState) {
-                return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Report Hazard',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  if (recentEvent != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_awesome, size: 14, color: colorScheme.primary),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Auto-detected from sensors',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+        final colorScheme = Theme.of(context).colorScheme;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Report Hazard',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (recentEvent != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome, size: 14, color: colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Auto-detected from sensors',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: ['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other']
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => selectedCategory = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text('Severity: ${selectedSeverity.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Slider(
+                  value: selectedSeverity,
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  label: selectedSeverity.toInt().toString(),
+                  onChanged: (val) {
+                    setState(() => selectedSeverity = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: descriptionController,
+                  decoration: InputDecoration(
+                    labelText: 'Description (Optional)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.description_outlined),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          // 1. Create temporary report
+                          final reportId = DateTime.now().millisecondsSinceEpoch;
+                          
+                          widget.controller.addRemoteReportLocally(
+                            ReportWithTrust(
+                              reportId: reportId,
+                              passengerId: 'guest_user',
+                              category: selectedCategory,
+                              severity: selectedSeverity.toInt(),
+                              description: descriptionController.text,
+                              latitude: lat,
+                              longitude: lng,
+                              passengerTrust: 1.0,
+                              timestamp: DateTime.now(),
+                            ),
+                          );
+
+                          // 2. Dismiss modal and notify user immediately
+                          Navigator.pop(context);
+
+                          bool isCancelled = false;
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Report submitted.'),
+                              duration: const Duration(seconds: 5),
+                              action: SnackBarAction(
+                                label: 'UNDO',
+                                onPressed: () {
+                                  isCancelled = true;
+                                  widget.controller.removeLocalReport(reportId);
+                                },
+                              ),
+                            ),
+                          );
+
+                          // 3. Queue the actual submission
+                          Future.delayed(const Duration(seconds: 5), () {
+                            if (isCancelled) return;
+                            unawaited(
+                              widget.controller.passengerReportingService
+                                  .submitReport(
+                                    tripId: widget.controller.activeTrip?.id ?? 0,
+                                    category: selectedCategory,
+                                    severity: selectedSeverity.toInt(),
+                                    description: descriptionController.text,
+                                    latitude: lat,
+                                    longitude: lng,
+                                  )
+                                  .catchError((e) {
+                                    debugPrint('Failed to submit report: $e');
+                                  }),
+                            );
+                          });
+                        },
+                        child: const Text('Submit'),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: selectedCategory,
-                    decoration: InputDecoration(
-                      labelText: 'Category',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    items: ['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other']
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (val) => setState(() => selectedCategory = val!),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Severity (1-5)', style: Theme.of(context).textTheme.labelLarge),
-                  Slider(
-                    value: selectedSeverity.toDouble(),
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
-                    label: selectedSeverity.toString(),
-                    onChanged: (val) => setState(() => selectedSeverity = val.toInt()),
-                    activeColor: selectedSeverity >= 4 ? colorScheme.error : colorScheme.primary,
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: InputDecoration(
-                      labelText: 'Description (Optional)',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton(
-                      onPressed: () {
-                        final pos = widget.controller.currentPosition;
-                        final lat = pos?.latitude ?? _mapController.camera.center.latitude;
-                        final lng = pos?.longitude ?? _mapController.camera.center.longitude;
-
-                        // 1. Instantly render marker on map locally
-                        final reportId = DateTime.now().millisecondsSinceEpoch;
-                        widget.controller.addRemoteReportLocally(
-                          ReportWithTrust(
-                            reportId: reportId,
-                            passengerId: 'guest_user',
-                            category: selectedCategory,
-                            severity: selectedSeverity,
-                            description: descriptionController.text,
-                            latitude: lat,
-                            longitude: lng,
-                            passengerTrust: 1.0,
-                            timestamp: DateTime.now(),
-                          ),
-                        );
-
-                        // 2. Dismiss modal and notify user immediately
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Report submitted successfully!')),
-                        );
-
-                        // 3. Persist to backend asynchronously in background
-                        unawaited(
-                          widget.controller.passengerReportingService
-                              .submitReport(
-                                category: selectedCategory,
-                                severity: selectedSeverity,
-                                description: descriptionController.text,
-                                latitude: lat,
-                                longitude: lng,
-                                tripId: null,
-                              )
-                              .catchError((_) => 'local_fallback'),
-                        );
-                      },
-                      child: const Text('Submit Report'),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              );
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
             },
           ),
-        ));
+        );
       },
     );
   }
@@ -506,56 +595,186 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   void _showIncidentDetailsBottomSheet(BuildContext context, ReportWithTrust report) {
     final colorScheme = Theme.of(context).colorScheme;
     
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.flag_rounded,
-                    color: report.severity >= 4 ? colorScheme.error : Colors.orange,
-                    size: 28,
+    // Calculate time ago using toLocal() to prevent UTC offset bugs
+    final diff = DateTime.now().difference(report.timestamp.toLocal());
+    String timeAgo;
+    if (diff.inMinutes < 1) timeAgo = 'Just now';
+    else if (diff.inMinutes < 60) timeAgo = '${diff.inMinutes}m ago';
+    else if (diff.inHours < 24) timeAgo = '${diff.inHours}h ago';
+    else timeAgo = '${diff.inDays}d ago';
+
+    // Mock sensor alignment status based on severity and trust
+    final isSensorValidated = report.passengerTrust >= 0.7;
+      IconData categoryIcon;
+      switch (report.category) {
+        case 'Accident':
+          categoryIcon = Icons.car_crash;
+          break;
+        case 'Speeding':
+          categoryIcon = Icons.speed;
+          break;
+        case 'Sudden Braking':
+          categoryIcon = Icons.back_hand;
+          break;
+        case 'Sharp Turning':
+          categoryIcon = Icons.turn_sharp_right;
+          break;
+        case 'Pothole':
+          categoryIcon = Icons.moving;
+          break;
+        case 'Reckless Driving':
+          categoryIcon = Icons.sports_motorsports;
+          break;
+        case 'Traffic':
+          categoryIcon = Icons.traffic;
+          break;
+        default:
+          categoryIcon = Icons.warning_amber;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              boxShadow: [
+                BoxShadow(
+                  color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withValues(alpha: 0.2),
+                  blurRadius: 24,
+                  offset: const Offset(0, -8),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        categoryIcon,
+                        color: report.severity >= 4 ? colorScheme.error : Colors.orange,
+                        size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      '${report.category} reported',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${report.category} Hazard',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.access_time, size: 14, color: colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(timeAgo, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13)),
+                            const SizedBox(width: 12),
+                            Icon(Icons.person_outline, size: 14, color: colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text('Passenger Trust: ${(report.passengerTrust * 100).toInt()}%', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13)),
+                          ],
+                        ),
+                        if (report.latitude != null && report.longitude != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined, size: 14, color: colorScheme.onSurfaceVariant),
+                              const SizedBox(width: 4),
+                              Text('${report.latitude!.toStringAsFixed(4)}, ${report.longitude!.toStringAsFixed(4)}', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13)),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _StatChip(label: 'Severity', value: '${report.severity}/5'),
-                  const SizedBox(width: 8),
-                  _StatChip(label: 'Confidence', value: '${(report.passengerTrust * 100).toStringAsFixed(0)}%'),
-                  if (report.isVerified) ...[
-                    const SizedBox(width: 8),
-                    const _StatChip(label: 'Status', value: 'Verified', color: Colors.green),
-                  ] else if (report.isFlagged) ...[
-                    const SizedBox(width: 8),
-                    const _StatChip(label: 'Status', value: 'Flagged', color: Colors.orange),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Trust Verification', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _StatChip(label: 'Raw Severity', value: '${report.severity}/5')),
+                        const SizedBox(width: 8),
+                        Expanded(child: _StatChip(label: 'Weighted Severity', value: '${report.weightedSeverity}/5', color: colorScheme.primary)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (isSensorValidated)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.sensors, color: Colors.green, size: 16),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Sensor Aligned: Vehicle telemetry confirmed anomaly.', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold))),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Unverified: Awaiting sensor or crowd confirmation.', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold))),
+                          ],
+                        ),
+                      ),
                   ],
-                ],
+                ),
               ),
               if (report.description != null && report.description!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Text('"${report.description}"', style: const TextStyle(fontStyle: FontStyle.italic)),
               ],
               const SizedBox(height: 24),
-              const Text('Is this still accurate?', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Is this hazard still present?', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -565,12 +784,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                         Navigator.pop(context);
                         if (report.firestoreId != null) {
                           await widget.controller.passengerReportingService.flagReport(report.firestoreId!, 'Inaccurate');
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged as inaccurate.')));
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged. Impacting user trust score.')));
                         }
                       },
-                      icon: const Icon(Icons.thumb_down_outlined),
+                      icon: const Icon(Icons.thumb_down_outlined, size: 18),
                       label: const Text('No (Flag)'),
-                      style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error),
+                      style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error, padding: const EdgeInsets.symmetric(vertical: 12)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -580,17 +799,16 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                         Navigator.pop(context);
                         if (report.firestoreId != null) {
                           await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
                         }
                       },
-                      icon: const Icon(Icons.thumb_up_outlined),
+                      icon: const Icon(Icons.thumb_up_outlined, size: 18),
                       label: const Text('Yes (Verify)'),
-                      style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                      style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
             ],
           ),
         );
@@ -634,7 +852,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     if (widget.isTracking && !oldWidget.isTracking) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _mapController.move(points.last, 16.0);
+        _animatedMapMove(points.last, 16.0);
       });
       return;
     }
@@ -642,7 +860,27 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     // Auto-pan if the location changed significantly
     if (points.last.latitude != oldWidget.routePoints.lastOrNull?.latitude ||
         points.last.longitude != oldWidget.routePoints.lastOrNull?.longitude) {
-      _mapController.move(points.last, _mapController.camera.zoom);
+      _animatedMapMove(points.last, _mapController.camera.zoom);
+    }
+
+    if (widget.isTracking) {
+      for (final event in widget.controller.recentEvents) {
+        if (!_pingedTimestamps.contains(event.timestamp)) {
+          _pingedTimestamps.add(event.timestamp);
+          if (event.lat != null && event.lng != null) {
+            final ping = _Ping(LatLng(event.lat!, event.lng!), event);
+            _activePings.add(ping);
+            // Remove ping after animation duration
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) {
+                setState(() {
+                  _activePings.remove(ping);
+                });
+              }
+            });
+          }
+        }
+      }
     }
   }
 
@@ -654,7 +892,13 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
       return widget.routePoints.last;
     }
 
-    // 2. If we have completed trips, focus on the most recent one
+    // 2. If GPS position is available, use it
+    final pos = widget.controller.currentPosition;
+    if (pos != null) {
+      return LatLng(pos.latitude, pos.longitude);
+    }
+
+    // 3. If we have completed trips, focus on the most recent one
     if (widget.controller.completedTrips.isNotEmpty) {
       final mostRecent = widget.controller.completedTrips.first;
       if (mostRecent.routePoints.isNotEmpty) {
@@ -670,12 +914,6 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
       }
     }
 
-    // 3. If GPS position is available, use it
-    final pos = widget.controller.currentPosition;
-    if (pos != null) {
-      return LatLng(pos.latitude, pos.longitude);
-    }
-
     // 4. Last resort: world center (0,0) — user has no data at all
     return const LatLng(0, 0);
   }
@@ -687,6 +925,27 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     if (safetyScore >= 80) return Colors.green;
     if (safetyScore >= 50) return Colors.orange;
     return Colors.red;
+  }
+
+  /// Applies a simple moving average filter to smooth raw GPS points.
+  List<LatLng> _smoothRoute(List<LatLng> rawPoints, {int windowSize = 3}) {
+    if (rawPoints.length < windowSize) return rawPoints;
+    
+    List<LatLng> smoothedPoints = [];
+    for (int i = 0; i < rawPoints.length; i++) {
+      double sumLat = 0;
+      double sumLng = 0;
+      int count = 0;
+
+      // Moving average window
+      for (int j = max(0, i - windowSize ~/ 2); j <= min(rawPoints.length - 1, i + windowSize ~/ 2); j++) {
+        sumLat += rawPoints[j].latitude;
+        sumLng += rawPoints[j].longitude;
+        count++;
+      }
+      smoothedPoints.add(LatLng(sumLat / count, sumLng / count));
+    }
+    return smoothedPoints;
   }
 
   /// Build polylines for completed trips, color-coded by safety score.
@@ -702,7 +961,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
       if (isZoomedOut && safetyScore >= 50) continue;
 
       final color = _tripRouteColor(trip);
-      final points = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
+      final rawPoints = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
+      final points = _smoothRoute(rawPoints, windowSize: 4);
 
       // Use a gradient for high risk trips to simulate event heatmaps along the route
       List<Color>? gradient;
@@ -769,19 +1029,40 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
         ),
       );
 
-      // Directional arrow at end
+      // Directional arrows along the route (every 20 points, plus one at the end)
+      final step = max(20, points.length ~/ 10);
+      for (int i = step; i < points.length; i += step) {
+        final p1 = LatLng(points[i - 2]['lat']!, points[i - 2]['lng']!);
+        final p2 = LatLng(points[i]['lat']!, points[i]['lng']!);
+        
+        // Bearing calculation
+        final dy = p2.latitude - p1.latitude;
+        final dx = p2.longitude - p1.longitude;
+        final angle = atan2(dx, dy);
+        
+        markers.add(
+          Marker(
+            point: p2,
+            width: 16,
+            height: 16,
+            child: Transform.rotate(
+              angle: angle,
+              child: Icon(Icons.navigation, size: 14, color: _tripRouteColor(trip)),
+            ),
+          ),
+        );
+      }
+      
+      // Always add an arrow at the very end
       final preEnd = LatLng(points[points.length - 2]['lat']!, points[points.length - 2]['lng']!);
-      final dy = end.latitude - preEnd.latitude;
-      final dx = end.longitude - preEnd.longitude;
-      final angle = atan2(dx, dy);
-
+      final endAngle = atan2(end.longitude - preEnd.longitude, end.latitude - preEnd.latitude);
       markers.add(
         Marker(
           point: end,
           width: 24,
           height: 24,
           child: Transform.rotate(
-            angle: angle,
+            angle: endAngle,
             child: Icon(Icons.navigation, size: 20, color: _tripRouteColor(trip)),
           ),
         ),
@@ -791,74 +1072,185 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
   }
 
   void _showTripSummaryBottomSheet(Trip trip, double safetyScore, ColorScheme colorScheme) {
+    // Calculate duration
+    String durationText = '--';
+    if (trip.endTime != null) {
+      final diff = trip.endTime!.difference(trip.startTime);
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes.remainder(60);
+      if (hours > 0) {
+        durationText = '${hours}h ${minutes}m';
+      } else {
+        durationText = '${minutes}m';
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            boxShadow: [
+              BoxShadow(
+                color: _tripRouteColor(trip).withValues(alpha: 0.15),
+                blurRadius: 24,
+                offset: const Offset(0, -8),
+              ),
+            ],
+          ),
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom + 20,
-            left: 20,
-            right: 20,
-            top: 24,
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            left: 24,
+            right: 24,
+            top: 16,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      trip.routeName ?? 'Trip Summary',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          trip.routeName ?? 'Analyzed Route',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.directions_car, size: 16, color: colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              trip.vehicleType ?? 'Standard Vehicle',
+                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(width: 12),
+                            Icon(Icons.timer, size: 16, color: colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              durationText,
+                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: _tripRouteColor(trip).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: _tripRouteColor(trip).withValues(alpha: 0.3)),
                     ),
-                    child: Text(
-                      '${safetyScore.toStringAsFixed(0)}% Safe',
-                      style: TextStyle(
-                        color: _tripRouteColor(trip),
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '${safetyScore.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            color: _tripRouteColor(trip),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                        Text(
+                          'Safety Score',
+                          style: TextStyle(
+                            color: _tripRouteColor(trip).withValues(alpha: 0.8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
+              Text('Sensor Telemetry', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _SummaryStat(
-                    icon: Icons.speed,
-                    label: 'Speeding',
-                    value: trip.speedingCount.toString(),
-                    color: Colors.red,
+                  Expanded(
+                    child: _SummaryStat(
+                      icon: Icons.speed,
+                      label: 'Speeding',
+                      value: trip.speedingCount.toString(),
+                      color: Colors.red,
+                    ),
                   ),
-                  _SummaryStat(
-                    icon: Icons.warning_amber,
-                    label: 'Braking',
-                    value: trip.brakingCount.toString(),
-                    color: Colors.orange,
+                  Expanded(
+                    child: _SummaryStat(
+                      icon: Icons.warning_amber,
+                      label: 'Braking',
+                      value: trip.brakingCount.toString(),
+                      color: Colors.orange,
+                    ),
                   ),
-                  _SummaryStat(
-                    icon: Icons.turn_right,
-                    label: 'Turns',
-                    value: trip.turningCount.toString(),
-                    color: colorScheme.primary,
+                  Expanded(
+                    child: _SummaryStat(
+                      icon: Icons.turn_right,
+                      label: 'Turns',
+                      value: trip.turningCount.toString(),
+                      color: colorScheme.primary,
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.analytics, color: colorScheme.primary, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Adaptive Context Analysis', style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurface)),
+                          const SizedBox(height: 4),
+                          Text('Trip analyzed using dynamic thresholds tailored for the current vehicle and environment.', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -873,8 +1265,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.analytics_outlined),
-                  label: const Text('View Full Details'),
+                  icon: const Icon(Icons.insights),
+                  label: const Text('View Full Trip Report'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
                 ),
               ),
             ],
@@ -1020,32 +1416,6 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     return polylines;
   }
 
-  /// Build reported incident heatmap circles from real Firestore data.
-  List<CircleMarker> _buildReportedIncidentHeatmap(ColorScheme colorScheme) {
-    final circles = <CircleMarker>[];
-    final controller = widget.controller;
-
-    for (final r in controller.remoteReports) {
-      if (r.latitude == null || r.longitude == null) continue;
-      final severity = (r.severity).clamp(1, 5);
-      final color = severity >= 4
-          ? colorScheme.error
-          : (severity == 3 ? Colors.orange : colorScheme.tertiary);
-
-      circles.add(
-        CircleMarker(
-          point: LatLng(r.latitude!, r.longitude!),
-          color: color.withValues(alpha: 0.25),
-          borderStrokeWidth: 0,
-          useRadiusInMeter: false,
-          radius: 40 + (severity * 5.0), 
-        ),
-      );
-    }
-
-    return circles;
-  }
-
   /// Build reported incident markers from real Firestore data only.
   List<Marker> _buildReportedIncidentMarkers(ColorScheme colorScheme) {
     final markers = <Marker>[];
@@ -1053,33 +1423,75 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
 
     for (final r in controller.remoteReports) {
       if (r.latitude == null || r.longitude == null) continue;
+      
+      // Time Fading: Remove hazards older than 4 hours
+      if (DateTime.now().difference(r.timestamp).inHours >= 4) continue;
+
       final severity = (r.severity).clamp(1, 5);
+      final trust = r.passengerTrust.clamp(0.0, 1.0);
+      
       final color = severity >= 4
           ? colorScheme.error
           : (severity == 3 ? Colors.orange : colorScheme.tertiary);
 
+      // Icon Mapping
+      IconData categoryIcon;
+      switch (r.category) {
+        case 'Accident':
+          categoryIcon = Icons.car_crash;
+          break;
+        case 'Speeding':
+          categoryIcon = Icons.speed;
+          break;
+        case 'Sudden Braking':
+          categoryIcon = Icons.front_hand;
+          break;
+        case 'Sharp Turning':
+          categoryIcon = Icons.turn_sharp_right;
+          break;
+        case 'Pothole':
+          categoryIcon = Icons.moving;
+          break;
+        case 'Reckless Driving':
+          categoryIcon = Icons.sports_motorsports;
+          break;
+        case 'Traffic':
+          categoryIcon = Icons.traffic;
+          break;
+        default:
+          categoryIcon = Icons.warning_amber;
+      }
+
+      // Highly trusted markers are fully opaque and normal size
+      // Low trust markers are smaller and semi-transparent
+      final markerSize = 30.0 + (16.0 * trust);
+      final markerOpacity = 0.3 + (0.7 * trust);
+
       markers.add(
         Marker(
           point: LatLng(r.latitude!, r.longitude!),
-          width: 46,
-          height: 46,
+          width: markerSize,
+          height: markerSize,
           child: GestureDetector(
             onTap: () {
               _showIncidentDetailsBottomSheet(context, r);
             },
-            child: Container(
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.surface,
-                  width: 2,
+            child: Opacity(
+              opacity: markerOpacity,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.surface,
+                    width: 2,
+                  ),
                 ),
-              ),
-              child: Icon(
-                Icons.flag_rounded,
-                color: Theme.of(context).colorScheme.surface,
-                size: 20,
+                child: Icon(
+                  categoryIcon,
+                  color: Theme.of(context).colorScheme.surface,
+                  size: markerSize * 0.55,
+                ),
               ),
             ),
           ),
@@ -1201,14 +1613,36 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
     final List<Marker> incidentMarkers = _showReportedIncidents
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
-    final List<CircleMarker> incidentHeatmap = _showReportedIncidents
-        ? _buildReportedIncidentHeatmap(colorScheme)
-        : <CircleMarker>[];
     final List<Polyline<Object>> communityPolylines = _showCommunitySafety
         ? _buildCommunityPolylines(colorScheme)
         : <Polyline<Object>>[];
 
     final mapCenter = _resolveMapCenter();
+
+    final List<Marker> activePingMarkers = _activePings.map((ping) {
+      Color color;
+      IconData icon;
+      switch (ping.event.type) {
+        case risk_scoring.UnsafeEventType.speeding:
+          color = Colors.red;
+          icon = Icons.speed;
+          break;
+        case risk_scoring.UnsafeEventType.braking:
+          color = Colors.orange;
+          icon = Icons.warning_amber;
+          break;
+        case risk_scoring.UnsafeEventType.turning:
+          color = colorScheme.primary;
+          icon = Icons.turn_right;
+          break;
+      }
+      return Marker(
+        point: ping.position,
+        width: 100,
+        height: 100,
+        child: _AnimatedPingMarker(color: color, icon: icon),
+      );
+    }).toList();
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -1245,25 +1679,36 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               MarkerLayer(markers: highRiskMarkers),
               // Route interactive markers (info + arrows)
               MarkerLayer(markers: routeInteractiveMarkers),
-              // Reported incidents heatmap (below lines and markers)
-              CircleLayer(circles: incidentHeatmap),
               // Active trip polyline (on top)
               if (hasRealTripRoute)
                 PolylineLayer<Object>(
                   polylines: [
+                    // Outer glow (simulates a glowing neon effect and hides rough edges)
                     Polyline<Object>(
-                      points: widget.routePoints,
-                      strokeWidth: 7.0,
-                      color: colorScheme.primary.withValues(alpha: 0.9),
-                      borderStrokeWidth: 3.0,
-                      borderColor: colorScheme.primary,
+                      points: _smoothRoute(widget.routePoints, windowSize: 3),
+                      strokeWidth: 14.0,
+                      color: colorScheme.primary.withValues(alpha: 0.25),
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+                    // Inner core (crisp and smoothed)
+                    Polyline<Object>(
+                      points: _smoothRoute(widget.routePoints, windowSize: 3),
+                      strokeWidth: 5.0,
+                      color: colorScheme.primary,
+                      borderStrokeWidth: 1.5,
+                      borderColor: Theme.of(context).colorScheme.surface,
                       strokeCap: StrokeCap.round,
                       strokeJoin: StrokeJoin.round,
                     ),
                   ],
                 ),
               // Reported incidents layer
-              MarkerLayer(markers: incidentMarkers),
+              if (_showReportedIncidents)
+                MarkerLayer(markers: incidentMarkers),
+              // Real-time Event Pings
+              if (activePingMarkers.isNotEmpty)
+                MarkerLayer(markers: activePingMarkers),
               // Current location marker
               if (hasRealTripRoute || widget.controller.currentPosition != null)
                 MarkerLayer(
@@ -1275,8 +1720,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                               widget.controller.currentPosition!.latitude,
                               widget.controller.currentPosition!.longitude,
                             ),
-                      width: 50,
-                      height: 50,
+                      width: 32,
+                      height: 32,
                       child: Container(
                         decoration: BoxDecoration(
                           color: colorScheme.primary,
@@ -1288,15 +1733,18 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                           boxShadow: [
                             BoxShadow(
                               color: colorScheme.primary.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              spreadRadius: 2,
+                              blurRadius: 6,
+                              spreadRadius: 1,
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.my_location,
-                          color: colorScheme.onPrimary,
-                          size: 24,
+                        child: Transform.rotate(
+                          angle: widget.isTracking ? (_heading * (pi / 180.0)) : 0.0,
+                          child: Icon(
+                            Icons.navigation,
+                            color: colorScheme.onPrimary,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -1350,7 +1798,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                   backgroundColor: colorScheme.surface,
                   foregroundColor: colorScheme.primary,
                   onPressed: () {
-                    _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
+                    _animatedMapMove(_mapController.camera.center, _mapController.camera.zoom + 1);
                   },
                   child: const Icon(Icons.add),
                 ),
@@ -1360,7 +1808,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
                   backgroundColor: colorScheme.surface,
                   foregroundColor: colorScheme.primary,
                   onPressed: () {
-                    _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
+                    _animatedMapMove(_mapController.camera.center, _mapController.camera.zoom - 1);
                   },
                   child: const Icon(Icons.remove),
                 ),
@@ -1412,18 +1860,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
           ),
           // Live tracking chip
           if (widget.isTracking)
-            Positioned(
+            const Positioned(
               top: 132,
               left: 12,
-              child: Chip(
-                avatar: Icon(
-                  Icons.radio_button_checked,
-                  color: colorScheme.onSecondaryContainer,
-                  size: 16,
-                ),
-                label: const Text('Live tracking'),
-                backgroundColor: colorScheme.secondaryContainer,
-              ),
+              child: _PulsingLiveTrackingChip(),
             ),
           // "No trips yet" message when no data at all
           if (!hasRealTripRoute && !hasCompletedTrips)
@@ -1531,7 +1971,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
               backgroundColor: colorScheme.errorContainer,
               foregroundColor: colorScheme.onErrorContainer,
               elevation: 4,
-              onPressed: _showReportHazardDialog,
+              onPressed: () => _showReportHazardDialog(context, null),
               child: const Icon(Icons.warning_rounded),
             ),
           ),
@@ -1931,6 +2371,144 @@ class _SummaryStat extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
+    );
+  }
+}
+
+class _PulsingLiveTrackingChip extends StatefulWidget {
+  const _PulsingLiveTrackingChip();
+
+  @override
+  State<_PulsingLiveTrackingChip> createState() => _PulsingLiveTrackingChipState();
+}
+
+class _PulsingLiveTrackingChipState extends State<_PulsingLiveTrackingChip>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Color.lerp(
+              colorScheme.secondaryContainer,
+              colorScheme.secondary.withValues(alpha: 0.35),
+              _controller.value,
+            ),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.secondary.withValues(
+                  alpha: 0.25 * _controller.value,
+                ),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.radio_button_checked,
+                size: 14,
+                color: Color.lerp(
+                  colorScheme.onSecondaryContainer,
+                  colorScheme.secondary,
+                  _controller.value,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Live tracking',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Color.lerp(
+                    colorScheme.onSecondaryContainer,
+                    colorScheme.secondary,
+                    _controller.value,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Ping {
+  final LatLng position;
+  final risk_scoring.UnsafeEvent event;
+  _Ping(this.position, this.event);
+}
+
+class _AnimatedPingMarker extends StatefulWidget {
+  final Color color;
+  final IconData icon;
+
+  const _AnimatedPingMarker({super.key, required this.color, required this.icon});
+
+  @override
+  State<_AnimatedPingMarker> createState() => _AnimatedPingMarkerState();
+}
+
+class _AnimatedPingMarkerState extends State<_AnimatedPingMarker> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 70 * _controller.value,
+              height: 70 * _controller.value,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withValues(alpha: 1.0 - _controller.value),
+              ),
+            ),
+            Icon(widget.icon, color: widget.color, size: 24),
+          ],
+        );
+      },
     );
   }
 }

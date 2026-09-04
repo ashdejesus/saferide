@@ -95,24 +95,42 @@ class TripActionSheet {
                     ),
                   if (!controller.isTracking) const SizedBox(height: 16),
                   if (controller.isTracking)
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        _InfoChip(
-                          label: 'Speeding ${controller.speedingCount}',
-                          icon: Icons.speed,
-                        ),
-                        _InfoChip(
-                          label: 'Brake ${controller.brakingCount}',
-                          icon: Icons.warning_amber,
-                        ),
-                        _InfoChip(
-                          label: 'Turn ${controller.turningCount}',
-                          icon: Icons.turn_right,
-                        ),
-                      ],
-                    ),
+                    if (controller.activeTrip != null)
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          Builder(builder: (context) {
+                            final duration = DateTime.now().difference(controller.activeTrip!.startTime);
+                            final mins = duration.inMinutes;
+                            final secs = (duration.inSeconds % 60).toString().padLeft(2, '0');
+                            return _InfoChip(
+                              label: '$mins:$secs',
+                              icon: Icons.timer,
+                            );
+                          }),
+                          _InfoChip(
+                            label: '${controller.currentSpeed.toStringAsFixed(1)} km/h',
+                            icon: Icons.speed,
+                          ),
+                          _InfoChip(
+                            label: 'Speeding ${controller.speedingCount}',
+                            icon: Icons.speed,
+                          ),
+                          _InfoChip(
+                            label: 'Brake ${controller.brakingCount}',
+                            icon: Icons.car_crash,
+                          ),
+                          _InfoChip(
+                            label: 'Turn ${controller.turningCount}',
+                            icon: Icons.turn_right,
+                          ),
+                          _InfoChip(
+                            label: 'Pothole ${controller.potholeCount}',
+                            icon: Icons.moving,
+                          ),
+                        ],
+                      ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -123,10 +141,15 @@ class TripActionSheet {
                         Navigator.of(sheetContext).pop();
                         
                         if (isTracking) {
+                          final wasTestMode = controller.testMode;
                           await controller.stopTrip();
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Trip saved locally.')),
+                            SnackBar(
+                              content: Text(
+                                wasTestMode ? 'Test trip ended (not saved).' : 'Trip saved locally.',
+                              ),
+                            ),
                           );
                         } else {
                           final started = await controller.startTrip(

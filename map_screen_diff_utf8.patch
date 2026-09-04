@@ -1,0 +1,300 @@
+﻿diff --git a/lib/screens/map_screen.dart b/lib/screens/map_screen.dart
+index 256ea44..261704b 100644
+--- a/lib/screens/map_screen.dart
++++ b/lib/screens/map_screen.dart
+@@ -1412,18 +1412,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> {
+           ),
+           // Live tracking chip
+           if (widget.isTracking)
+-            Positioned(
++            const Positioned(
+               top: 132,
+               left: 12,
+-              child: Chip(
+-                avatar: Icon(
+-                  Icons.radio_button_checked,
+-                  color: colorScheme.onSecondaryContainer,
+-                  size: 16,
+-                ),
+-                label: const Text('Live tracking'),
+-                backgroundColor: colorScheme.secondaryContainer,
+-              ),
++              child: _LiveTrackingPill(),
+             ),
+           // "No trips yet" message when no data at all
+           if (!hasRealTripRoute && !hasCompletedTrips)
+@@ -1933,4 +1925,274 @@ class _SummaryStat extends StatelessWidget {
+       ],
+     );
+   }
++    );
++  }
++}
++
++class _LiveTrackingPill extends StatefulWidget {
++  const _LiveTrackingPill();
++
++  @override
++  State<_LiveTrackingPill> createState() => _LiveTrackingPillState();
++}
++
++class _LiveTrackingPillState extends State<_LiveTrackingPill>
++    with SingleTickerProviderStateMixin {
++  late final AnimationController _pulse;
++
++  @override
++  void initState() {
++    super.initState();
++    _pulse = AnimationController(
++      vsync: this,
++      duration: const Duration(milliseconds: 1000),
++    )..repeat(reverse: true);
++  }
++
++  @override
++  void dispose() {
++    _pulse.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final colorScheme = Theme.of(context).colorScheme;
++
++    return AnimatedBuilder(
++      animation: _pulse,
++      builder: (context, _) {
++        return Container(
++          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
++          decoration: BoxDecoration(
++            color: colorScheme.secondaryContainer,
++            borderRadius: BorderRadius.circular(999),
++            boxShadow: [
++              BoxShadow(
++                color: colorScheme.secondary.withValues(
++                  alpha: 0.25 * _pulse.value,
++                ),
++                blurRadius: 8,
++                spreadRadius: 2,
++              ),
++            ],
++          ),
++          child: Row(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              Icon(
++                Icons.radio_button_checked,
++                size: 16,
++                color: Color.lerp(
++                  colorScheme.onSecondaryContainer,
++                  colorScheme.secondary,
++                  _pulse.value,
++                ),
++              ),
++              const SizedBox(width: 8),
++              Text(
++                'Live tracking',
++                style: Theme.of(context).textTheme.labelLarge?.copyWith(
++                      color: colorScheme.onSecondaryContainer,
++                    ),
++      parent: _animController,
++      curve: Curves.easeOutBack,
++    ));
++    
++    _animController.forward();
++  }
++
++  @override
++  void didUpdateWidget(_CrowdAlertBanner oldWidget) {
++    super.didUpdateWidget(oldWidget);
++    if (oldWidget.alert.reportId != widget.alert.reportId) {
++      _animController.forward(from: 0);
++    }
++  }
++
++  @override
++  void dispose() {
++    _animController.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final colorScheme = Theme.of(context).colorScheme;
++    return SlideTransition(
++      position: _slideAnimation,
++      child: Material(
++        elevation: 8,
++        borderRadius: BorderRadius.circular(12),
++        color: colorScheme.errorContainer,
++        child: InkWell(
++          borderRadius: BorderRadius.circular(12),
++          onTap: widget.onDismiss,
++          child: Padding(
++            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
++            child: Row(
++              children: [
++                Icon(
++                  Icons.warning_amber_rounded,
++                  color: colorScheme.error,
++                  size: 28,
++                ),
++                const SizedBox(width: 12),
++                Expanded(
++                  child: Column(
++                    mainAxisSize: MainAxisSize.min,
++                    crossAxisAlignment: CrossAxisAlignment.start,
++                    children: [
++                      Text(
++                        '${widget.alert.category} Reported',
++                        style: TextStyle(
++                          color: colorScheme.error,
++                          fontWeight: FontWeight.bold,
++                          fontSize: 12,
++                        ),
++                      ),
++                      Text(
++                        widget.alert.description?.isNotEmpty == true
++                            ? '"${widget.alert.description}"'
++                            : 'Hazard ahead',
++                        style: TextStyle(
++                          color: colorScheme.onErrorContainer,
++                          fontWeight: FontWeight.bold,
++                          fontSize: 16,
++                        ),
++                      ),
++                      Text(
++                        'Confidence: ${(widget.alert.passengerTrust * 100).toInt()}% • Severity: ${widget.alert.severity}/5',
++                        style: TextStyle(
++                          color: colorScheme.onErrorContainer.withValues(alpha: 0.8),
++                          fontSize: 12,
++                        ),
++                      ),
++                    ],
++                  ),
++                ),
++              ],
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++class _SummaryStat extends StatelessWidget {
++  const _SummaryStat({
++    required this.icon,
++    required this.label,
++    required this.value,
++    required this.color,
++  });
++
++  final IconData icon;
++  final String label;
++  final String value;
++  final Color color;
++
++  @override
++  Widget build(BuildContext context) {
++    return Column(
++      children: [
++        Container(
++          padding: const EdgeInsets.all(12),
++          decoration: BoxDecoration(
++            color: color.withValues(alpha: 0.15),
++            shape: BoxShape.circle,
++          ),
++          child: Icon(icon, color: color, size: 24),
++        ),
++        const SizedBox(height: 8),
++        Text(
++          value,
++          style: Theme.of(context).textTheme.titleMedium?.copyWith(
++            fontWeight: FontWeight.bold,
++          ),
++        ),
++        const SizedBox(height: 4),
++        Text(
++          label,
++          style: Theme.of(context).textTheme.bodySmall,
++        ),
++      ],
++    );
++  }
++}
++
++class _LiveTrackingPill extends StatefulWidget {
++  const _LiveTrackingPill();
++
++  @override
++  State<_LiveTrackingPill> createState() => _LiveTrackingPillState();
++}
++
++class _LiveTrackingPillState extends State<_LiveTrackingPill>
++    with SingleTickerProviderStateMixin {
++  late final AnimationController _pulse;
++
++  @override
++  void initState() {
++    super.initState();
++    _pulse = AnimationController(
++      vsync: this,
++      duration: const Duration(milliseconds: 1000),
++    )..repeat(reverse: true);
++  }
++
++  @override
++  void dispose() {
++    _pulse.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final colorScheme = Theme.of(context).colorScheme;
++
++    return AnimatedBuilder(
++      animation: _pulse,
++      builder: (context, _) {
++        return Container(
++          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
++          decoration: BoxDecoration(
++            color: colorScheme.secondaryContainer,
++            borderRadius: BorderRadius.circular(999),
++            boxShadow: [
++              BoxShadow(
++                color: colorScheme.secondary.withValues(
++                  alpha: 0.25 * _pulse.value,
++                ),
++                blurRadius: 8,
++                spreadRadius: 2,
++              ),
++            ],
++          ),
++          child: Row(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              Icon(
++                Icons.radio_button_checked,
++                size: 16,
++                color: Color.lerp(
++                  colorScheme.onSecondaryContainer,
++                  colorScheme.secondary,
++                  _pulse.value,
++                ),
++              ),
++              const SizedBox(width: 8),
++              Text(
++                'Live tracking',
++                style: Theme.of(context).textTheme.labelLarge?.copyWith(
++                      color: colorScheme.onSecondaryContainer,
++                    ),
++              ),
++            ],
++          ),
++        );
++      },
++    );
++  }
+ }

@@ -132,6 +132,16 @@ class TripController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void removeLocalReport(int reportId) {
+    final index = _remoteReports.indexWhere((r) => r.reportId == reportId);
+    if (index != -1) {
+      final report = _remoteReports[index];
+      _reportSeveritySum -= report.severity;
+      _remoteReports = _remoteReports.where((r) => r.reportId != reportId).toList();
+      notifyListeners();
+    }
+  }
+
   PassengerReportingService get passengerReportingService => _passengerReportingService;
   List<risk_scoring.UnsafeEvent> get recentEvents =>
       List.unmodifiable(_recentEvents);
@@ -167,6 +177,9 @@ class TripController extends ChangeNotifier {
   double get currentAcceleration => _currentAcceleration;
   double get currentTurnRate => _currentTurnRate;
   double get averageAcceleration => _accelWindow.average;
+  double get peakAcceleration => _accelWindow.max;
+  double get peakZAxis => _zAxisWindow.max;
+  double get peakTurnRate => _gyroWindow.max;
   int get tripHistoryVersion => _tripHistoryVersion;
 
   // Context factor getters for UI display
@@ -466,6 +479,18 @@ class TripController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteTrip(int tripId) async {
+    // Delete from local database
+    await _database.deleteTrip(tripId);
+
+    // If you have a backend service, delete from there too
+    // _syncService.deleteTrip(tripId); or FirebaseFirestore.instance.collection('trips').doc(tripId.toString()).delete();
+
+    _tripHistoryVersion++;
+    loadCompletedTrips().catchError((_) {});
+    notifyListeners();
+  }
+
   void _subscribeToRemoteReports(int tripId) {
     _areaReportsSub?.cancel(); // Cancel area reports when tracking trip
     _remoteReportsSub?.cancel();
@@ -542,6 +567,20 @@ class TripController extends ChangeNotifier {
     _currentSpeed = max(position.speed, 0);
     _speedWindow.add(_currentSpeed);
     final avgSpeedKmh = _speedWindow.average * 3.6;
+    if (_routePoints.isNotEmpty) {
+      final lastPoint = _routePoints.last;
+      final distance = Geolocator.distanceBetween(
+        lastPoint['lat']!,
+        lastPoint['lng']!,
+        position.latitude,
+        position.longitude,
+      );
+      // If the GPS jumps more than 10km (e.g. simulator teleporting from Googleplex to mock location), reset the route
+      if (distance > 10000) {
+        _routePoints.clear();
+      }
+    }
+    
     _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
     if (_routePoints.length > 200) {
       _routePoints.removeAt(0);
@@ -724,7 +763,12 @@ class TripController extends ChangeNotifier {
   void _recordEvent(risk_scoring.UnsafeEventType type) {
     _recentEvents.insert(
       0,
-      risk_scoring.UnsafeEvent(type: type, timestamp: DateTime.now()),
+      risk_scoring.UnsafeEvent(
+        type: type, 
+        timestamp: DateTime.now(),
+        lat: _currentPosition?.latitude,
+        lng: _currentPosition?.longitude,
+      ),
     );
     if (_recentEvents.length > 5) {
       _recentEvents.removeLast();

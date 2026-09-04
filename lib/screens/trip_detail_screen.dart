@@ -102,7 +102,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     icon: Icons.access_time,
                     label: 'Duration',
                     value: duration != null
-                        ? '${duration.inMinutes} minutes'
+                        ? _formatDuration(duration)
                         : 'In progress',
                   ),
                   const SizedBox(height: 12),
@@ -194,7 +194,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                           userAgentPackageName: 'com.saferide.app',
                         ),
                         TweenAnimationBuilder<double>(
-                          duration: const Duration(milliseconds: 1500),
+                          duration: const Duration(milliseconds: 4000),
                           curve: Curves.easeInOut,
                           tween: Tween<double>(begin: 0.0, end: 1.0),
                           builder: (context, animValue, child) {
@@ -210,11 +210,27 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                               children: [
                                 PolylineLayer(
                                   polylines: [
-                                    Polyline(
-                                      points: animatedPoints,
-                                      strokeWidth: 5,
-                                      gradientColors: [Colors.green, endColor],
-                                    ),
+                                    if (animatedPoints.length > 1)
+                                      for (int i = 0; i < animatedPoints.length - 1; i++)
+                                        Polyline(
+                                          points: [animatedPoints[i], animatedPoints[i + 1]],
+                                          strokeWidth: 6,
+                                          strokeCap: StrokeCap.round,
+                                          strokeJoin: StrokeJoin.round,
+                                          color: Color.lerp(
+                                            Colors.green,
+                                            endColor,
+                                            i / (animatedPoints.length - 1),
+                                          ) ?? endColor,
+                                        )
+                                    else if (animatedPoints.isNotEmpty)
+                                      Polyline(
+                                        points: animatedPoints,
+                                        strokeWidth: 6,
+                                        strokeCap: StrokeCap.round,
+                                        strokeJoin: StrokeJoin.round,
+                                        color: Colors.green,
+                                      ),
                                   ],
                                 ),
                                 MarkerLayer(
@@ -348,9 +364,27 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   }
 
   String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
+    int hour = time.hour;
     final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    final amPm = hour >= 12 ? 'PM' : 'AM';
+    
+    if (hour == 0) {
+      hour = 12;
+    } else if (hour > 12) {
+      hour -= 12;
+    }
+    
+    return '$hour:$minute $amPm';
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.inMinutes < 60) {
+      return '${duration.inMinutes} mins';
+    } else {
+      final hours = duration.inHours;
+      final minutes = duration.inMinutes.remainder(60);
+      return '${hours}h ${minutes}m';
+    }
   }
 }
 

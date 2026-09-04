@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'data/app_database.dart';
@@ -40,6 +41,7 @@ class SafeRideApp extends StatefulWidget {
 
 class _SafeRideAppState extends State<SafeRideApp> {
   int _selectedIndex = 0;
+  DateTime? _lastBackPressTime;
   StreamSubscription<User?>? _authSubscription;
   String _controllerScopeKey = 'signed_out';
 
@@ -102,18 +104,40 @@ class _SafeRideAppState extends State<SafeRideApp> {
                 builder: (context, controller, _) {
                   return Stack(
                     children: [
-                      Scaffold(
-                        body: SafeArea(
-                          child: IndexedStack(
-                            index: _selectedIndex,
-                            children: const [
-                              DashboardScreen(),
-                              ReportScreen(),
-                              MapScreen(),
-                              TripsScreen(),
-                            ],
+                      WillPopScope(
+                        onWillPop: () async {
+                          if (_selectedIndex != 0) {
+                            setState(() {
+                              _selectedIndex = 0;
+                            });
+                            return false;
+                          }
+                          
+                          final now = DateTime.now();
+                          if (_lastBackPressTime == null ||
+                              now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+                            _lastBackPressTime = now;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Press back again to exit')),
+                            );
+                            return false;
+                          }
+                          
+                          SystemNavigator.pop();
+                          return true;
+                        },
+                        child: Scaffold(
+                          body: SafeArea(
+                            child: IndexedStack(
+                              index: _selectedIndex,
+                              children: const [
+                                DashboardScreen(),
+                                ReportScreen(),
+                                MapScreen(),
+                                TripsScreen(),
+                              ],
+                            ),
                           ),
-                        ),
                         floatingActionButtonLocation:
                             FloatingActionButtonLocation.centerFloat,
                         floatingActionButton: Visibility(
@@ -222,6 +246,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
                             ),
                           ],
                         ),
+                      ),
                       ),
                       const SyncStatusIndicator(),
                       const OfflineBanner(),

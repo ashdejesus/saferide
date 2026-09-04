@@ -432,8 +432,12 @@ class _ReportScreenState extends State<ReportScreen>
                   _category = null;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Report submitted and syncing to community.'),
+                  SnackBar(
+                    content: Text(
+                      controller.testMode
+                          ? 'Test report simulated (not saved).'
+                          : 'Report submitted and syncing to community.',
+                    ),
                   ),
                 );
               }

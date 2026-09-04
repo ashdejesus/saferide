@@ -77,6 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         _buildRiskBanner(context, controller),
         _buildTripStatsRow(context, controller),
         _buildContextFactorsStrip(context, controller),
+        _buildQuickReportStrip(context, controller, colorScheme),
         _buildLiveSensorSection(controller),
       ],
       _buildUnsafeEvents(controller),
@@ -110,12 +111,24 @@ class _DashboardScreenState extends State<DashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'SafeRide',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+              RichText(
+                text: TextSpan(
+                  text: 'Safe',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.0,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                  children: [
+                    TextSpan(
+                      text: 'Ride',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w300,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               _TripStatusPill(isTracking: controller.isTracking),
@@ -196,10 +209,15 @@ class _DashboardScreenState extends State<DashboardScreen>
             if (controller.isTracking)
               FilledButton.icon(
                 onPressed: () async {
+                  final wasTestMode = controller.testMode;
                   await controller.stopTrip();
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Trip saved locally.')),
+                    SnackBar(
+                      content: Text(
+                        wasTestMode ? 'Test trip ended (not saved).' : 'Trip saved locally.',
+                      ),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.stop_circle),
@@ -645,43 +663,161 @@ class _DashboardScreenState extends State<DashboardScreen>
         const SizedBox(height: 8),
         Card(
           elevation: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _ContextBar(
-                  label: 'Road Condition',
-                  value: controller.contextRoad,
-                  color: const Color(0xFF8E44AD),
-                ),
-                const SizedBox(height: 10),
-                _ContextBar(
-                  label: 'Traffic Density',
-                  value: controller.contextTraffic,
-                  color: const Color(0xFFE67E22),
-                ),
-                const SizedBox(height: 10),
-                _ContextBar(
-                  label: 'Environmental Noise',
-                  value: controller.contextEnvNoise,
-                  color: const Color(0xFF2980B9),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'These factors adjust how sensitive the app is to unsafe driving based on current road and traffic conditions.',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
-                    fontStyle: FontStyle.italic,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _ContextBar(
+                    label: 'Road Condition',
+                    value: controller.contextRoad,
+                    color: const Color(0xFF8E44AD),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  _ContextBar(
+                    label: 'Traffic Density',
+                    value: controller.contextTraffic,
+                    color: const Color(0xFFE67E22),
+                  ),
+                  const SizedBox(height: 10),
+                  _ContextBar(
+                    label: 'Environmental Noise',
+                    value: controller.contextEnvNoise,
+                    color: const Color(0xFF2980B9),
+                  ),
+                  const Divider(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.settings_suggest,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tap here to configure these factors in Settings to improve algorithm accuracy based on your route.',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // ── NEW: Quick Report Strip ────────────────────────────────────────────────
+  
+  Widget _buildQuickReportStrip(
+    BuildContext context,
+    TripController controller,
+    ColorScheme colorScheme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Quick Report'),
+        const SizedBox(height: 8),
+        Card(
+          elevation: 1,
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildQuickAction(context, controller, 'Speeding', Icons.speed, Colors.orange),
+                _buildQuickAction(context, controller, 'Braking', Icons.car_crash, Colors.red),
+                _buildQuickAction(context, controller, 'Pothole', Icons.moving, Colors.amber.shade700),
+                _buildQuickAction(context, controller, 'Hazard', Icons.warning_amber, Colors.purple),
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
       ],
+    );
+  }
+
+  Widget _buildQuickAction(
+      BuildContext context, TripController controller, String category, IconData icon, Color color) {
+    return Expanded(
+      child: InkWell(
+        onTap: () async {
+          // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
+          int severity = 3; // Default to moderate
+          
+          if (category == 'Speeding') {
+            final speedKmh = controller.currentSpeed * 3.6;
+            if (speedKmh > 80) severity = 5;
+            else if (speedKmh > 60) severity = 4;
+          } else if (category == 'Braking') {
+            final peak = controller.peakAcceleration;
+            if (peak > 8.0) severity = 5;
+            else if (peak > 5.0) severity = 4;
+          } else if (category == 'Pothole') {
+            final peakZ = controller.peakZAxis;
+            if (peakZ > 9.0) severity = 5;
+            else if (peakZ > 6.0) severity = 4;
+          } else if (category == 'Hazard') {
+            // If road condition context factor is set to bad (high value), general hazards are highly severe
+            if (controller.contextRoad > 0.7) severity = 5;
+            else if (controller.contextRoad > 0.4) severity = 4;
+          }
+
+          await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$category reported. Thank you!'),
+              backgroundColor: color,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                category,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

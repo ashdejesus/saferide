@@ -44,7 +44,7 @@ class AdaptiveThresholds {
   double thetaBrakingBase = -8.0; // m/s²
   double thetaTurningBase =
       4.5; // rad/s - raised to avoid false positives from phone handling/body movement
-  double thetaPothole = 2.5; // m/s² vertical acceleration
+  double thetaPotholeBase = 5.0; // m/s² vertical acceleration - raised to ignore jeepney vibrations (was 2.5)
   double thetaGyroStable = 0.8; // rad/s
   double thetaSpeedMin = 5.0; // minimum speed for pothole detection
 
@@ -93,6 +93,7 @@ class AdaptiveThresholds {
   double get speedingThreshold => getAdaptiveThreshold(thetaSpeedingBase, applyVehicleMultiplier: false);
   double get brakingThreshold => getAdaptiveThreshold(thetaBrakingBase);
   double get turningThreshold => getAdaptiveThreshold(thetaTurningBase);
+  double get potholeThreshold => getAdaptiveThreshold(thetaPotholeBase);
 }
 
 /// Weights for risk score computation
@@ -178,7 +179,7 @@ bool detectPothole({
   required double speed,
   required AdaptiveThresholds thresholds,
 }) {
-  return verticalAccel > thresholds.thetaPothole &&
+  return verticalAccel > thresholds.potholeThreshold &&
       gyroMagnitude < thresholds.thetaGyroStable &&
       speed > thresholds.thetaSpeedMin;
 }
@@ -384,10 +385,12 @@ enum UnsafeEventType { speeding, braking, turning }
 
 /// Represents an unsafe driving event
 class UnsafeEvent {
-  const UnsafeEvent({required this.type, required this.timestamp});
+  const UnsafeEvent({required this.type, required this.timestamp, this.lat, this.lng});
 
   final UnsafeEventType type;
   final DateTime timestamp;
+  final double? lat;
+  final double? lng;
 }
 
 /// Legacy function for backward compatibility

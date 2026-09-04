@@ -156,10 +156,28 @@ class _TripCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: OpenContainer<void>(
-        transitionType: ContainerTransitionType.fadeThrough,
-        transitionDuration: const Duration(milliseconds: 420),
-        openBuilder: (context, _) => TripDetailScreen(trip: trip),
+      child: Dismissible(
+        key: ValueKey(trip.id),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: colorScheme.error,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(Icons.delete, color: colorScheme.onError),
+        ),
+        onDismissed: (direction) {
+          context.read<TripController>().deleteTrip(trip.id!);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Trip deleted')),
+          );
+        },
+        child: OpenContainer<void>(
+          transitionType: ContainerTransitionType.fadeThrough,
+          transitionDuration: const Duration(milliseconds: 420),
+          openBuilder: (context, _) => TripDetailScreen(trip: trip),
         closedElevation: 0,
         openElevation: 0,
         closedColor: Colors.transparent,
@@ -255,6 +273,7 @@ class _TripCard extends StatelessWidget {
           ),
         );
       },
+    ),
     ),
     );
   }
