@@ -13,12 +13,25 @@ class TripActionSheet {
     final db = context.read<AppDatabase>();
     
     final trips = await db.getTrips();
-    final routeNames = trips
-        .map((t) => t.routeName)
-        .where((r) => r != null && r.trim().isNotEmpty)
-        .map((r) => r!.trim())
-        .toSet()
-        .toList();
+    
+    // Count frequencies of past routes
+    final routeFrequencies = <String, int>{};
+    for (final trip in trips) {
+      if (trip.routeName != null && trip.routeName!.trim().isNotEmpty) {
+        final name = trip.routeName!.trim();
+        routeFrequencies[name] = (routeFrequencies[name] ?? 0) + 1;
+      }
+    }
+
+    // Sort by most frequent
+    final sortedRoutes = routeFrequencies.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+      
+    // All unique route names for the dropdown (sorted by frequency)
+    final routeNames = sortedRoutes.map((e) => e.key).toList();
+    
+    // Top 3 suggested routes for quick chips
+    final suggestedRoutes = routeNames.take(3).toList();
 
     final routeController = TextEditingController(
       text: controller.activeTrip?.routeName ?? '',
@@ -93,6 +106,31 @@ class TripActionSheet {
                         }
                       },
                     ),
+                  if (!controller.isTracking && suggestedRoutes.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Suggested for you:',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: suggestedRoutes.map((route) {
+                        return ActionChip(
+                          label: Text(route),
+                          avatar: const Icon(Icons.history, size: 16),
+                          onPressed: () {
+                            // Automatically fill the text field when a suggestion is tapped
+                            routeController.text = route;
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                   if (!controller.isTracking) const SizedBox(height: 16),
                   if (controller.isTracking)
                     if (controller.activeTrip != null)

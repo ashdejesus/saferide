@@ -224,9 +224,17 @@ class _AuthScreenState extends State<AuthScreen> {
                                   ),
                                 ),
                                 keyboardType: TextInputType.emailAddress,
-                                validator: (v) => (v == null || !v.contains('@'))
-                                    ? 'Please enter a valid email address'
-                                    : null,
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'Please enter your email address';
+                                  }
+                                  // Standard email regex
+                                  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                                  if (!emailRegex.hasMatch(v.trim())) {
+                                    return 'Please enter a valid email address';
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 16),
                               

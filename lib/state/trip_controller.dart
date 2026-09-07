@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../data/app_database.dart';
@@ -444,8 +445,50 @@ class TripController extends ChangeNotifier {
 
     final riskScore = (tripRisk * 100.0);
 
+    // Auto-name generation using geocoding if routeName is empty
+    String? finalRouteName = _activeTrip!.routeName;
+    final actualStartLat = _activeTrip!.startLat ?? (_routePoints.isNotEmpty ? _routePoints.first['lat'] : null);
+    final actualStartLng = _activeTrip!.startLng ?? (_routePoints.isNotEmpty ? _routePoints.first['lng'] : null);
+
+    if ((finalRouteName == null || finalRouteName.trim().isEmpty) && 
+        actualStartLat != null && 
+        actualStartLng != null && 
+        endPosition != null) {
+      try {
+        final geocoder = geocoding.Geocoding();
+        final startPlacemarks = await geocoder.placemarkFromCoordinates(
+          actualStartLat, 
+          actualStartLng,
+        );
+        final endPlacemarks = await geocoder.placemarkFromCoordinates(
+          endPosition.latitude, 
+          endPosition.longitude,
+        );
+        
+        if (startPlacemarks.isNotEmpty && endPlacemarks.isNotEmpty) {
+          String _getDetailedName(geocoding.Placemark p) {
+            if (p.subLocality != null && p.subLocality!.isNotEmpty) return p.subLocality!; // Barangay
+            if (p.street != null && p.street!.isNotEmpty && !p.street!.contains('+')) return p.street!; // Street
+            if (p.locality != null && p.locality!.isNotEmpty) return p.locality!; // City
+            if (p.name != null && p.name!.isNotEmpty && !p.name!.contains('+')) return p.name!; // Landmark
+            return 'Unknown';
+          }
+
+          final startLoc = _getDetailedName(startPlacemarks.first);
+          final endLoc = _getDetailedName(endPlacemarks.first);
+          
+          if (startLoc != 'Unknown' || endLoc != 'Unknown') {
+            finalRouteName = '${startLoc == 'Unknown' ? 'Start' : startLoc} to ${endLoc == 'Unknown' ? 'Destination' : endLoc}';
+          }
+        }
+      } catch (e) {
+        debugPrint('TripController: Geocoding failed for auto-naming: $e');
+      }
+    }
+
     final completedTrip = _activeTrip!.copyWith(
       endTime: DateTime.now(),
+      routeName: finalRouteName,
       endLat: endPosition?.latitude,
       endLng: endPosition?.longitude,
       riskScore: riskScore.toDouble(),
