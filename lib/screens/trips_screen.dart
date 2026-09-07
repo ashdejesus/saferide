@@ -11,6 +11,7 @@ import '../widgets/trip_action_sheet.dart';
 import '../widgets/m3_progress_indicators.dart';
 import '../widgets/sync_widgets.dart';
 import 'trip_detail_screen.dart';
+import 'route_detail_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -168,6 +169,28 @@ class _TripCard extends StatelessWidget {
           ),
           child: Icon(Icons.delete, color: colorScheme.onError),
         ),
+        confirmDismiss: (direction) async {
+          return await showDialog<bool>(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Delete Trip?'),
+                content: const Text('Are you sure you want to permanently delete this trip?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
         onDismissed: (direction) {
           context.read<TripController>().deleteTrip(trip.id!);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -405,17 +428,16 @@ class _RiskBadge extends StatelessWidget {
   final Color background;
 
   static _RiskBadge fromScore(BuildContext context, double score) {
-    final scheme = Theme.of(context).colorScheme;
     if (score >= 40) {
-      return _RiskBadge(label: 'High risk', background: scheme.errorContainer);
+      return _RiskBadge(label: 'High risk', background: Colors.red.shade100);
     }
     if (score >= 20) {
       return _RiskBadge(
         label: 'Medium risk',
-        background: scheme.tertiaryContainer,
+        background: Colors.orange.shade100,
       );
     }
-    return _RiskBadge(label: 'Low risk', background: scheme.secondaryContainer);
+    return _RiskBadge(label: 'Low risk', background: Colors.green.shade100);
   }
 
   @override
@@ -426,7 +448,10 @@ class _RiskBadge extends StatelessWidget {
         color: background,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+      child: Text(
+        label, 
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.black87),
+      ),
     );
   }
 }
@@ -483,49 +508,61 @@ class _RouteCard extends StatelessWidget {
       child: Card(
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.route, color: colorScheme.onSecondaryContainer),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          routeName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        Text(
-                          '${routeTrips.length} Aggregated Trips',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Route Safety Score:', style: Theme.of(context).textTheme.titleSmall),
-                  badge,
-                ],
-              ),
-            ],
+        child: OpenContainer<void>(
+          transitionType: ContainerTransitionType.fadeThrough,
+          transitionDuration: const Duration(milliseconds: 420),
+          openBuilder: (context, _) => RouteDetailScreen(
+            routeName: routeName,
+            routeTrips: routeTrips,
           ),
+          closedElevation: 0,
+          openElevation: 0,
+          closedColor: Colors.transparent,
+          openColor: colorScheme.surface,
+          closedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          closedBuilder: (context, openContainer) {
+            return InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: openContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.route, color: colorScheme.onSecondaryContainer),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            routeName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${routeTrips.length} Aggregated Trips',
+                            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    badge,
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
