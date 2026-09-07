@@ -238,10 +238,9 @@ class _TripCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          trip.routeName ??
+                        child: _RouteNameDisplay(
+                          routeName: trip.routeName ??
                               'Trip on ${start.toLocal().toString().split(' ').first}',
-                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
                       if (duration != null)
@@ -543,11 +542,9 @@ class _RouteCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            routeName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          _RouteNameDisplay(
+                            routeName: routeName,
+                            isTitle: true,
                           ),
                           Text(
                             '${routeTrips.length} Aggregated Trips',
@@ -569,3 +566,56 @@ class _RouteCard extends StatelessWidget {
   }
 }
 
+class _RouteNameDisplay extends StatelessWidget {
+  const _RouteNameDisplay({required this.routeName, this.isTitle = false});
+  
+  final String routeName;
+  final bool isTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (routeName.contains(' to ')) {
+      final parts = routeName.split(' to ');
+      if (parts.length == 2) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              parts[0],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: isTitle 
+                ? const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                : Theme.of(context).textTheme.titleMedium,
+            ),
+            Row(
+              children: [
+                Icon(Icons.arrow_downward_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    parts[1],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: isTitle 
+                      ? const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                      : Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      }
+    }
+    
+    return Text(
+      routeName,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: isTitle 
+        ? const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+        : Theme.of(context).textTheme.titleMedium,
+    );
+  }
+}

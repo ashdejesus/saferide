@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../data/app_database.dart';
 import '../models/sync_status.dart';
+import '../models/trip.dart';
 
 class SyncService extends ChangeNotifier {
   SyncService(this._database);
@@ -43,6 +44,76 @@ class SyncService extends ChangeNotifier {
     } catch (error) {
       _initError = error.toString();
       return false;
+    }
+  }
+
+
+  Future<void> restoreTripsFromCloud() async {
+    final ready = await initialize();
+    if (!ready) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.isAnonymous) return;
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final tripsSnapshot = await firestore
+          .collection('trips')
+          .doc(user.uid)
+          .collection('items')
+          .get();
+
+      if (tripsSnapshot.docs.isEmpty) return;
+
+      final localTrips = await _database.getTrips();
+      final localStartTimes = localTrips.map((t) => t.startTime.millisecondsSinceEpoch).toSet();
+
+      for (final doc in tripsSnapshot.docs) {
+        final data = doc.data();
+        final metadata = data['metadata'] as Map<String, dynamic>? ?? {};
+
+        final startedAtTs = data['startedAt'] as Timestamp?;
+        if (startedAtTs == null) continue;
+
+        if (localStartTimes.contains(startedAtTs.millisecondsSinceEpoch)) {
+          continue; // Already exists locally
+        }
+
+        final endedAtTs = data['endedAt'] as Timestamp?;
+        
+        // Safely parse routePoints
+        List<Map<String, double>> parsedRoutePoints = [];
+        if (metadata['routePoints'] != null) {
+          final rpList = metadata['routePoints'] as List<dynamic>;
+          parsedRoutePoints = rpList.map((p) {
+            final pMap = p as Map<String, dynamic>;
+            return {
+              'lat': (pMap['lat'] as num).toDouble(),
+              'lng': (pMap['lng'] as num).toDouble(),
+            };
+          }).toList();
+        }
+
+        final trip = Trip(
+          startTime: startedAtTs.toDate(),
+          endTime: endedAtTs?.toDate(),
+          routeName: data['routeName'] as String?,
+          startLat: (metadata['startLat'] as num?)?.toDouble(),
+          startLng: (metadata['startLng'] as num?)?.toDouble(),
+          endLat: (metadata['endLat'] as num?)?.toDouble(),
+          endLng: (metadata['endLng'] as num?)?.toDouble(),
+          riskScore: (metadata['riskScore'] as num?)?.toDouble() ?? 0,
+          speedingCount: (metadata['speedingCount'] as num?)?.toInt() ?? 0,
+          brakingCount: (metadata['brakingCount'] as num?)?.toInt() ?? 0,
+          turningCount: (metadata['turningCount'] as num?)?.toInt() ?? 0,
+          routePoints: parsedRoutePoints,
+          syncStatus: SyncStatus.synced,
+        );
+
+        await _database.insertTrip(trip);
+      }
+    } catch (e) {
+      debugPrint('SyncService: Failed to restore trips from cloud: $e');
     }
   }
 

@@ -182,6 +182,11 @@ class TripController extends ChangeNotifier {
   double get peakZAxis => _zAxisWindow.max;
   double get peakTurnRate => _gyroWindow.max;
   int get tripHistoryVersion => _tripHistoryVersion;
+  
+  void refreshHistory() {
+    _tripHistoryVersion++;
+    notifyListeners();
+  }
 
   // Context factor getters for UI display
   double get contextRoad => _adaptiveThresholds.contextRoad;

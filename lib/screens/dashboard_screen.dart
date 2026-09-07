@@ -198,7 +198,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                               ? 'Traveling to ${controller.activeTrip!.routeName!}'
                               : 'Trip in progress')
                         : 'Ready to start a trip',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),

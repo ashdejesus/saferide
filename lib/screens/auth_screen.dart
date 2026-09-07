@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../services/sync_service.dart';
+import '../state/trip_controller.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -103,6 +105,14 @@ class _AuthScreenState extends State<AuthScreen> {
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
+        // Fire and forget restore trips from cloud
+        if (mounted) {
+          context.read<SyncService>().restoreTripsFromCloud().then((_) {
+            if (mounted) {
+              context.read<TripController>().refreshHistory();
+            }
+          });
+        }
       } else {
         await auth.registerWithEmail(
           _emailController.text.trim(),
