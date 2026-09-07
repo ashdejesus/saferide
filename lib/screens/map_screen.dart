@@ -440,8 +440,14 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
           ),
           child: StatefulBuilder(
             builder: (context, setState) {
-              return Column(
-              mainAxisSize: MainAxisSize.min,
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -584,8 +590,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 ),
                 const SizedBox(height: 12),
               ],
-            );
-            },
+            ),
+          );
+          },
           ),
         );
       },

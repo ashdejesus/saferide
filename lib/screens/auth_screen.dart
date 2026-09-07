@@ -52,6 +52,47 @@ class _AuthScreenState extends State<AuthScreen> {
     return 'Oops! An unexpected error occurred. Please try again.';
   }
 
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter your email address first to reset your password.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      await auth.sendPasswordResetEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Password reset email sent! Check your inbox.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_getFriendlyErrorMessage(e)),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -203,7 +244,19 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ? 'Password must be at least 6 characters'
                                     : null,
                               ),
-                              const SizedBox(height: 32),
+                              
+                              if (_isLogin)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _loading ? null : _handleForgotPassword,
+                                    child: const Text('Forgot Password?'),
+                                  ),
+                                )
+                              else
+                                const SizedBox(height: 16),
+                                
+                              const SizedBox(height: 16),
                               
                               // Main Action Button
                               FilledButton(

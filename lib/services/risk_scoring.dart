@@ -61,10 +61,11 @@ class AdaptiveThresholds {
   double contextEnvNoise = 0.0; // E_n(t): environmental noise coefficient
   double contextTraffic = 0.0; // T_d(t): traffic density coefficient
 
-  /// Adaptive threshold: θ(t) = θ_base(v) × vehicleMultiplier × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
+  /// Adaptive threshold: θ(t) = θ_base(v) × (1/vehicleMultiplier) × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
   double getAdaptiveThreshold(double baseThreshold, {bool applyVehicleMultiplier = true}) {
+    final effectiveMultiplier = applyVehicleMultiplier ? (1.0 / vehicleMultiplier) : 1.0;
     return baseThreshold *
-        (applyVehicleMultiplier ? vehicleMultiplier : 1.0) *
+        effectiveMultiplier *
         (1 + alpha * contextRoad) *
         (1 + beta * contextTraffic) *
         (1 + gamma * contextEnvNoise);
@@ -90,7 +91,7 @@ class AdaptiveThresholds {
   }
 
   /// Get thresholds for event detection
-  double get speedingThreshold => getAdaptiveThreshold(thetaSpeedingBase, applyVehicleMultiplier: false);
+  double get speedingThreshold => getAdaptiveThreshold(thetaSpeedingBase, applyVehicleMultiplier: true);
   double get brakingThreshold => getAdaptiveThreshold(thetaBrakingBase);
   double get turningThreshold => getAdaptiveThreshold(thetaTurningBase);
   double get potholeThreshold => getAdaptiveThreshold(thetaPotholeBase);
@@ -213,15 +214,10 @@ WindowMetrics extractWindowMetrics(
   final speedSum = windowReadings.fold(0.0, (sum, r) => sum + r.speed);
   final averageSpeed = speedSum / windowReadings.length;
 
-  // g_w_max: maximum angular velocity in window
+  // g_w_max: maximum angular velocity in window (yaw rate only)
   double maxAngularVelocity = 0;
   for (final reading in windowReadings) {
-    final gyroMag = computeGyroMagnitude(
-      reading.gyroX,
-      reading.gyroY,
-      reading.gyroZ,
-    );
-    maxAngularVelocity = max(maxAngularVelocity, gyroMag);
+    maxAngularVelocity = max(maxAngularVelocity, reading.gyroZ.abs());
   }
 
   // Δv(k): speed variations

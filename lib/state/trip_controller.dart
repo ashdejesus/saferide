@@ -575,8 +575,9 @@ class TripController extends ChangeNotifier {
         position.latitude,
         position.longitude,
       );
-      // If the GPS jumps more than 10km (e.g. simulator teleporting from Googleplex to mock location), reset the route
-      if (distance > 10000) {
+      // If the GPS jumps more than 10km (e.g. simulator teleporting from Googleplex to mock location),
+      // we only clear the route in test mode so we don't lose real user trip data during offline gaps.
+      if (distance > 10000 && _testMode) {
         _routePoints.clear();
       }
     }
@@ -624,20 +625,30 @@ class TripController extends ChangeNotifier {
         position.latitude,
         position.longitude,
       );
-      if (distance > 1.0) {
-        // Only compute slope if moved at least 1 meter
+      // Smooth out GPS altitude noise by requiring at least 20 meters of horizontal travel
+      if (distance > 20.0) {
         final slope = risk_scoring.computeSlope(
           currentAltitude: currentAltitude,
           previousAltitude: _lastAltitude,
           distanceTraveled: distance,
         );
-        _totalSlopeDeviation += slope.abs();
+        
+        // Filter out extreme GPS jumps (> 30% slope) and minor flat-road noise (< 5% slope)
+        if (slope.abs() < 0.3 && slope.abs() > 0.05) {
+          _totalSlopeDeviation += slope.abs();
+        }
+        
+        // Update reference point only when we've moved enough
+        _lastAltitude = currentAltitude;
+        _lastLatitude = position.latitude;
+        _lastLongitude = position.longitude;
       }
+    } else {
+      _lastAltitude = currentAltitude;
+      _lastLatitude = position.latitude;
+      _lastLongitude = position.longitude;
+      _hasLastAltitude = true;
     }
-    _lastAltitude = currentAltitude;
-    _lastLatitude = position.latitude;
-    _lastLongitude = position.longitude;
-    _hasLastAltitude = true;
 
     _lastRecordedSpeed = _currentSpeed;
     
@@ -730,14 +741,16 @@ class TripController extends ChangeNotifier {
       event.y,
       event.z,
     );
-    _currentTurnRate = gyroMagnitude;
-    _gyroWindow.add(gyroMagnitude);
+    _gyroWindow.add(gyroMagnitude); // Keep for pothole stability check
 
-    // Detect sharp turning using adaptive threshold and full gyro magnitude
-    // Requires: (1) sufficient vehicle speed, (2) high gyro, (3) sustained duration
-    final maxGyro = _gyroWindow.max;
+    // Use Z-axis for turning rate (yaw) to avoid false positives from pitch/roll
+    final turnRate = event.z.abs();
+    _currentTurnRate = turnRate;
+
+    // Detect sharp turning using adaptive threshold and instantaneous Z-axis turn rate
+    // Requires: (1) sufficient vehicle speed, (2) high yaw rate, (3) sustained duration
     final isMoving = _testMode || _currentSpeed >= 3.0; // ~11 km/h minimum to avoid stationary false positives
-    if (!_isRecentPothole() && isMoving && risk_scoring.detectSharpTurning(maxGyro, _adaptiveThresholds)) {
+    if (!_isRecentPothole() && isMoving && risk_scoring.detectSharpTurning(turnRate, _adaptiveThresholds)) {
       _turningStreak++;
       if (_turningCooldownElapsed(_lastTurnEvent)) {
         if (_turningStreak >= 10) {

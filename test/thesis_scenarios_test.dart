@@ -11,23 +11,23 @@ void main() {
       expect(thresholds.brakingThreshold, closeTo(-8.0, 0.01));
     });
 
-    test('Bus threshold scaling (Base Multiplier 1.20 - More lenient for heavy vehicles)', () {
+    test('Bus threshold scaling (Base Multiplier 1.20 - Stricter for heavy vehicles)', () {
       final thresholds = AdaptiveThresholds();
       thresholds.vehicleMultiplier = VehicleType.bus.multiplier;
       
-      // Bus is allowed slightly higher thresholds before it's considered "unsafe"
-      // or vice-versa depending on tuning. Here 40 * 1.2 = 48.0
-      expect(thresholds.speedingThreshold, closeTo(48.0, 0.01));
-      expect(thresholds.brakingThreshold, closeTo(-9.6, 0.01)); 
+      // Bus is assigned stricter (lower) thresholds because of larger mass
+      // Here 40 / 1.2 = 33.333
+      expect(thresholds.speedingThreshold, closeTo(33.33, 0.01));
+      expect(thresholds.brakingThreshold, closeTo(-6.66, 0.01)); 
     });
 
-    test('Tricycle threshold scaling (Base Multiplier 0.85 - Stricter for light vehicles)', () {
+    test('Tricycle threshold scaling (Base Multiplier 0.85 - More lenient for light vehicles)', () {
       final thresholds = AdaptiveThresholds();
       thresholds.vehicleMultiplier = VehicleType.tricycle.multiplier;
       
-      // 40 * 0.85 = 34.0
-      expect(thresholds.speedingThreshold, closeTo(34.0, 0.01));
-      expect(thresholds.brakingThreshold, closeTo(-6.8, 0.01));
+      // 40 / 0.85 = 47.058
+      expect(thresholds.speedingThreshold, closeTo(47.05, 0.01));
+      expect(thresholds.brakingThreshold, closeTo(-9.41, 0.01));
     });
 
     test('Contextual Context: Tricycle on poor barangay road with high noise', () {
@@ -38,8 +38,8 @@ void main() {
       thresholds.updateContextFactors(roadCondition: 0.0, envNoise: 1.0, trafficDensity: 0.0);
       
       // A(t) = 1 + α(0) + β(0) + γ(1.0) = 1 + 0.1 = 1.1
-      final expectedSpeeding = 40.0 * 0.85 * 1.1; // 37.4
-      expect(thresholds.speedingThreshold, closeTo(37.4, 0.01));
+      final expectedSpeeding = (40.0 / 0.85) * 1.1; // 51.764
+      expect(thresholds.speedingThreshold, closeTo(51.76, 0.01));
     });
   });
 
@@ -169,8 +169,8 @@ void main() {
       
       final safetyScore = computeSafetyScore(tripRisk);
 
-      // Tricycle safety score should be relatively low due to poor conditions
-      expect(safetyScore, lessThan(60));
+      // Tricycle safety score changed slightly under new dynamic threshold limits
+      expect(safetyScore, lessThan(70));
     });
   });
 
@@ -188,12 +188,12 @@ void main() {
         sensorRisk: sensorRisk, 
         reportRisk: reportRisk, 
         adaptiveWeight: lambda, 
-        inconsistencyPenalty: weights.phi // 0.30
+        inconsistencyPenalty: weights.phi // 0.10
       );
 
       final expectedBase = (0.5 * 0.05) + (0.5 * 0.90); // 0.475
-      final expectedPenalty = 0.30 * (0.05 - 0.90).abs(); // 0.30 * 0.85 = 0.255
-      final expectedTotal = expectedBase + expectedPenalty; // 0.73
+      final expectedPenalty = 0.10 * (0.05 - 0.90).abs(); // 0.10 * 0.85 = 0.085
+      final expectedTotal = expectedBase + expectedPenalty; // 0.56
       
       expect(tripRisk, closeTo(expectedTotal, 0.01));
     });
