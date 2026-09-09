@@ -8,6 +8,7 @@ import '../services/passenger_reporting_service.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/split_button.dart';
+import '../theme/motion_scheme.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -489,18 +490,36 @@ class _IntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
     if (!isTracking) {
       return Card(
-        color: colorScheme.errorContainer.withValues(alpha: 0.5),
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.error.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: colorScheme.error.withOpacity(0.3)),
         ),
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                colorScheme.errorContainer.withOpacity(0.7),
+                colorScheme.errorContainer.withOpacity(0.3),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              Icon(Icons.location_off, color: colorScheme.error, size: 28),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.error.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(Icons.location_off, color: colorScheme.error, size: 28),
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -515,7 +534,7 @@ class _IntroCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'You must start a trip on the Dashboard to submit incident reports.',
+                      'Start a trip on the Dashboard to submit incident reports.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onErrorContainer,
                       ),
@@ -530,19 +549,32 @@ class _IntroCard extends StatelessWidget {
     }
 
     return Card(
-      child: Padding(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              colorScheme.primaryContainer.withOpacity(0.8),
+              colorScheme.secondaryContainer.withOpacity(0.4),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
+                color: colorScheme.primary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(18),
               ),
               child: Icon(
                 Icons.report_gmailerrorred,
-                color: colorScheme.onPrimaryContainer,
+                color: colorScheme.primary,
+                size: 28,
               ),
             ),
             const SizedBox(width: 16),
@@ -551,20 +583,26 @@ class _IntroCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Capture what happened',
+                    'Report an Incident',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    'Reports are tied to your current trip.',
+                    'Your reports help improve community safety.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: colorScheme.onPrimaryContainer.withOpacity(0.8),
                     ),
                   ),
                 ],
               ),
+            ),
+            Icon(
+              Icons.shield_outlined,
+              color: colorScheme.primary.withOpacity(0.4),
+              size: 40,
             ),
           ],
         ),
@@ -880,6 +918,110 @@ class _GuidelineItem extends StatelessWidget {
   }
 }
 
+// ── Expressive Category Chip ─────────────────────────────────────────────────
+
+class _BouncyChip extends StatefulWidget {
+  const _BouncyChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+  @override
+  State<_BouncyChip> createState() => _BouncyChipState();
+}
+
+class _BouncyChipState extends State<_BouncyChip> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _scale = Tween<double>(begin: 1.0, end: 0.90).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
+      onTapCancel: () => _ctrl.reverse(),
+      child: ScaleTransition(
+        scale: _scale,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: widget.isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(widget.isSelected ? 20 : 12),
+            border: Border.all(
+              color: widget.isSelected ? cs.primary : cs.outlineVariant,
+              width: widget.isSelected ? 2 : 1,
+            ),
+            boxShadow: widget.isSelected ? [
+              BoxShadow(color: cs.primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 4)),
+            ] : [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 16,
+                color: widget.isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(widget.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: widget.isSelected ? cs.onPrimaryContainer : cs.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Severity Label ────────────────────────────────────────────────────────────
+
+class _SeverityLabel extends StatelessWidget {
+  const _SeverityLabel({super.key, required this.severity});
+  final int severity;
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    final String label;
+    switch (severity) {
+      case 5: color = Colors.red;                   label = 'Critical'; break;
+      case 4: color = Colors.orange;                label = 'High';     break;
+      case 3: color = Colors.amber.shade700;        label = 'Moderate'; break;
+      case 2: color = Colors.lightGreen.shade600;   label = 'Low';      break;
+      default: color = Colors.green;               label = 'Minimal';  break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+    );
+  }
+}
+
+// ── Report Form Card ──────────────────────────────────────────────────────────
+
 class _ReportFormCard extends StatelessWidget {
   const _ReportFormCard({
     required this.formKey,
@@ -989,47 +1131,40 @@ class _ReportFormCard extends StatelessWidget {
 
                   IconData icon = Icons.report;
                   switch (item) {
-                    case 'Speeding':
-                      icon = Icons.speed;
-                      break;
-                    case 'Sudden Braking':
-                      icon = Icons.car_crash;
-                      break;
-                    case 'Sharp Turning':
-                      icon = Icons.turn_sharp_right;
-                      break;
-                    case 'Pothole':
-                      icon = Icons.moving;
-                      break;
-                    case 'Reckless Driving':
-                      icon = Icons.warning_amber;
-                      break;
-                    case 'Accident':
-                      icon = Icons.medical_services;
-                      break;
-                    case 'Hazard':
-                      icon = Icons.construction;
-                      break;
+                    case 'Speeding':        icon = Icons.speed; break;
+                    case 'Sudden Braking':  icon = Icons.car_crash; break;
+                    case 'Sharp Turning':   icon = Icons.turn_sharp_right; break;
+                    case 'Pothole':         icon = Icons.moving; break;
+                    case 'Reckless Driving':icon = Icons.warning_amber; break;
+                    case 'Accident':        icon = Icons.medical_services; break;
+                    case 'Hazard':          icon = Icons.construction; break;
                   }
 
-                  return ChoiceChip(
-                    label: Text(item),
-                    avatar: Icon(
-                      icon,
-                      size: 18,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.onPrimaryContainer
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    selected: isSelected,
-                    onSelected: (_) => onCategoryChanged(item),
+                  return _BouncyChip(
+                    label: item,
+                    icon: icon,
+                    isSelected: isSelected,
+                    onTap: () => onCategoryChanged(item),
                   );
-                }).toList(),
+                }).toList().cast<Widget>(),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Severity: ${severity.toStringAsFixed(0)}',
-                style: Theme.of(context).textTheme.titleMedium,
+              Row(
+                children: [
+                  Text(
+                    'Severity',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: anim,
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                    child: _SeverityLabel(key: ValueKey(severity.round()), severity: severity.round()),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Row(
@@ -1037,42 +1172,50 @@ class _ReportFormCard extends StatelessWidget {
                   final val = index + 1;
                   final isSelected = severity.round() == val;
                   Color color;
-                  if (val == 5)
-                    color = Colors.red;
-                  else if (val == 4)
-                    color = Colors.orange;
-                  else if (val == 3)
-                    color = Colors.amber.shade700;
-                  else if (val == 2)
-                    color = Colors.lightGreen;
-                  else
-                    color = Colors.green;
+                  if (val == 5)      color = Colors.red;
+                  else if (val == 4) color = Colors.orange;
+                  else if (val == 3) color = Colors.amber.shade700;
+                  else if (val == 2) color = Colors.lightGreen;
+                  else               color = Colors.green;
+
+                  IconData sIcon;
+                  if (val == 5)      sIcon = Icons.crisis_alert;
+                  else if (val == 4) sIcon = Icons.warning_rounded;
+                  else if (val == 3) sIcon = Icons.report_outlined;
+                  else if (val == 2) sIcon = Icons.info_outline;
+                  else               sIcon = Icons.check_circle_outline;
 
                   return Expanded(
-                    child: GestureDetector(
-                      onTap: () => onSeverityChanged(val.toDouble()),
-                      child: Container(
-                        margin: EdgeInsets.only(right: index < 4 ? 8 : 0),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? color
-                              : color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected
-                                ? color
-                                : color.withValues(alpha: 0.3),
-                            width: isSelected ? 2 : 1,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: GestureDetector(
+                        onTap: () => onSeverityChanged(val.toDouble()),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: MotionScheme.spatialFast,
+                          height: isSelected ? 56 : 48,
+                          decoration: BoxDecoration(
+                            color: isSelected ? color : color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(isSelected ? 16 : 12),
+                            boxShadow: isSelected ? [
+                              BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4)),
+                            ] : [],
                           ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          val.toString(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: isSelected ? Colors.white : color,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(sIcon, size: isSelected ? 20 : 16, color: isSelected ? Colors.white : color),
+                              const SizedBox(height: 2),
+                              Text(
+                                val.toString(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isSelected ? 14 : 12,
+                                  color: isSelected ? Colors.white : color,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

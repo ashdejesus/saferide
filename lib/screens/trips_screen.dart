@@ -12,6 +12,7 @@ import '../widgets/m3_progress_indicators.dart';
 import '../widgets/sync_widgets.dart';
 import 'trip_detail_screen.dart';
 import 'route_detail_screen.dart';
+import '../widgets/m3_button_group.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -74,30 +75,21 @@ class _TripsScreenState extends State<TripsScreen>
         final items = <Widget>[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              SectionHeader(title: 'Trip Summary'),
-              SyncButton(),
+            children: [
+              const Expanded(child: SectionHeader(title: 'Trip Summary')),
+              const SyncButton(),
             ],
           ),
           _TripsOverview(trips: trips, isLoading: isLoading),
           const SizedBox(height: 16),
-            Center(
-              child: Wrap(
-                spacing: 12,
-                children: [
-                  FilterChip(
-                    label: const Text('Individual Trips'),
-                    selected: _routeViewIndex == 0,
-                    onSelected: (val) => setState(() => _routeViewIndex = 0),
-                  ),
-                  FilterChip(
-                    label: const Text('By Route'),
-                    selected: _routeViewIndex == 1,
-                    onSelected: (val) => setState(() => _routeViewIndex = 1),
-                  ),
-                ],
-              ),
-            ),
+          M3ButtonGroup<int>(
+            segments: const [
+              ButtonSegment(value: 0, icon: Icon(Icons.list), label: Text('Individual Trips')),
+              ButtonSegment(value: 1, icon: Icon(Icons.route), label: Text('By Route')),
+            ],
+            selected: {_routeViewIndex},
+            onSelectionChanged: (val) => setState(() => _routeViewIndex = val.first),
+          ),
           const SizedBox(height: 16),
           if (!isLoading && trips.isEmpty)
             EmptyState(
