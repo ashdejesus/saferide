@@ -9,6 +9,9 @@ import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/split_button.dart';
 import '../theme/motion_scheme.dart';
+import '../widgets/m3_severity_selector.dart';
+import '../widgets/m3_bouncy_chip.dart';
+import '../widgets/m3_severity_label.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -550,26 +553,21 @@ class _IntroCard extends StatelessWidget {
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 0,
+      color: colorScheme.primary.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
+      ),
       child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.primaryContainer.withOpacity(0.8),
-              colorScheme.secondaryContainer.withOpacity(0.4),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(18),
+                color: colorScheme.primary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 Icons.report_gmailerrorred,
@@ -585,24 +583,19 @@ class _IntroCard extends StatelessWidget {
                   Text(
                     'Report an Incident',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Your reports help improve community safety.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                      color: colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
-            ),
-            Icon(
-              Icons.shield_outlined,
-              color: colorScheme.primary.withOpacity(0.4),
-              size: 40,
             ),
           ],
         ),
@@ -616,10 +609,11 @@ class _TrustMetricsCard extends StatelessWidget {
 
   final PassengerTrustMetrics metrics;
 
-  Color _getTrustColor(double trust) {
-    if (trust >= 0.8) return Colors.green;
-    if (trust >= 0.6) return Colors.orange;
-    return Colors.red;
+  Color _getTrustColor(BuildContext context, double trust) {
+    final cs = Theme.of(context).colorScheme;
+    if (trust >= 0.8) return cs.primary;
+    if (trust >= 0.6) return cs.tertiary;
+    return cs.error;
   }
 
   String _getTrustLabel(double trust) {
@@ -631,7 +625,8 @@ class _TrustMetricsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trustColor = _getTrustColor(metrics.overallTrust);
+    final trustColor = _getTrustColor(context, metrics.overallTrust);
+    final cs = Theme.of(context).colorScheme;
 
     return Card(
       child: Padding(
@@ -697,7 +692,7 @@ class _TrustMetricsCard extends StatelessWidget {
                 TweenAnimationBuilder<double>(
                   key: ValueKey(metrics.overallTrust),
                   duration: const Duration(milliseconds: 800),
-                  curve: Curves.easeOutCubic,
+                  curve: MotionScheme.spatialDefault,
                   tween: Tween<double>(begin: 0.0, end: metrics.overallTrust),
                   builder: (context, val, _) => Text(
                     '${(val * 100).toStringAsFixed(0)}%',
@@ -735,23 +730,23 @@ class _TrustMetricsCard extends StatelessWidget {
                   children: [
                     Chip(
                       label: Text('${metrics.totalReports} reports'),
-                      avatar: const Icon(
+                      avatar: Icon(
                         Icons.assignment,
                         size: 16,
-                        color: Colors.green,
+                        color: cs.primary,
                       ),
-                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      backgroundColor: cs.surface,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
                     Chip(
                       label: Text('${metrics.verifiedCount} verified'),
-                      avatar: const Icon(
+                      avatar: Icon(
                         Icons.check_circle,
                         size: 16,
-                        color: Colors.green,
+                        color: cs.primary,
                       ),
-                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      backgroundColor: cs.surface,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
@@ -761,7 +756,7 @@ class _TrustMetricsCard extends StatelessWidget {
                         avatar: Icon(
                           Icons.flag,
                           size: 18,
-                          color: Colors.orange,
+                          color: cs.error,
                         ),
                       ),
                   ],
@@ -802,7 +797,7 @@ class _TrustMetricRow extends StatelessWidget {
                 child: TweenAnimationBuilder<double>(
                   key: ValueKey(value),
                   duration: const Duration(milliseconds: 800),
-                  curve: Curves.easeOutCubic,
+                  curve: MotionScheme.spatialDefault,
                   tween: Tween<double>(begin: 0.0, end: value),
                   builder: (context, val, _) =>
                       LinearProgressIndicator(value: val, minHeight: 6),
@@ -815,7 +810,7 @@ class _TrustMetricRow extends StatelessWidget {
         TweenAnimationBuilder<double>(
           key: ValueKey(value),
           duration: const Duration(milliseconds: 800),
-          curve: Curves.easeOutCubic,
+          curve: MotionScheme.spatialDefault,
           tween: Tween<double>(begin: 0.0, end: value),
           builder: (context, val, _) {
             final percentage = (val * 100).toStringAsFixed(0);
@@ -918,107 +913,9 @@ class _GuidelineItem extends StatelessWidget {
   }
 }
 
-// ── Expressive Category Chip ─────────────────────────────────────────────────
+// ── Category Chip Extracted to M3BouncyChip ──────────────────────────────────
 
-class _BouncyChip extends StatefulWidget {
-  const _BouncyChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-  @override
-  State<_BouncyChip> createState() => _BouncyChipState();
-}
-
-class _BouncyChipState extends State<_BouncyChip> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
-    _scale = Tween<double>(begin: 1.0, end: 0.90).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
-  }
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
-      onTapCancel: () => _ctrl.reverse(),
-      child: ScaleTransition(
-        scale: _scale,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: widget.isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(widget.isSelected ? 20 : 12),
-            border: Border.all(
-              color: widget.isSelected ? cs.primary : cs.outlineVariant,
-              width: widget.isSelected ? 2 : 1,
-            ),
-            boxShadow: widget.isSelected ? [
-              BoxShadow(color: cs.primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 4)),
-            ] : [],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(widget.icon, size: 16,
-                color: widget.isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text(widget.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: widget.isSelected ? cs.onPrimaryContainer : cs.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Severity Label ────────────────────────────────────────────────────────────
-
-class _SeverityLabel extends StatelessWidget {
-  const _SeverityLabel({super.key, required this.severity});
-  final int severity;
-  @override
-  Widget build(BuildContext context) {
-    final Color color;
-    final String label;
-    switch (severity) {
-      case 5: color = Colors.red;                   label = 'Critical'; break;
-      case 4: color = Colors.orange;                label = 'High';     break;
-      case 3: color = Colors.amber.shade700;        label = 'Moderate'; break;
-      case 2: color = Colors.lightGreen.shade600;   label = 'Low';      break;
-      default: color = Colors.green;               label = 'Minimal';  break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-    );
-  }
-}
+// ── Severity Label Extracted to M3SeverityLabel ──────────────────────────────
 
 // ── Report Form Card ──────────────────────────────────────────────────────────
 
@@ -1140,7 +1037,7 @@ class _ReportFormCard extends StatelessWidget {
                     case 'Hazard':          icon = Icons.construction; break;
                   }
 
-                  return _BouncyChip(
+                  return M3BouncyChip(
                     label: item,
                     icon: icon,
                     isSelected: isSelected,
@@ -1162,66 +1059,14 @@ class _ReportFormCard extends StatelessWidget {
                       scale: anim,
                       child: FadeTransition(opacity: anim, child: child),
                     ),
-                    child: _SeverityLabel(key: ValueKey(severity.round()), severity: severity.round()),
+                    child: M3SeverityLabel(key: ValueKey(severity.round()), severity: severity.round()),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: List.generate(5, (index) {
-                  final val = index + 1;
-                  final isSelected = severity.round() == val;
-                  Color color;
-                  if (val == 5)      color = Colors.red;
-                  else if (val == 4) color = Colors.orange;
-                  else if (val == 3) color = Colors.amber.shade700;
-                  else if (val == 2) color = Colors.lightGreen;
-                  else               color = Colors.green;
-
-                  IconData sIcon;
-                  if (val == 5)      sIcon = Icons.crisis_alert;
-                  else if (val == 4) sIcon = Icons.warning_rounded;
-                  else if (val == 3) sIcon = Icons.report_outlined;
-                  else if (val == 2) sIcon = Icons.info_outline;
-                  else               sIcon = Icons.check_circle_outline;
-
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: GestureDetector(
-                        onTap: () => onSeverityChanged(val.toDouble()),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: MotionScheme.spatialFast,
-                          height: isSelected ? 56 : 48,
-                          decoration: BoxDecoration(
-                            color: isSelected ? color : color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(isSelected ? 16 : 12),
-                            boxShadow: isSelected ? [
-                              BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4)),
-                            ] : [],
-                          ),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(sIcon, size: isSelected ? 20 : 16, color: isSelected ? Colors.white : color),
-                              const SizedBox(height: 2),
-                              Text(
-                                val.toString(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isSelected ? 14 : 12,
-                                  color: isSelected ? Colors.white : color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
+              M3SeveritySelector(
+                severity: severity,
+                onChanged: onSeverityChanged,
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -1309,7 +1154,7 @@ class _StaggeredItem extends StatelessWidget {
     final intervalStart = start.clamp(0.0, 1.0).toDouble();
     final curve = CurvedAnimation(
       parent: animation,
-      curve: Interval(intervalStart, end, curve: Curves.easeOutCubic),
+      curve: Interval(intervalStart, end, curve: MotionScheme.spatialDefault),
     );
     return FadeTransition(
       opacity: curve,

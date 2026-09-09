@@ -57,9 +57,9 @@ class AdaptiveThresholds {
   double gamma = 0.1; // γ: environmental noise sensitivity
 
   // Context coefficients
-  double contextRoad = 0.0; // R_c(t): road condition coefficient
-  double contextEnvNoise = 0.0; // E_n(t): environmental noise coefficient
-  double contextTraffic = 0.0; // T_d(t): traffic density coefficient
+  double contextRoad = 1.0; // R_c(t): road condition coefficient (Default: Good)
+  double contextEnvNoise = 0.5; // E_n(t): environmental noise coefficient (Default: Moderate)
+  double contextTraffic = 0.5; // T_d(t): traffic density coefficient (Default: Moderate)
 
   /// Adaptive threshold: θ(t) = θ_base(v) × (1/vehicleMultiplier) × (1 + α·R_c(t)) × (1 + β·T_d(t)) × (1 + γ·E_n(t))
   double getAdaptiveThreshold(double baseThreshold, {bool applyVehicleMultiplier = true}) {

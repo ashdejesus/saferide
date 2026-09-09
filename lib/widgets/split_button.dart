@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// A Material 3 split button with a primary action and a menu of additional options.
+import '../theme/motion_scheme.dart';
+/// A Material 3 split button with a primary action and a dropdown menu.
 ///
-/// Follows M3 Expressive design guidelines for split buttons.
+/// Uses proper Material 3 styling with rounded shape, tonal elevation,
+/// and proper ripple effects instead of manual Container + InkWell layering.
 class SplitButton extends StatefulWidget {
   const SplitButton({
     super.key,
@@ -34,7 +36,7 @@ class _SplitButtonState extends State<SplitButton>
     super.initState();
     _menuController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 800),
     );
   }
 
@@ -49,125 +51,136 @@ class _SplitButtonState extends State<SplitButton>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final buttonHeight = _getHeight();
-    final horizontalPadding = _getHorizontalPadding();
     final labelStyle = _getLabelStyle(textTheme);
+    final iconSize = _getIconSize();
+    final horizontalPad = _getHorizontalPadding();
+
+    final foreground = widget.enabled
+        ? colorScheme.onPrimary
+        : colorScheme.onSurface.withOpacity(0.38);
+    final background = widget.enabled
+        ? colorScheme.primary
+        : colorScheme.onSurface.withOpacity(0.12);
 
     return MenuAnchor(
-      onOpen: () {
-        _menuController.forward();
-      },
-      onClose: () {
-        _menuController.reverse();
-      },
+      onOpen: () => _menuController.forward(),
+      onClose: () => _menuController.reverse(),
       alignmentOffset: const Offset(0, 4),
+      style: MenuStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        elevation: const WidgetStatePropertyAll(3),
+      ),
       menuChildren: widget.menuItems
           .map(
             (item) => MenuItemButton(
-              leadingIcon: item.icon != null ? Icon(item.icon) : null,
+              leadingIcon: item.icon != null
+                  ? Icon(item.icon, size: 20)
+                  : null,
+              style: MenuItemButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
               onPressed: item.onPressed,
               child: Text(item.label),
             ),
           )
           .toList(),
       builder: (context, controller, child) {
-        return Container(
-          height: buttonHeight,
-          decoration: BoxDecoration(
-            color: widget.enabled
-                ? colorScheme.primary
-                : colorScheme.onSurface.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Leading button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.enabled ? widget.onPressed : null,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: 12,
+        return Material(
+          color: background,
+          borderRadius: BorderRadius.circular(buttonHeight / 2),
+          elevation: widget.enabled ? 1 : 0,
+          shadowColor: colorScheme.shadow.withOpacity(0.3),
+          child: InkWell(
+            onTap: widget.enabled ? widget.onPressed : null,
+            borderRadius: BorderRadius.circular(buttonHeight / 2),
+            splashColor: colorScheme.onPrimary.withOpacity(0.12),
+            highlightColor: colorScheme.onPrimary.withOpacity(0.08),
+            child: SizedBox(
+              height: buttonHeight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Primary action area ──
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: horizontalPad,
+                      right: horizontalPad * 0.6,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (widget.icon != null) ...[
-                          Icon(
-                            widget.icon,
-                            color: widget.enabled
-                                ? colorScheme.onPrimary
-                                : colorScheme.onSurface.withOpacity(0.38),
-                            size: _getIconSize(),
-                          ),
+                          Icon(widget.icon, color: foreground, size: iconSize),
                           const SizedBox(width: 8),
                         ],
                         Text(
                           widget.label,
                           style: labelStyle.copyWith(
-                            color: widget.enabled
-                                ? colorScheme.onPrimary
-                                : colorScheme.onSurface.withOpacity(0.38),
+                            color: foreground,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
-              // Divider
-              Container(
-                width: 1,
-                height: buttonHeight * 0.6,
-                color: widget.enabled
-                    ? colorScheme.onPrimary.withOpacity(0.3)
-                    : colorScheme.onSurface.withOpacity(0.12),
-              ),
-              // Trailing button (menu)
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.enabled
-                      ? () {
-                          if (controller.isOpen) {
-                            controller.close();
-                          } else {
-                            controller.open();
-                          }
-                        }
-                      : null,
-                  borderRadius: const BorderRadius.horizontal(
-                    right: Radius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding * 0.7,
-                      vertical: 12,
+
+                  // ── Divider ──
+                  Container(
+                    width: 1,
+                    height: buttonHeight * 0.5,
+                    decoration: BoxDecoration(
+                      color: foreground.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(0.5),
                     ),
-                    child: RotationTransition(
-                      turns: Tween<double>(begin: 0, end: 0.5).animate(
-                        CurvedAnimation(
-                          parent: _menuController,
-                          curve: Curves.easeInOut,
+                  ),
+
+                  // ── Menu toggle ──
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: widget.enabled
+                          ? () {
+                              if (controller.isOpen) {
+                                controller.close();
+                              } else {
+                                controller.open();
+                              }
+                            }
+                          : null,
+                      borderRadius: BorderRadius.horizontal(
+                        right: Radius.circular(buttonHeight / 2),
+                      ),
+                      splashColor: colorScheme.onPrimary.withOpacity(0.12),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPad * 0.6,
+                        ),
+                        child: SizedBox(
+                          height: buttonHeight,
+                          child: Center(
+                            child: RotationTransition(
+                              turns: Tween<double>(begin: 0, end: 0.5).animate(
+                                CurvedAnimation(
+                                  parent: _menuController,
+                                  curve: MotionScheme.spatialFast,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.arrow_drop_down,
+                                color: foreground,
+                                size: iconSize + 4,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      child: Icon(
-                        Icons.expand_more,
-                        color: widget.enabled
-                            ? colorScheme.onPrimary
-                            : colorScheme.onSurface.withOpacity(0.38),
-                        size: _getIconSize(),
-                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -192,15 +205,15 @@ class _SplitButtonState extends State<SplitButton>
   double _getHorizontalPadding() {
     switch (widget.size) {
       case SplitButtonSize.extraSmall:
-        return 12;
+        return 14;
       case SplitButtonSize.small:
-        return 16;
+        return 18;
       case SplitButtonSize.medium:
-        return 20;
+        return 22;
       case SplitButtonSize.large:
-        return 24;
+        return 26;
       case SplitButtonSize.extraLarge:
-        return 28;
+        return 30;
     }
   }
 

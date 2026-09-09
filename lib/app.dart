@@ -147,13 +147,11 @@ class _SafeRideAppState extends State<SafeRideApp> {
                           maintainAnimation: true,
                           maintainState: true,
                           child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 120),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
+                            duration: const Duration(milliseconds: 800),
                             transitionBuilder: (child, animation) {
                               final fade = CurvedAnimation(
                                 parent: animation,
-                                curve: Curves.easeInOut,
+                                curve: MotionScheme.effectsDefault,
                               );
                               final slide =
                                   Tween<Offset>(
@@ -162,7 +160,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
                                   ).animate(
                                     CurvedAnimation(
                                       parent: animation,
-                                      curve: Curves.easeOut,
+                                      curve: MotionScheme.spatialDefault,
                                     ),
                                   );
                               return FadeTransition(
@@ -296,8 +294,8 @@ class _BouncyFabState extends State<_BouncyFab> {
       onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedScale(
         scale: _isPressed ? 0.90 : 1.0, // FABs bounce a bit more deeply
-        duration: const Duration(milliseconds: 300),
-        curve: SpringCurve(),
+        duration: const Duration(milliseconds: 800),
+        curve: MotionScheme.spatialFast,
         child: widget.child,
       ),
     );

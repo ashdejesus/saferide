@@ -11,6 +11,10 @@ import '../models/passenger_trust_metrics.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_mini_hud.dart';
+import '../theme/motion_scheme.dart';
+import '../widgets/m3_severity_selector.dart';
+import '../widgets/m3_bouncy_chip.dart';
+import '../widgets/m3_severity_label.dart';
 import 'trip_detail_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -152,10 +156,7 @@ class _MapLayerControls extends StatelessWidget {
       onPressed: () {
         showModalBottomSheet(
           context: context,
-          backgroundColor: colorScheme.surface,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+          showDragHandle: true,
           builder: (context) {
             return _LayerBottomSheet(
               showHighRiskAreas: showHighRiskAreas,
@@ -388,10 +389,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
         begin: _mapController.camera.zoom, end: destZoom);
 
     final controller = AnimationController(
-        duration: const Duration(milliseconds: 500), vsync: this);
+        duration: const Duration(milliseconds: 800), vsync: this);
 
     final Animation<double> animation = CurvedAnimation(
-        parent: controller, curve: Curves.fastOutSlowIn);
+        parent: controller, curve: MotionScheme.spatialDefault);
 
     controller.addListener(() {
       if (mounted) {
@@ -428,27 +429,21 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      showDragHandle: true,
       builder: (context) {
         final colorScheme = Theme.of(context).colorScheme;
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 20,
-            right: 20,
-            top: 20,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 24,
+                right: 24,
+                top: 8,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Report Hazard',
@@ -480,27 +475,54 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   ),
                 ],
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  items: ['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => selectedCategory = val);
-                  },
+                const Text(
+                  'Category',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other'].map((item) {
+                    final isSelected = selectedCategory == item;
+                    IconData icon = Icons.report;
+                    switch (item) {
+                      case 'Speeding':        icon = Icons.speed; break;
+                      case 'Sudden Braking':  icon = Icons.car_crash; break;
+                      case 'Sharp Turning':   icon = Icons.turn_sharp_right; break;
+                      case 'Pothole':         icon = Icons.warning; break;
+                      case 'Reckless Driving':icon = Icons.dangerous; break;
+                      case 'Accident':        icon = Icons.personal_injury; break;
+                      case 'Hazard':          icon = Icons.construction; break;
+                    }
+                    return M3BouncyChip(
+                      label: item,
+                      icon: icon,
+                      isSelected: isSelected,
+                      onTap: () {
+                        setState(() => selectedCategory = item);
+                      },
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 16),
-                Text('Severity: ${selectedSeverity.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Slider(
-                  value: selectedSeverity,
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  label: selectedSeverity.toInt().toString(),
+                Row(
+                  children: [
+                    const Text('Severity', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(width: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, anim) => ScaleTransition(
+                        scale: anim,
+                        child: FadeTransition(opacity: anim, child: child),
+                      ),
+                      child: M3SeverityLabel(key: ValueKey(selectedSeverity.round()), severity: selectedSeverity.round()),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                M3SeveritySelector(
+                  severity: selectedSeverity,
                   onChanged: (val) {
                     setState(() => selectedSeverity = val);
                   },
@@ -593,7 +615,6 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
             ),
           );
           },
-          ),
         );
       },
     );
@@ -642,40 +663,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.transparent,
+        showDragHandle: true,
         builder: (context) {
           return Container(
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withOpacity(0.2),
-                  blurRadius: 24,
-                  offset: const Offset(0, -8),
-                ),
-              ],
-            ),
             padding: EdgeInsets.only(
               left: 24,
               right: 24,
-              top: 16,
+              top: 0,
               bottom: MediaQuery.of(context).padding.bottom + 24,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 24),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1095,40 +1095,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      showDragHandle: true,
       builder: (context) {
         return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: [
-              BoxShadow(
-                color: _tripRouteColor(trip).withOpacity(0.15),
-                blurRadius: 24,
-                offset: const Offset(0, -8),
-              ),
-            ],
-          ),
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).padding.bottom + 24,
             left: 24,
             right: 24,
-            top: 16,
+            top: 0,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1526,9 +1505,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: colorScheme.surface,
+      color: colorScheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: colorScheme.outline.withOpacity(0.2),
           width: 1,
@@ -2105,7 +2084,7 @@ class _StaggeredItem extends StatelessWidget {
     final intervalStart = start.clamp(0.0, 1.0).toDouble();
     final curve = CurvedAnimation(
       parent: animation,
-      curve: Interval(intervalStart, end, curve: Curves.easeOutCubic),
+      curve: Interval(intervalStart, end, curve: MotionScheme.spatialDefault),
     );
     return FadeTransition(
       opacity: curve,
@@ -2159,8 +2138,8 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
 
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
@@ -2257,7 +2236,7 @@ class _StatChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: (color ?? Theme.of(context).colorScheme.primary).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2291,14 +2270,14 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 800),
     );
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeOutBack,
+      curve: MotionScheme.spatialDefault,
     ));
     
     _animController.forward();
@@ -2325,10 +2304,10 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
       position: _slideAnimation,
       child: Material(
         elevation: 8,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         color: colorScheme.errorContainer,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           onTap: widget.onDismiss,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -2558,4 +2537,33 @@ class _AnimatedPingMarkerState extends State<_AnimatedPingMarker> with SingleTic
       },
     );
   }
+}
+
+class _MapControlButton extends StatelessWidget {
+  final String heroTag;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _MapControlButton({
+    required this.heroTag,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon),
+      onPressed: onPressed,
+      color: Theme.of(context).colorScheme.primary,
+    );
+  }
+}
+
+Widget _mapControlDivider(ColorScheme colorScheme) {
+  return Divider(
+    height: 1,
+    thickness: 1,
+    color: colorScheme.outlineVariant.withOpacity(0.5),
+  );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../theme/motion_scheme.dart';
 import '../models/trip.dart';
 import '../services/passenger_reporting_service.dart';
 import '../widgets/section_header.dart';
@@ -195,7 +196,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                         ),
                         TweenAnimationBuilder<double>(
                           duration: const Duration(milliseconds: 4000),
-                          curve: Curves.easeInOut,
+                          curve: MotionScheme.effectsSlow,
                           tween: Tween<double>(begin: 0.0, end: 1.0),
                           builder: (context, animValue, child) {
                             final pointCount = (routePoints.length * animValue).toInt();

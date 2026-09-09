@@ -69,6 +69,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 'Loud';
   }
 
+  Color _getRoadColor(double value) {
+    if (value < 0.4) return const Color(0xFFE74C3C);
+    if (value < 0.7) return const Color(0xFFF39C12);
+    return const Color(0xFF2ECC71);
+  }
+
+  Color _getTrafficColor(double value) {
+    if (value < 0.4) return const Color(0xFF2ECC71);
+    if (value < 0.7) return const Color(0xFFF39C12);
+    return const Color(0xFFE74C3C);
+  }
+
+  Color _getNoiseColor(double value) {
+    if (value < 0.4) return const Color(0xFF2ECC71);
+    if (value < 0.7) return const Color(0xFFF39C12);
+    return const Color(0xFFE74C3C);
+  }
+
   String _getTrafficLabel(double value) {
     if (value < 0.4) return 'Light';
     if (value < 0.7) return 'Moderate';
@@ -166,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Road Condition',
                     subtitle: 'Bumpy roads might trigger false braking alerts',
                     icon: Icons.add_road,
-                    color: const Color(0xFF8E44AD),
+                    color: _getRoadColor(tripController.contextRoad),
                     value: tripController.contextRoad,
                     valueLabel: _getRoadLabel(tripController.contextRoad),
                     onChanged: (val) {
@@ -182,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Traffic Density',
                     subtitle: 'Heavy traffic naturally requires sudden stops',
                     icon: Icons.traffic,
-                    color: const Color(0xFFE67E22),
+                    color: _getTrafficColor(tripController.contextTraffic),
                     value: tripController.contextTraffic,
                     valueLabel: _getTrafficLabel(tripController.contextTraffic),
                     onChanged: (val) {
@@ -198,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Environmental Noise',
                     subtitle: 'Loud vehicles or wind affect the microphone',
                     icon: Icons.volume_up,
-                    color: const Color(0xFF2980B9),
+                    color: _getNoiseColor(tripController.contextEnvNoise),
                     value: tripController.contextEnvNoise,
                     valueLabel: _getNoiseLabel(tripController.contextEnvNoise),
                     onChanged: (val) {

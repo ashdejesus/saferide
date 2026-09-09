@@ -21,22 +21,18 @@ class TripMiniHud extends StatelessWidget {
     final isHighSpeed = speedKmh > 40;
     
     return Card(
-      elevation: 8,
+      elevation: 2,
       shadowColor: isHighSpeed
           ? colorScheme.error.withOpacity(0.4)
-          : Colors.black.withOpacity(0.2),
-      color: colorScheme.surfaceContainerHighest,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          border: isHighSpeed
-              ? Border.all(
-                  color: colorScheme.error.withOpacity(0.3),
-                  width: 2,
-                )
-              : null,
-        ),
-        child: Padding(
+          : Colors.transparent,
+      color: colorScheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+        side: isHighSpeed
+            ? BorderSide(color: colorScheme.error.withOpacity(0.3), width: 2)
+            : BorderSide.none,
+      ),
+      child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -77,7 +73,6 @@ class TripMiniHud extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../widgets/sync_widgets.dart';
 import 'trip_detail_screen.dart';
 import 'route_detail_screen.dart';
 import '../widgets/m3_button_group.dart';
+import '../theme/motion_scheme.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -465,7 +466,7 @@ class _StaggeredItem extends StatelessWidget {
     final intervalStart = start.clamp(0.0, 1.0).toDouble();
     final curve = CurvedAnimation(
       parent: animation,
-      curve: Interval(intervalStart, end, curve: Curves.easeOutCubic),
+      curve: Interval(intervalStart, end, curve: MotionScheme.spatialDefault),
     );
     return FadeTransition(
       opacity: curve,

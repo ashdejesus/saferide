@@ -318,11 +318,12 @@ class _DashboardScreenState extends State<DashboardScreen>
             const SizedBox(height: 12),
             // Current speed row
             AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
+              duration: const Duration(milliseconds: 800),
+              curve: MotionScheme.spatialFast,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: speedColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: speedColor != colorScheme.primary
                     ? Border.all(color: speedColor.withOpacity(0.4))
                     : null,
@@ -432,7 +433,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: TweenAnimationBuilder<double>(
                     tween: Tween<double>(begin: 0, end: score.toDouble()),
                     duration: const Duration(milliseconds: 800),
-                    curve: Curves.easeOutCubic,
+                    curve: MotionScheme.spatialDefault,
                     builder: (context, animValue, child) {
                       return TweenAnimationBuilder<Color?>(
                         tween: ColorTween(begin: ringColor, end: ringColor),
@@ -817,25 +818,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeader(title: 'Quick Actions'),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildToolbarAction(context, controller, 'Speeding', Icons.speed, Colors.orange),
-              _buildToolbarAction(context, controller, 'Braking', Icons.car_crash, Colors.red),
-              _buildToolbarAction(context, controller, 'Pothole', Icons.moving, Colors.amber.shade700),
-              _buildToolbarAction(context, controller, 'Hazard', Icons.warning_amber, Colors.purple),
-            ],
-          ),
-        ),
+        const SectionHeader(title: 'Quick Report'),
         const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildToolbarAction(context, controller, 'Speeding', Icons.speed, colorScheme.error),
+            _buildToolbarAction(context, controller, 'Braking', Icons.back_hand, colorScheme.primary),
+            _buildToolbarAction(context, controller, 'Pothole', Icons.moving, colorScheme.tertiary),
+            _buildToolbarAction(context, controller, 'Hazard', Icons.warning_rounded, colorScheme.secondary),
+          ],
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -844,45 +838,56 @@ class _DashboardScreenState extends State<DashboardScreen>
       BuildContext context, TripController controller, String category, IconData icon, Color color) {
     return Tooltip(
       message: 'Report $category',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: () async {
-              // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
-              int severity = 3; // Default to moderate
-              final peakAccel = controller.peakAcceleration;
-              if (peakAccel > 6.0) severity = 5;
-              else if (peakAccel > 4.0) severity = 4;
-              else if (peakAccel < 1.5) severity = 2; // Very mild event
+      child: Material(
+        color: color.withOpacity(0.1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: color.withOpacity(0.2)),
+        ),
+        child: InkWell(
+          onTap: () async {
+            // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
+            int severity = 3; // Default to moderate
+            final peakAccel = controller.peakAcceleration;
+            if (peakAccel > 6.0) severity = 5;
+            else if (peakAccel > 4.0) severity = 4;
+            else if (peakAccel < 1.5) severity = 2; // Very mild event
 
-              await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$category reported. Thank you!'),
-                  backgroundColor: color,
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
+            await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$category reported. Thank you!'),
+                backgroundColor: color,
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.2, // Distribute evenly
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 32),
+                const SizedBox(height: 12),
+                Text(
+                  category,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
                 ),
-              );
-            },
-            icon: Icon(icon, color: color, size: 28),
-            style: IconButton.styleFrom(
-              backgroundColor: color.withOpacity(0.15),
-              padding: const EdgeInsets.all(12),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            category,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -916,12 +921,13 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (!controller.isTracking)
           _InteractiveCard(
             elevation: 0,
+            borderRadius: 14.0,
             color: const Color(0xFF2ECC71).withOpacity(0.1),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: const Color(0xFF2ECC71).withOpacity(0.3),
                 ),
@@ -1110,8 +1116,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         children.add(
           TweenAnimationBuilder<Offset>(
             key: ValueKey(event.timestamp),
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 800),
+            curve: MotionScheme.spatialDefault,
             tween: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero),
             builder: (context, offset, child) {
               return FractionalTranslation(translation: offset, child: child);
@@ -1373,8 +1379,8 @@ class _ContextBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: 0, end: value.clamp(0.0, 1.0)),
-              duration: const Duration(milliseconds: 900),
-              curve: Curves.easeOutCubic,
+              duration: const Duration(milliseconds: 800),
+              curve: MotionScheme.spatialSlow,
               builder: (context, animVal, _) => LinearProgressIndicator(
                 value: animVal,
                 backgroundColor: cs.surfaceContainerHighest,
@@ -1416,7 +1422,7 @@ class _StaggeredItem extends StatelessWidget {
     final intervalStart = start.clamp(0.0, 1.0).toDouble();
     final curve = CurvedAnimation(
       parent: animation,
-      curve: Interval(intervalStart, end, curve: Curves.easeOutCubic),
+      curve: Interval(intervalStart, end, curve: MotionScheme.spatialDefault),
     );
     return FadeTransition(
       opacity: curve,
@@ -1588,13 +1594,11 @@ class _TripStatusPillState extends State<_TripStatusPill>
     }
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
+      duration: const Duration(milliseconds: 800),
       transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
+        opacity: CurvedAnimation(parent: animation, curve: MotionScheme.effectsDefault),
         child: ScaleTransition(
-          scale: animation,
+          scale: CurvedAnimation(parent: animation, curve: MotionScheme.spatialDefault),
           child: child,
         ),
       ),
@@ -1640,7 +1644,7 @@ class _PulsingRiskBannerState extends State<_PulsingRiskBanner>
     _pulse = Tween<double>(
       begin: 0.4,
       end: 1.0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: _ctrl, curve: MotionScheme.effectsSlow));
   }
 
   @override
@@ -1704,10 +1708,16 @@ class _PulsingRiskBannerState extends State<_PulsingRiskBanner>
 }
 
 class _InteractiveCard extends StatefulWidget {
-  const _InteractiveCard({required this.child, this.elevation, this.color});
+  const _InteractiveCard({
+    required this.child,
+    this.elevation,
+    this.color,
+    this.borderRadius = 28.0,
+  });
   final Widget child;
   final double? elevation;
   final Color? color;
+  final double borderRadius;
 
   @override
   State<_InteractiveCard> createState() => _InteractiveCardState();
@@ -1742,6 +1752,9 @@ class _InteractiveCardState extends State<_InteractiveCard> {
           elevation: widget.elevation,
           color: widget.color,
           clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+          ),
           child: widget.child,
         ),
       ),
