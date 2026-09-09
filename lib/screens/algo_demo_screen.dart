@@ -744,10 +744,10 @@ class _StatusBanner extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFDC2626).withValues(alpha: 0.1) : cs.surfaceContainerHighest,
+          color: active ? const Color(0xFFDC2626).withOpacity(0.1) : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color: active ? const Color(0xFFDC2626).withValues(alpha: 0.5) : Colors.transparent),
+              color: active ? const Color(0xFFDC2626).withOpacity(0.5) : Colors.transparent),
         ),
         child: Text(message,
             style: TextStyle(
@@ -775,9 +775,9 @@ class _ScoreBanner extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [
-            color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)]),
+            color.withOpacity(0.15), color.withOpacity(0.05)]),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
+          border: Border.all(color: color.withOpacity(0.4)),
         ),
         child: Row(children: [
           SizedBox(width: 64, height: 64,
@@ -815,7 +815,7 @@ class _InfoBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: cs.primaryContainer.withValues(alpha: 0.5),
+          color: cs.primaryContainer.withOpacity(0.5),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -871,9 +871,9 @@ class _PipelineFlow extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.1),
+                    color: cs.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.primary.withValues(alpha: 0.3)),
+                    border: Border.all(color: cs.primary.withOpacity(0.3)),
                   ),
                   child: Text(step.$1, style: const TextStyle(fontSize: 18)),
                 ),
@@ -918,7 +918,7 @@ class _FormulaCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -927,7 +927,7 @@ class _FormulaCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.75)]),
+            gradient: LinearGradient(colors: [color, color.withOpacity(0.75)]),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -947,7 +947,7 @@ class _FormulaCard extends StatelessWidget {
         // ── Plain English explanation ────────────────────────────────────────
         Container(
           width: double.infinity,
-          color: color.withValues(alpha: 0.07),
+          color: color.withOpacity(0.07),
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: Text(explanation, style: TextStyle(
               fontSize: 12, color: cs.onSurface, height: 1.5)),
@@ -1001,9 +1001,9 @@ class _FormulaCard extends StatelessWidget {
                   ? Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: barColor.withValues(alpha: 0.12),
+                        color: barColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: barColor.withValues(alpha: 0.35)),
+                        border: Border.all(color: barColor.withOpacity(0.35)),
                       ),
                       child: Text(result, style: TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 13,
@@ -1046,7 +1046,7 @@ class _SpeedSliderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1133,7 +1133,7 @@ class _SensorTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+          border: Border.all(color: color.withOpacity(0.35)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -1189,7 +1189,7 @@ class _PotholeCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.4))),
+          border: Border.all(color: color.withOpacity(0.4))),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
         Container(
@@ -1210,7 +1210,7 @@ class _PotholeCard extends StatelessWidget {
           ]),
         ),
         Container(
-          color: const Color(0xFF92400E).withValues(alpha: 0.07),
+          color: const Color(0xFF92400E).withOpacity(0.07),
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: const Text(
             '💡 All 3 conditions must be true at the same time. '
@@ -1301,7 +1301,7 @@ class _SlopeCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.3))),
+          border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.3))),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
         Container(
@@ -1321,7 +1321,7 @@ class _SlopeCard extends StatelessWidget {
           ]),
         ),
         Container(
-          color: const Color(0xFF7C3AED).withValues(alpha: 0.07),
+          color: const Color(0xFF7C3AED).withOpacity(0.07),
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: const Text(
             '💡 Steeper roads (like Antipolo zigzag) contribute to risk even without bad driving. '
@@ -1341,9 +1341,9 @@ class _SlopeCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withValues(alpha: 0.4)),
+                border: Border.all(color: color.withOpacity(0.4)),
               ),
               child: Row(children: [
                 Icon(slope >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
@@ -1452,10 +1452,10 @@ class _EventRow extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: active ? const Color(0xFFDC2626).withValues(alpha: 0.08) : cs.surface,
+        color: active ? const Color(0xFFDC2626).withOpacity(0.08) : cs.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: active ? const Color(0xFFDC2626).withValues(alpha: 0.5) : Colors.transparent),
+            color: active ? const Color(0xFFDC2626).withOpacity(0.5) : Colors.transparent),
       ),
       child: Row(children: [
         Icon(active ? Icons.warning_rounded : Icons.check_circle_outline,
@@ -1592,7 +1592,7 @@ class _FrequencyCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3))),
+          border: Border.all(color: const Color(0xFF059669).withOpacity(0.3))),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
         Container(
@@ -1612,7 +1612,7 @@ class _FrequencyCard extends StatelessWidget {
           ]),
         ),
         Container(
-          color: const Color(0xFF059669).withValues(alpha: 0.07),
+          color: const Color(0xFF059669).withOpacity(0.07),
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: const Text(
             '💡 A brand-new passenger starts with F(0)=0 (no credibility yet). '
@@ -1654,9 +1654,9 @@ class _FrequencyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: color.withValues(alpha: 0.35)),
+                border: Border.all(color: color.withOpacity(0.35)),
               ),
               child: Text('F(n) = ${freqScore.toStringAsFixed(4)}',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
@@ -1704,9 +1704,9 @@ class _HistoryCard extends StatelessWidget {
             return Container(
               width: 36, height: 36, alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: c.withValues(alpha: 0.15),
+                color: c.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: c.withValues(alpha: 0.5)),
+                border: Border.all(color: c.withOpacity(0.5)),
               ),
               child: Text('$s', style: TextStyle(fontWeight: FontWeight.w800, color: c)));
           }).toList(),
@@ -1728,9 +1728,9 @@ class _HistoryCard extends StatelessWidget {
         Center(child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: chipColor(currentSeverity).withValues(alpha: 0.15),
+            color: chipColor(currentSeverity).withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: chipColor(currentSeverity).withValues(alpha: 0.5)),
+            border: Border.all(color: chipColor(currentSeverity).withOpacity(0.5)),
           ),
           child: Text('Current report: $currentSeverity / 5',
               style: TextStyle(fontWeight: FontWeight.w800,
@@ -1773,7 +1773,7 @@ class _SafetyGauge extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _color.withValues(alpha: 0.4)),
+          border: Border.all(color: _color.withOpacity(0.4)),
         ),
         child: Column(children: [
           TweenAnimationBuilder<double>(

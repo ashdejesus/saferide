@@ -32,7 +32,7 @@ class EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.2),
+                    color: colorScheme.primary.withOpacity(0.2),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -51,7 +51,7 @@ class EmptyState extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: colorScheme.onSurface.withOpacity(0.7),
                   ),
             ),
             if (ctaLabel != null && onCtaPressed != null) ...[

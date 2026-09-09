@@ -165,13 +165,13 @@ class _DashboardScreenState extends State<DashboardScreen>
         ? const Color(0xFFF39C12) // orange — 60–80 km/h
         : colorScheme.primary; // normal
 
-    return Card(
+    return _InteractiveCard(
       elevation: controller.isTracking ? 6 : 2,
       color: controller.isTracking
-          ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+          ? colorScheme.primaryContainer.withOpacity(0.5)
           : colorScheme.surfaceContainerHighest,
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -308,16 +308,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ],
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             // Current speed row
             AnimatedContainer(
               duration: const Duration(milliseconds: 400),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: speedColor.withValues(alpha: 0.1),
+                color: speedColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: speedColor != colorScheme.primary
-                    ? Border.all(color: speedColor.withValues(alpha: 0.4))
+                    ? Border.all(color: speedColor.withOpacity(0.4))
                     : null,
               ),
               child: Row(
@@ -334,16 +334,23 @@ class _DashboardScreenState extends State<DashboardScreen>
                               ?.copyWith(
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                                ).colorScheme.onSurface.withOpacity(0.7),
                               ),
                         ),
-                        Text(
-                          '${speedKmh.toStringAsFixed(1)} km/h',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: speedColor,
-                              ),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: speedKmh),
+                          duration: const Duration(milliseconds: 400),
+                          curve: MotionScheme.spatialFast,
+                          builder: (context, value, child) {
+                            return Text(
+                              '${value.toStringAsFixed(1)} km/h',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: speedColor,
+                                  ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -445,7 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                           color: Theme.of(context)
                                               .colorScheme
                                               .onSurface
-                                              .withValues(alpha: 0.5),
+                                              .withOpacity(0.5),
                                         ),
                                   ),
                                 ],
@@ -468,13 +475,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         'Combines sensor readings and passenger reports into a 0–100 safety rating.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -539,14 +546,14 @@ class _DashboardScreenState extends State<DashboardScreen>
         : AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: color.withValues(alpha: 0.4),
+                color: color.withOpacity(0.4),
                 width: 1.5,
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             child: Row(
               children: [
                 Icon(icon, color: color, size: 28),
@@ -565,7 +572,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       Text(
                         desc,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: color.withValues(alpha: 0.85),
+                          color: color.withOpacity(0.85),
                         ),
                       ),
                     ],
@@ -705,7 +712,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         child: Text(
                           'Tap here to configure these factors in Settings to improve algorithm accuracy based on your route.',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -968,10 +975,10 @@ class _DashboardScreenState extends State<DashboardScreen>
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2ECC71).withValues(alpha: 0.1),
+            color: const Color(0xFF2ECC71).withOpacity(0.1),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: const Color(0xFF2ECC71).withValues(alpha: 0.3),
+              color: const Color(0xFF2ECC71).withOpacity(0.3),
             ),
           ),
           child: Column(
@@ -979,7 +986,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2ECC71).withValues(alpha: 0.2),
+                  color: const Color(0xFF2ECC71).withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -997,21 +1004,21 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 'No unsafe events detected yet.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurface.withValues(alpha: 0.6),
+                  color: cs.onSurface.withOpacity(0.6),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 controller.isTracking
                     ? 'Events will appear here as you drive.'
                     : 'Start a trip to begin monitoring.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurface.withValues(alpha: 0.4),
+                  color: cs.onSurface.withOpacity(0.4),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1051,9 +1058,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             child: Container(
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.08),
+                color: color.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withValues(alpha: 0.2)),
+                border: Border.all(color: color.withOpacity(0.2)),
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(
@@ -1063,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
+                    color: color.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: color, size: 20),
@@ -1087,7 +1094,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: Text(
                     _formatTime(event.timestamp),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.6),
+                      color: cs.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ),
@@ -1265,7 +1272,7 @@ class _InfoTile extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: cs.onSurface.withValues(alpha: 0.6),
+              color: cs.onSurface.withOpacity(0.6),
             ),
           ),
         ],
@@ -1431,25 +1438,55 @@ class _TripStatusPillState extends State<_TripStatusPill>
           ],
         ),
       );
-    }
-
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, _) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    } else if (!widget.hasLivePosition) {
+      final background = const Color(0xFFF39C12).withOpacity(0.15);
+      final foreground = const Color(0xFFE67E22);
+      content = Container(
+        key: const ValueKey('searching'),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: foreground,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Searching for GPS...',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = AnimatedBuilder(
+        key: const ValueKey('recording'),
+        animation: _pulse,
+        builder: (context, _) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: Color.lerp(
               colorScheme.primaryContainer,
-              colorScheme.primary.withValues(alpha: 0.35),
+              colorScheme.primary.withOpacity(0.35),
               _pulse.value,
             ),
             borderRadius: BorderRadius.circular(999),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.primary.withValues(
-                  alpha: 0.25 * _pulse.value,
-                ),
+                color: colorScheme.primary.withOpacity(0.25 * _pulse.value),
                 blurRadius: 8,
                 spreadRadius: 1,
               ),
@@ -1540,21 +1577,21 @@ class _PulsingRiskBannerState extends State<_PulsingRiskBanner>
       builder: (context, _) {
         return Container(
           decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: 0.12),
+            color: widget.color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.color.withValues(alpha: _pulse.value),
+              color: widget.color.withOpacity(_pulse.value),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.color.withValues(alpha: _pulse.value * 0.2),
+                color: widget.color.withOpacity(_pulse.value * 0.2),
                 blurRadius: 12,
                 spreadRadius: 2,
               ),
             ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           child: Row(
             children: [
               Icon(widget.icon, color: widget.color, size: 28),
@@ -1573,7 +1610,7 @@ class _PulsingRiskBannerState extends State<_PulsingRiskBanner>
                     Text(
                       widget.desc,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: widget.color.withValues(alpha: 0.85),
+                        color: widget.color.withOpacity(0.85),
                       ),
                     ),
                   ],

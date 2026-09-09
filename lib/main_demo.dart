@@ -71,13 +71,13 @@ class _DemoLaunchScreen extends StatelessWidget {
                 width: 96, height: 96,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [cs.primary, cs.primary.withValues(alpha: 0.7)],
+                    colors: [cs.primary, cs.primary.withOpacity(0.7)],
                     begin: Alignment.topLeft, end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.35),
+                      color: cs.primary.withOpacity(0.35),
                       blurRadius: 24, offset: const Offset(0, 8),
                     ),
                   ],
@@ -108,9 +108,9 @@ class _DemoLaunchScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+                  color: const Color(0xFFDC2626).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.4)),
+                  border: Border.all(color: const Color(0xFFDC2626).withOpacity(0.4)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,

@@ -219,7 +219,7 @@ class DataCollectionAgreementDialog extends StatelessWidget {
               Text(
                 'This ensures SafeRide can continue collecting location data even when your phone is sleeping.',
                 style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 24),
@@ -275,7 +275,7 @@ class _DataPointTile extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 24, color: color),
@@ -292,7 +292,7 @@ class _DataPointTile extends StatelessWidget {
                 style: textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],

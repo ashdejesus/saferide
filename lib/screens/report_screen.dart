@@ -199,7 +199,7 @@ class _ReportScreenState extends State<ReportScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: severityColor.withValues(alpha: 0.15),
+                              color: severityColor.withOpacity(0.15),
                               blurRadius: 24,
                               offset: const Offset(0, -8),
                             ),
@@ -212,9 +212,7 @@ class _ReportScreenState extends State<ReportScreen>
                               width: 48,
                               height: 6,
                               decoration: BoxDecoration(
-                                color: colorScheme.onSurfaceVariant.withValues(
-                                  alpha: 0.4,
-                                ),
+                                color: colorScheme.onSurfaceVariant.withOpacity(0.4),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -222,7 +220,7 @@ class _ReportScreenState extends State<ReportScreen>
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: severityColor.withValues(alpha: 0.1),
+                                color: severityColor.withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -246,7 +244,7 @@ class _ReportScreenState extends State<ReportScreen>
                               ),
                               decoration: BoxDecoration(
                                 color: colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
+                                    .withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
@@ -276,7 +274,7 @@ class _ReportScreenState extends State<ReportScreen>
                               ),
                               decoration: BoxDecoration(
                                 color: colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
+                                    .withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
@@ -314,9 +312,7 @@ class _ReportScreenState extends State<ReportScreen>
                                                       ? severityColor
                                                       : colorScheme
                                                             .outlineVariant
-                                                            .withValues(
-                                                              alpha: 0.3,
-                                                            ),
+                                                            .withOpacity(0.3),
                                                   borderRadius:
                                                       BorderRadius.circular(3),
                                                 ),
@@ -337,7 +333,7 @@ class _ReportScreenState extends State<ReportScreen>
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: colorScheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.5),
+                                      .withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Column(
@@ -457,7 +453,7 @@ class _ReportScreenState extends State<ReportScreen>
           child: Text(
             'Start a trip to submit reports.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.7),
+              color: colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
         ),
@@ -631,7 +627,7 @@ class _TrustMetricsCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: trustColor.withValues(alpha: 0.15),
+                          color: trustColor.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Row(
@@ -873,7 +869,7 @@ class _GuidelineItem extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],
@@ -950,7 +946,7 @@ class _ReportFormCard extends StatelessWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .primaryContainer
-                                    .withValues(alpha: 0.5),
+                                    .withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(

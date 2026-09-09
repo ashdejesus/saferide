@@ -459,7 +459,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      color: colorScheme.primaryContainer.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -650,7 +650,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
               boxShadow: [
                 BoxShadow(
-                  color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withValues(alpha: 0.2),
+                  color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withOpacity(0.2),
                   blurRadius: 24,
                   offset: const Offset(0, -8),
                 ),
@@ -671,7 +671,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     width: 48,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -683,7 +683,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withValues(alpha: 0.1),
+                        color: (report.severity >= 4 ? colorScheme.error : Colors.orange).withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -732,9 +732,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                  border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,7 +752,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     if (isSensorValidated)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                         child: Row(
                           children: [
                             const Icon(Icons.sensors, color: Colors.green, size: 16),
@@ -764,7 +764,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     else
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                         child: Row(
                           children: [
                             const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
@@ -975,17 +975,17 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       List<Color>? gradient;
       if (safetyScore < 50 && points.length >= 3) {
         gradient = [
-          Colors.green.withValues(alpha: 0.8),
-          color.withValues(alpha: 0.8),
-          color.withValues(alpha: 0.8),
-          Colors.green.withValues(alpha: 0.8),
+          Colors.green.withOpacity(0.8),
+          color.withOpacity(0.8),
+          color.withOpacity(0.8),
+          Colors.green.withOpacity(0.8),
         ];
       }
 
       polylines.add(
         Polyline<Object>(
           points: points,
-          color: color.withValues(alpha: 0.8),
+          color: color.withOpacity(0.8),
           strokeWidth: isZoomedOut ? 3.0 : 6.0,
           borderStrokeWidth: isZoomedOut ? 1.0 : 2.5,
           borderColor: color,
@@ -1103,7 +1103,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: _tripRouteColor(trip).withValues(alpha: 0.15),
+                color: _tripRouteColor(trip).withOpacity(0.15),
                 blurRadius: 24,
                 offset: const Offset(0, -8),
               ),
@@ -1124,7 +1124,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   width: 48,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -1168,9 +1168,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: _tripRouteColor(trip).withValues(alpha: 0.15),
+                      color: _tripRouteColor(trip).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _tripRouteColor(trip).withValues(alpha: 0.3)),
+                      border: Border.all(color: _tripRouteColor(trip).withOpacity(0.3)),
                     ),
                     child: Column(
                       children: [
@@ -1185,7 +1185,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                         Text(
                           'Safety Score',
                           style: TextStyle(
-                            color: _tripRouteColor(trip).withValues(alpha: 0.8),
+                            color: _tripRouteColor(trip).withOpacity(0.8),
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1231,16 +1231,16 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                  border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        color: colorScheme.primary.withOpacity(0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.analytics, color: colorScheme.primary, size: 24),
@@ -1355,7 +1355,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
         },
         child: CustomPaint(
           painter: _HighRiskAreaPainter(
-            color: colorScheme.error.withValues(alpha: 0.3),
+            color: colorScheme.error.withOpacity(0.3),
           ),
           child: Icon(
             Icons.warning_rounded,
@@ -1383,7 +1383,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       polylines.add(
         Polyline<Object>(
           points: points,
-          color: colorScheme.tertiary.withValues(alpha: 0.8),
+          color: colorScheme.tertiary.withOpacity(0.8),
           strokeWidth: 6.0,
           borderStrokeWidth: 2.5,
           borderColor: colorScheme.tertiary,
@@ -1410,7 +1410,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       polylines.add(
         Polyline<Object>(
           points: points,
-          color: color.withValues(alpha: 0.6),
+          color: color.withOpacity(0.6),
           strokeWidth: 5.0,
           borderStrokeWidth: 2.0,
           borderColor: color,
@@ -1530,7 +1530,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outline.withValues(alpha: 0.2),
+          color: colorScheme.outline.withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -1572,7 +1572,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     'Avg Score',
                     style: TextStyle(
                       fontSize: 12,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ),
@@ -1694,7 +1694,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     Polyline<Object>(
                       points: _smoothRoute(widget.routePoints, windowSize: 3),
                       strokeWidth: 14.0,
-                      color: colorScheme.primary.withValues(alpha: 0.25),
+                      color: colorScheme.primary.withOpacity(0.25),
                       strokeCap: StrokeCap.round,
                       strokeJoin: StrokeJoin.round,
                     ),
@@ -1739,7 +1739,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              color: colorScheme.primary.withOpacity(0.3),
                               blurRadius: 6,
                               spreadRadius: 1,
                             ),
@@ -1764,7 +1764,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
           if (!hasRealTripRoute && widget.controller.currentPosition == null)
             Positioned.fill(
               child: Container(
-                color: colorScheme.surface.withValues(alpha: 0.7),
+                color: colorScheme.surface.withOpacity(0.7),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1773,7 +1773,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
+                          color: Colors.black.withOpacity(0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -1962,11 +1962,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     margin: EdgeInsets.zero,
                     color: Theme.of(
                       context,
-                    ).colorScheme.surface.withValues(alpha: 0.96),
+                    ).colorScheme.surface.withOpacity(0.96),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
-                        color: colorScheme.outline.withValues(alpha: 0.2),
+                        color: colorScheme.outline.withOpacity(0.2),
                       ),
                     ),
                     child: Padding(
@@ -2064,9 +2064,9 @@ class _HighRiskAreaPainter extends CustomPainter {
     // Create a radial gradient that is solid in the center and transparent at the edges
     final gradient = RadialGradient(
       colors: [
-        color.withValues(alpha: 0.7), // Strong core
-        color.withValues(alpha: 0.3), // Mid fade
-        color.withValues(alpha: 0.0), // Fully transparent edge
+        color.withOpacity(0.7), // Strong core
+        color.withOpacity(0.3), // Mid fade
+        color.withOpacity(0.0), // Fully transparent edge
       ],
       stops: const [0.2, 0.6, 1.0],
     );
@@ -2161,7 +2161,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -2183,7 +2183,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
               const SizedBox(width: 16),
               GestureDetector(
                 onTap: () => setState(() => _expanded = false),
-                child: Icon(Icons.close, size: 16, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                child: Icon(Icons.close, size: 16, color: colorScheme.onSurface.withOpacity(0.6)),
               ),
             ],
           ),
@@ -2198,7 +2198,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 12, height: 3, color: Colors.red.withValues(alpha: 0.6)),
+                  Container(width: 12, height: 3, color: Colors.red.withOpacity(0.6)),
                   const SizedBox(width: 4),
                   const Text('High-Risk (<50%)', style: TextStyle(fontSize: 11)),
                 ],
@@ -2209,7 +2209,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 12, height: 3, color: Colors.orange.withValues(alpha: 0.6)),
+                  Container(width: 12, height: 3, color: Colors.orange.withOpacity(0.6)),
                   const SizedBox(width: 4),
                   const Text('Moderate (50-79%)', style: TextStyle(fontSize: 11)),
                 ],
@@ -2220,7 +2220,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 12, height: 3, color: Colors.green.withValues(alpha: 0.7)),
+                  Container(width: 12, height: 3, color: Colors.green.withOpacity(0.7)),
                   const SizedBox(width: 4),
                   const Text('Safe (≥80%)', style: TextStyle(fontSize: 11)),
                 ],
@@ -2256,7 +2256,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: (color ?? Theme.of(context).colorScheme.primary).withValues(alpha: 0.1),
+        color: (color ?? Theme.of(context).colorScheme.primary).withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -2366,7 +2366,7 @@ class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
                       Text(
                         'Confidence: ${(widget.alert.passengerTrust * 100).toInt()}% • Severity: ${widget.alert.severity}/5',
                         style: TextStyle(
-                          color: colorScheme.onErrorContainer.withValues(alpha: 0.8),
+                          color: colorScheme.onErrorContainer.withOpacity(0.8),
                           fontSize: 12,
                         ),
                       ),
@@ -2402,7 +2402,7 @@ class _SummaryStat extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
+            color: color.withOpacity(0.15),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 24),
@@ -2462,15 +2462,13 @@ class _PulsingLiveTrackingChipState extends State<_PulsingLiveTrackingChip>
           decoration: BoxDecoration(
             color: Color.lerp(
               colorScheme.secondaryContainer,
-              colorScheme.secondary.withValues(alpha: 0.35),
+              colorScheme.secondary.withOpacity(0.35),
               _controller.value,
             ),
             borderRadius: BorderRadius.circular(999),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.secondary.withValues(
-                  alpha: 0.25 * _controller.value,
-                ),
+                color: colorScheme.secondary.withOpacity(0.25 * _controller.value),
                 blurRadius: 8,
                 spreadRadius: 1,
               ),
@@ -2551,7 +2549,7 @@ class _AnimatedPingMarkerState extends State<_AnimatedPingMarker> with SingleTic
               height: 70 * _controller.value,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: widget.color.withValues(alpha: 1.0 - _controller.value),
+                color: widget.color.withOpacity(1.0 - _controller.value),
               ),
             ),
             Icon(widget.icon, color: widget.color, size: 24),

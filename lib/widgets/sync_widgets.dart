@@ -54,7 +54,7 @@ class SyncStatusIndicator extends StatelessWidget {
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: colorScheme.onPrimaryContainer
-                                    .withValues(alpha: 0.8),
+                                    .withOpacity(0.8),
                               ),
                         ),
                     ],

@@ -27,7 +27,7 @@ class SensorDataCard extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               colorScheme.surfaceContainerHighest,
-              colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+              colorScheme.surfaceContainerHighest.withOpacity(0.8),
             ],
           ),
         ),
@@ -128,7 +128,7 @@ class _SensorReading extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, size: 20, color: color),

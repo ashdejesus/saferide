@@ -324,7 +324,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+            border: Border.all(color: Colors.grey.withOpacity(0.5)),
           ),
         ),
         const SizedBox(width: 6),
@@ -442,7 +442,7 @@ class _EventRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 20),
@@ -456,7 +456,7 @@ class _EventRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 description,
-                style: textTheme.bodySmall?.copyWith(color: textTheme.bodySmall?.color?.withValues(alpha: 0.7)),
+                style: textTheme.bodySmall?.copyWith(color: textTheme.bodySmall?.color?.withOpacity(0.7)),
               ),
             ],
           ),
@@ -465,7 +465,7 @@ class _EventRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(

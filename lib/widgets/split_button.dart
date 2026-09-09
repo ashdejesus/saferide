@@ -75,7 +75,7 @@ class _SplitButtonState extends State<SplitButton>
           decoration: BoxDecoration(
             color: widget.enabled
                 ? colorScheme.primary
-                : colorScheme.onSurface.withValues(alpha: 0.12),
+                : colorScheme.onSurface.withOpacity(0.12),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -102,7 +102,7 @@ class _SplitButtonState extends State<SplitButton>
                             widget.icon,
                             color: widget.enabled
                                 ? colorScheme.onPrimary
-                                : colorScheme.onSurface.withValues(alpha: 0.38),
+                                : colorScheme.onSurface.withOpacity(0.38),
                             size: _getIconSize(),
                           ),
                           const SizedBox(width: 8),
@@ -112,7 +112,7 @@ class _SplitButtonState extends State<SplitButton>
                           style: labelStyle.copyWith(
                             color: widget.enabled
                                 ? colorScheme.onPrimary
-                                : colorScheme.onSurface.withValues(alpha: 0.38),
+                                : colorScheme.onSurface.withOpacity(0.38),
                           ),
                         ),
                       ],
@@ -125,8 +125,8 @@ class _SplitButtonState extends State<SplitButton>
                 width: 1,
                 height: buttonHeight * 0.6,
                 color: widget.enabled
-                    ? colorScheme.onPrimary.withValues(alpha: 0.3)
-                    : colorScheme.onSurface.withValues(alpha: 0.12),
+                    ? colorScheme.onPrimary.withOpacity(0.3)
+                    : colorScheme.onSurface.withOpacity(0.12),
               ),
               // Trailing button (menu)
               Material(
@@ -160,7 +160,7 @@ class _SplitButtonState extends State<SplitButton>
                         Icons.expand_more,
                         color: widget.enabled
                             ? colorScheme.onPrimary
-                            : colorScheme.onSurface.withValues(alpha: 0.38),
+                            : colorScheme.onSurface.withOpacity(0.38),
                         size: _getIconSize(),
                       ),
                     ),

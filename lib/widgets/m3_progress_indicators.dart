@@ -28,7 +28,7 @@ class M3LinearProgress extends StatelessWidget {
           Container(
             height: minHeight,
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.2),
+              color: colorScheme.primary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(minHeight / 2),
             ),
           ),
@@ -253,7 +253,7 @@ class M3CircularProgress extends StatelessWidget {
         value: value,
         strokeWidth: strokeWidth,
         backgroundColor:
-            backgroundColor ?? colorScheme.primary.withValues(alpha: 0.2),
+            backgroundColor ?? colorScheme.primary.withOpacity(0.2),
         valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
       ),
     );
@@ -308,9 +308,7 @@ class SyncProgressCard extends StatelessWidget {
                           '$syncedItems of $totalItems items',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.7,
-                                ),
+                                color: colorScheme.onSurface.withOpacity(0.7),
                               ),
                         ),
                     ],

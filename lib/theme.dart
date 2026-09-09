@@ -120,13 +120,13 @@ ThemeData buildSafeRideTheme() {
     ),
     sliderTheme: base.sliderTheme.copyWith(
       activeTrackColor: colorScheme.primary,
-      inactiveTrackColor: colorScheme.primary.withValues(alpha: 0.2),
+      inactiveTrackColor: colorScheme.primary.withOpacity(0.2),
       thumbColor: colorScheme.primary,
       trackHeight: 6,
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: colorScheme.primary,
-      linearTrackColor: colorScheme.primary.withValues(alpha: 0.2),
+      linearTrackColor: colorScheme.primary.withOpacity(0.2),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,

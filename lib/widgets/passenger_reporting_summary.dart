@@ -149,7 +149,7 @@ class _ReportCardState extends State<_ReportCard> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: severityColor.withValues(alpha: 0.2),
+                    color: severityColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -175,7 +175,7 @@ class _ReportCardState extends State<_ReportCard> {
                       Text(
                         'Weighted severity: ${widget.report.weightedSeverity}/5',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
                     ],
@@ -332,9 +332,9 @@ class _TrustBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: trustColor.withValues(alpha: 0.1),
+        color: trustColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: trustColor.withValues(alpha: 0.3)),
+        border: Border.all(color: trustColor.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -502,7 +502,7 @@ class _StatBox extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
+            color: colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
       ],

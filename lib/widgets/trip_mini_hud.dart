@@ -23,15 +23,15 @@ class TripMiniHud extends StatelessWidget {
     return Card(
       elevation: 8,
       shadowColor: isHighSpeed
-          ? colorScheme.error.withValues(alpha: 0.4)
-          : Colors.black.withValues(alpha: 0.2),
+          ? colorScheme.error.withOpacity(0.4)
+          : Colors.black.withOpacity(0.2),
       color: colorScheme.surfaceContainerHighest,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: isHighSpeed
               ? Border.all(
-                  color: colorScheme.error.withValues(alpha: 0.3),
+                  color: colorScheme.error.withOpacity(0.3),
                   width: 2,
                 )
               : null,
