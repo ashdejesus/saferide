@@ -1623,3 +1623,49 @@ class _PulsingRiskBannerState extends State<_PulsingRiskBanner>
     );
   }
 }
+
+class _InteractiveCard extends StatefulWidget {
+  const _InteractiveCard({required this.child, this.elevation, this.color});
+  final Widget child;
+  final double? elevation;
+  final Color? color;
+
+  @override
+  State<_InteractiveCard> createState() => _InteractiveCardState();
+}
+
+class _InteractiveCardState extends State<_InteractiveCard> {
+  bool _isPressed = false;
+  DateTime? _lastPressTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        _lastPressTime = DateTime.now();
+        setState(() => _isPressed = true);
+      },
+      onTapUp: (_) async {
+        if (_lastPressTime != null) {
+          final diff = DateTime.now().difference(_lastPressTime!);
+          if (diff.inMilliseconds < 150) {
+            await Future.delayed(Duration(milliseconds: 150 - diff.inMilliseconds));
+          }
+        }
+        if (mounted) setState(() => _isPressed = false);
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: MotionScheme.spatialFast,
+        child: Card(
+          elevation: widget.elevation,
+          color: widget.color,
+          clipBehavior: Clip.antiAlias,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
