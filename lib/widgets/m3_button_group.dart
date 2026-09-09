@@ -79,7 +79,7 @@ class M3ButtonGroup<T> extends StatelessWidget {
   }
 }
 
-class _SegmentTile<T> extends StatelessWidget {
+class _SegmentTile<T> extends StatefulWidget {
   const _SegmentTile({
     required this.segment,
     required this.isSelected,
@@ -97,56 +97,88 @@ class _SegmentTile<T> extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_SegmentTile<T>> createState() => _SegmentTileState<T>();
+}
+
+class _SegmentTileState<T> extends State<_SegmentTile<T>> {
+  bool _isPressed = false;
+  DateTime? _lastPressTime;
+
+  @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 800),
-      curve: MotionScheme.spatialFast,
-      decoration: BoxDecoration(
-        color: isSelected
-            ? colorScheme.secondaryContainer
-            : Colors.transparent,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isSelected) ...[
-                  Icon(
-                    Icons.check,
-                    size: 16,
-                    color: colorScheme.onSecondaryContainer,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                if (segment.icon != null && !isSelected) ...[
-                  Icon(
-                    (segment.icon as Icon).icon,
-                    size: 18,
-                    color: isSelected
-                        ? colorScheme.onSecondaryContainer
-                        : colorScheme.onSurfaceVariant,
-                  ),
-                  if (segment.label != null) const SizedBox(width: 6),
-                ],
-                if (segment.label != null)
-                  Flexible(
-                    child: DefaultTextStyle.merge(
-                      style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                        color: isSelected
-                            ? colorScheme.onSecondaryContainer
-                            : colorScheme.onSurfaceVariant,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+    return GestureDetector(
+      onTapDown: (_) {
+        _lastPressTime = DateTime.now();
+        setState(() => _isPressed = true);
+      },
+      onTapUp: (_) async {
+        if (_lastPressTime != null) {
+          final diff = DateTime.now().difference(_lastPressTime!);
+          if (diff.inMilliseconds < 150) {
+            await Future.delayed(Duration(milliseconds: 150 - diff.inMilliseconds));
+          }
+        }
+        if (mounted) setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () {
+        if (mounted) setState(() => _isPressed = false);
+      },
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: MotionScheme.spatialFast,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 800),
+          curve: MotionScheme.spatialFast,
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? widget.colorScheme.secondaryContainer
+                : Colors.transparent,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: IgnorePointer(
+              ignoring: true,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.isSelected) ...[
+                      Icon(
+                        Icons.check,
+                        size: 16,
+                        color: widget.colorScheme.onSecondaryContainer,
                       ),
-                      child: segment.label!,
-                    ),
-                  ),
-              ],
+                      const SizedBox(width: 6),
+                    ],
+                    if (widget.segment.icon != null && !widget.isSelected) ...[
+                      Icon(
+                        (widget.segment.icon as Icon).icon,
+                        size: 18,
+                        color: widget.isSelected
+                            ? widget.colorScheme.onSecondaryContainer
+                            : widget.colorScheme.onSurfaceVariant,
+                      ),
+                      if (widget.segment.label != null) const SizedBox(width: 6),
+                    ],
+                    if (widget.segment.label != null)
+                      Flexible(
+                        child: DefaultTextStyle.merge(
+                          style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                            color: widget.isSelected
+                                ? widget.colorScheme.onSecondaryContainer
+                                : widget.colorScheme.onSurfaceVariant,
+                            fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                          child: widget.segment.label!,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

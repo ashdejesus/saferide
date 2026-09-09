@@ -135,13 +135,21 @@ class _TripsScreenState extends State<TripsScreen>
   bool get wantKeepAlive => true;
 }
 
-class _TripCard extends StatelessWidget {
+class _TripCard extends StatefulWidget {
   const _TripCard({required this.trip});
 
   final Trip trip;
 
   @override
+  State<_TripCard> createState() => _TripCardState();
+}
+
+class _TripCardState extends State<_TripCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
+    final trip = widget.trip;
     final start = trip.startTime;
     final end = trip.endTime;
     final duration = end?.difference(start);
@@ -202,14 +210,22 @@ class _TripCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
         closedBuilder: (context, openContainer) {
-          return Card(
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: InkWell(
-              onTap: openContainer,
-              borderRadius: BorderRadius.circular(16),
+          return GestureDetector(
+            onTapDown: (_) => setState(() => _isPressed = true),
+            onTapCancel: () => setState(() => _isPressed = false),
+            onTapUp: (_) {
+              setState(() => _isPressed = false);
+              openContainer();
+            },
+            child: AnimatedScale(
+              scale: _isPressed ? 0.95 : 1.0,
+              duration: const Duration(milliseconds: 300),
+              curve: MotionScheme.spatialFast,
+              child: Card(
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -285,6 +301,7 @@ class _TripCard extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         );
       },
@@ -485,14 +502,23 @@ class _StaggeredItem extends StatelessWidget {
   }
 }
 
-class _RouteCard extends StatelessWidget {
+class _RouteCard extends StatefulWidget {
   const _RouteCard({required this.routeName, required this.routeTrips});
 
   final String routeName;
   final List<Trip> routeTrips;
 
   @override
+  State<_RouteCard> createState() => _RouteCardState();
+}
+
+class _RouteCardState extends State<_RouteCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
+    final routeTrips = widget.routeTrips;
+    final routeName = widget.routeName;
     if (routeTrips.isEmpty) return const SizedBox.shrink();
 
     final avgScore = routeTrips.fold(0.0, (sum, t) => sum + t.riskScore) / routeTrips.length;
@@ -519,10 +545,18 @@ class _RouteCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           closedBuilder: (context, openContainer) {
-            return InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: openContainer,
-              child: Padding(
+            return GestureDetector(
+              onTapDown: (_) => setState(() => _isPressed = true),
+              onTapCancel: () => setState(() => _isPressed = false),
+              onTapUp: (_) {
+                setState(() => _isPressed = false);
+                openContainer();
+              },
+              child: AnimatedScale(
+                scale: _isPressed ? 0.95 : 1.0,
+                duration: const Duration(milliseconds: 300),
+                curve: MotionScheme.spatialFast,
+                child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
@@ -554,6 +588,7 @@ class _RouteCard extends StatelessWidget {
                     badge,
                   ],
                 ),
+              ),
               ),
             );
           },

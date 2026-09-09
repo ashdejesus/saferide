@@ -1053,14 +1053,7 @@ class _ReportFormCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(width: 8),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, anim) => ScaleTransition(
-                      scale: anim,
-                      child: FadeTransition(opacity: anim, child: child),
-                    ),
-                    child: M3SeverityLabel(key: ValueKey(severity.round()), severity: severity.round()),
-                  ),
+                  M3SeverityLabel(key: ValueKey(severity.round()), severity: severity.round()),
                 ],
               ),
               const SizedBox(height: 12),

@@ -140,7 +140,10 @@ class _SeverityChipState extends State<_SeverityChip> with SingleTickerProviderS
         decoration: BoxDecoration(
           color: widget.isSelected ? activeColor : cs.surfaceContainerHighest,
           // Morphs from a rounded square to a perfect circle when selected
-          borderRadius: BorderRadius.circular(widget.isSelected ? widget.size / 2 : 12),
+          // Clamp to ensure spring overshoot doesn't cause a negative radius (which throws in painting.dart)
+          borderRadius: BorderRadius.circular(
+            (widget.isSelected ? widget.size / 2 : 12.0).clamp(0.0, 999.0)
+          ),
           boxShadow: widget.isSelected ? [
             BoxShadow(
               color: activeColor.withOpacity(0.3),

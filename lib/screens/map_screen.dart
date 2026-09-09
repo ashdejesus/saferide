@@ -510,14 +510,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   children: [
                     const Text('Severity', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(width: 8),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      transitionBuilder: (child, anim) => ScaleTransition(
-                        scale: anim,
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      child: M3SeverityLabel(key: ValueKey(selectedSeverity.round()), severity: selectedSeverity.round()),
-                    ),
+                    M3SeverityLabel(key: ValueKey(selectedSeverity.round()), severity: selectedSeverity.round()),
                   ],
                 ),
                 const SizedBox(height: 12),
