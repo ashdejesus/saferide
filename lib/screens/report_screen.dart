@@ -1313,12 +1313,14 @@ class _StaggeredItem extends StatelessWidget {
     );
     return FadeTransition(
       opacity: curve,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.06),
-          end: Offset.zero,
-        ).animate(curve),
-        child: child,
+      child: ClipRect(
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.06),
+            end: Offset.zero,
+          ).animate(curve),
+          child: child,
+        ),
       ),
     );
   }
