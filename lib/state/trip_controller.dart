@@ -42,6 +42,7 @@ class TripController extends ChangeNotifier {
 
   Trip? _activeTrip;
   bool _isTracking = false;
+  bool _hasLivePosition = false;
   double _currentSpeed = 0;
   Position? _currentPosition;
   final List<Map<String, double>> _routePoints = [];
@@ -115,6 +116,7 @@ class TripController extends ChangeNotifier {
 
   Trip? get activeTrip => _activeTrip;
   bool get isTracking => _isTracking;
+  bool get hasLivePosition => _hasLivePosition;
   double get currentSpeed => _currentSpeed;
   Position? get currentPosition => _currentPosition;
   List<Map<String, double>> get routePoints => List.unmodifiable(_routePoints);
@@ -365,6 +367,7 @@ class TripController extends ChangeNotifier {
       _hasLastAltitude = false;
       _lastVerticalAccel = 0;
       _isTracking = true;
+      _hasLivePosition = false;
       
       _alertedReportIds.clear();
       _currentAlert = null;
@@ -520,6 +523,7 @@ class TripController extends ChangeNotifier {
 
     _activeTrip = null;
     _isTracking = false;
+    _hasLivePosition = false;
     _currentSpeed = 0;
     _tripHistoryVersion++;
     // Refresh completed trips so the map shows the new trip immediately
@@ -611,6 +615,7 @@ class TripController extends ChangeNotifier {
   }
 
   void _onPosition(Position position) {
+    _hasLivePosition = true;
     _currentPosition = position;
     _currentSpeed = max(position.speed, 0);
     _speedWindow.add(_currentSpeed);
