@@ -12,6 +12,8 @@ import '../widgets/trip_action_sheet.dart';
 import '../widgets/sensor_data_card.dart';
 import '../widgets/split_button.dart';
 import '../widgets/m3_progress_indicators.dart';
+import '../widgets/m3_button_group.dart';
+import '../theme/motion_scheme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Risk classification helpers (mirrors batch_accuracy_test.dart thresholds)
@@ -131,7 +133,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              _TripStatusPill(isTracking: controller.isTracking),
+              _TripStatusPill(
+                isTracking: controller.isTracking,
+                hasLivePosition: controller.hasLivePosition,
+              ),
             ],
           ),
         ),
@@ -207,7 +212,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (controller.isTracking)
               FilledButton.icon(
                 onPressed: () async {
@@ -229,20 +234,22 @@ class _DashboardScreenState extends State<DashboardScreen>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SegmentedButton<risk_scoring.VehicleType>(
-                    showSelectedIcon: false,
+                  M3ButtonGroup<risk_scoring.VehicleType>(
                     segments: const [
                       ButtonSegment(
                         value: risk_scoring.VehicleType.jeepney,
                         label: Text('Jeepney'),
+                        icon: Icon(Icons.airport_shuttle),
                       ),
                       ButtonSegment(
                         value: risk_scoring.VehicleType.bus,
                         label: Text('Bus'),
+                        icon: Icon(Icons.directions_bus_filled),
                       ),
                       ButtonSegment(
                         value: risk_scoring.VehicleType.tricycle,
                         label: Text('Tricycle'),
+                        icon: Icon(Icons.two_wheeler),
                       ),
                     ],
                     selected: {_selectedVehicle},
@@ -253,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           });
                         },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   SplitButton(
                     label: 'Start Trip',
                     icon: Icons.play_circle_fill,
@@ -358,7 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -366,17 +373,31 @@ class _DashboardScreenState extends State<DashboardScreen>
                   'Ride intensity',
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
-                Text(
-                  '${(intensity * 100).round()}%',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: intensity),
+                  duration: const Duration(milliseconds: 600),
+                  curve: MotionScheme.effectsDefault,
+                  builder: (context, value, child) {
+                    return Text(
+                      '${(value * 100).round()}%',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            M3LinearProgress(value: intensity, wavy: true, minHeight: 6),
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: intensity),
+              duration: const Duration(milliseconds: 600),
+              curve: MotionScheme.effectsDefault,
+              builder: (context, value, child) {
+                return M3LinearProgress(value: value, wavy: true, minHeight: 6);
+              },
+            ),
           ],
         ),
       ),
@@ -464,7 +485,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     },
                   ),
                 ),
-                const SizedBox(width: 24),
+                const SizedBox(width: 20),
                 // Score explanation
                 Expanded(
                   child: Column(
@@ -491,7 +512,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         color: Theme.of(context).colorScheme.primary,
                         value: _lambdaValue(controller),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       _ScoreBreakdownRow(
                         label: 'Passenger reports',
                         color: Theme.of(context).colorScheme.secondary,
@@ -504,7 +525,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -611,7 +632,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
         const SectionHeader(title: 'Trip Info'),
         const SizedBox(height: 12),
         Row(
@@ -641,7 +662,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -661,6 +682,51 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // ── NEW: Context Factors Strip ─────────────────────────────────────────────
 
+  Color _getRoadColor(double value) {
+    if (value < 0.4) return const Color(0xFFE74C3C); // Poor
+    if (value < 0.7) return const Color(0xFFF39C12); // Fair
+    return const Color(0xFF2ECC71); // Good
+  }
+
+  Color _getNoiseColor(double value) {
+    if (value < 0.4) return const Color(0xFF2ECC71); // Quiet
+    if (value < 0.7) return const Color(0xFFF39C12); // Moderate
+    return const Color(0xFFE74C3C); // Loud
+  }
+
+  Color _getTrafficColor(double value) {
+    if (value < 0.4) return const Color(0xFF2ECC71); // Light
+    if (value < 0.7) return const Color(0xFFF39C12); // Moderate
+    return const Color(0xFFE74C3C); // Heavy
+  }
+
+
+  Widget _buildLegendPill(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 8, color: color),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContextFactorsStrip(
     BuildContext context,
     TripController controller,
@@ -673,30 +739,42 @@ class _DashboardScreenState extends State<DashboardScreen>
         Card(
           elevation: 1,
           clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: InkWell(
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
                   _ContextBar(
                     label: 'Road Condition',
                     value: controller.contextRoad,
-                    color: const Color(0xFF8E44AD),
+                    color: _getRoadColor(controller.contextRoad),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   _ContextBar(
                     label: 'Traffic Density',
                     value: controller.contextTraffic,
-                    color: const Color(0xFFE67E22),
+                    color: _getTrafficColor(controller.contextTraffic),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   _ContextBar(
                     label: 'Environmental Noise',
                     value: controller.contextEnvNoise,
-                    color: const Color(0xFF2980B9),
+                    color: _getNoiseColor(controller.contextEnvNoise),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLegendPill('Good', const Color(0xFF2ECC71)),
+                      const SizedBox(width: 8),
+                      _buildLegendPill('Fair', const Color(0xFFF39C12)),
+                      const SizedBox(width: 8),
+                      _buildLegendPill('Poor', const Color(0xFFE74C3C)),
+                    ],
                   ),
                   const Divider(height: 24),
                   Row(
@@ -724,12 +802,12 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
 
-  // ── NEW: Quick Report Strip ────────────────────────────────────────────────
+  // ── M3 Expressive Toolbar (Quick Report) ──────────────────────────────────
   
   Widget _buildQuickReportStrip(
     BuildContext context,
@@ -739,93 +817,72 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeader(title: 'Quick Report'),
+        const SectionHeader(title: 'Quick Actions'),
         const SizedBox(height: 8),
-        Card(
-          elevation: 1,
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildQuickAction(context, controller, 'Speeding', Icons.speed, Colors.orange),
-                _buildQuickAction(context, controller, 'Braking', Icons.car_crash, Colors.red),
-                _buildQuickAction(context, controller, 'Pothole', Icons.moving, Colors.amber.shade700),
-                _buildQuickAction(context, controller, 'Hazard', Icons.warning_amber, Colors.purple),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildToolbarAction(context, controller, 'Speeding', Icons.speed, Colors.orange),
+              _buildToolbarAction(context, controller, 'Braking', Icons.car_crash, Colors.red),
+              _buildToolbarAction(context, controller, 'Pothole', Icons.moving, Colors.amber.shade700),
+              _buildToolbarAction(context, controller, 'Hazard', Icons.warning_amber, Colors.purple),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
 
-  Widget _buildQuickAction(
+  Widget _buildToolbarAction(
       BuildContext context, TripController controller, String category, IconData icon, Color color) {
-    return Expanded(
-      child: InkWell(
-        onTap: () async {
-          // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
-          int severity = 3; // Default to moderate
-          
-          if (category == 'Speeding') {
-            final speedKmh = controller.currentSpeed * 3.6;
-            if (speedKmh > 80) severity = 5;
-            else if (speedKmh > 60) severity = 4;
-          } else if (category == 'Braking') {
-            final peak = controller.peakAcceleration;
-            if (peak > 8.0) severity = 5;
-            else if (peak > 5.0) severity = 4;
-          } else if (category == 'Pothole') {
-            final peakZ = controller.peakZAxis;
-            if (peakZ > 9.0) severity = 5;
-            else if (peakZ > 6.0) severity = 4;
-          } else if (category == 'Hazard') {
-            // If road condition context factor is set to bad (high value), general hazards are highly severe
-            if (controller.contextRoad > 0.7) severity = 5;
-            else if (controller.contextRoad > 0.4) severity = 4;
-          }
+    return Tooltip(
+      message: 'Report $category',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: () async {
+              // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
+              int severity = 3; // Default to moderate
+              final peakAccel = controller.peakAcceleration;
+              if (peakAccel > 6.0) severity = 5;
+              else if (peakAccel > 4.0) severity = 4;
+              else if (peakAccel < 1.5) severity = 2; // Very mild event
 
-          await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$category reported. Thank you!'),
-              backgroundColor: color,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+              await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$category reported. Thank you!'),
+                  backgroundColor: color,
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
                 ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                category,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              );
+            },
+            icon: Icon(icon, color: color, size: 28),
+            style: IconButton.styleFrom(
+              backgroundColor: color.withOpacity(0.15),
+              padding: const EdgeInsets.all(12),
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            category,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -843,7 +900,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           averageAcceleration: controller.averageAcceleration,
           turnRate: controller.currentTurnRate,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -857,40 +914,44 @@ class _DashboardScreenState extends State<DashboardScreen>
         const SectionHeader(title: 'Unsafe Events'),
         const SizedBox(height: 12),
         if (!controller.isTracking)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2ECC71).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFF2ECC71).withValues(alpha: 0.3),
+          _InteractiveCard(
+            elevation: 0,
+            color: const Color(0xFF2ECC71).withOpacity(0.1),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF2ECC71).withOpacity(0.3),
+                ),
               ),
-            ),
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.shield_outlined,
-                  color: Color(0xFF2ECC71),
-                  size: 40,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'All Clear',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: const Color(0xFF2ECC71),
-                    fontWeight: FontWeight.bold,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.shield_outlined,
+                    color: Color(0xFF2ECC71),
+                    size: 40,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'No unsafe events recorded. Start a trip to begin monitoring.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  const SizedBox(height: 12),
+                  Text(
+                    'All Clear',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: const Color(0xFF2ECC71),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'No unsafe events recorded. Start a trip to begin monitoring.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         else
@@ -951,7 +1012,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -1245,7 +1306,7 @@ class _InfoTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: cs.primary),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           animateValue
               ? AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
@@ -1371,9 +1432,10 @@ class _StaggeredItem extends StatelessWidget {
 }
 
 class _TripStatusPill extends StatefulWidget {
-  const _TripStatusPill({required this.isTracking});
+  const _TripStatusPill({required this.isTracking, required this.hasLivePosition});
 
   final bool isTracking;
+  final bool hasLivePosition;
 
   @override
   State<_TripStatusPill> createState() => _TripStatusPillState();
@@ -1415,10 +1477,12 @@ class _TripStatusPillState extends State<_TripStatusPill>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    Widget content;
     if (!widget.isTracking) {
       final background = colorScheme.surfaceContainerHighest;
       final foreground = colorScheme.onSurface;
-      return Container(
+      content = Container(
+        key: const ValueKey('idle'),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: background,
@@ -1428,7 +1492,7 @@ class _TripStatusPillState extends State<_TripStatusPill>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.pause_circle, size: 14, color: foreground),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Text(
               'Idle',
               style: Theme.of(
@@ -1504,7 +1568,7 @@ class _TripStatusPillState extends State<_TripStatusPill>
                   _pulse.value,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 'Recording',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -1520,6 +1584,21 @@ class _TripStatusPillState extends State<_TripStatusPill>
           ),
         );
       },
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: animation,
+          child: child,
+        ),
+      ),
+      child: content,
     );
   }
 }

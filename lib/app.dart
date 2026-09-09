@@ -11,6 +11,7 @@ import 'services/auth_service.dart';
 import 'services/preferences_service.dart';
 import 'state/trip_controller.dart';
 import 'theme.dart';
+import 'theme/motion_scheme.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
@@ -172,18 +173,20 @@ class _SafeRideAppState extends State<SafeRideApp> {
                                 ),
                               );
                             },
-                            child: FloatingActionButton.extended(
-                              key: ValueKey(controller.isTracking),
-                              onPressed: () => TripActionSheet.show(context),
-                              icon: Icon(
-                                controller.isTracking
-                                    ? Icons.stop_circle
-                                    : Icons.play_circle_fill,
-                              ),
-                              label: Text(
-                                controller.isTracking
-                                    ? 'End Trip'
-                                    : 'Start Trip',
+                            child: _BouncyFab(
+                              child: FloatingActionButton.extended(
+                                key: ValueKey(controller.isTracking),
+                                onPressed: () => TripActionSheet.show(context),
+                                icon: Icon(
+                                  controller.isTracking
+                                      ? Icons.stop_circle
+                                      : Icons.play_circle_fill,
+                                ),
+                                label: Text(
+                                  controller.isTracking
+                                      ? 'End Trip'
+                                      : 'Start Trip',
+                                ),
                               ),
                             ),
                           ),
@@ -257,6 +260,45 @@ class _SafeRideAppState extends State<SafeRideApp> {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _BouncyFab extends StatefulWidget {
+  const _BouncyFab({required this.child});
+  final Widget child;
+
+  @override
+  State<_BouncyFab> createState() => _BouncyFabState();
+}
+
+class _BouncyFabState extends State<_BouncyFab> {
+  bool _isPressed = false;
+  DateTime? _lastPressTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        _lastPressTime = DateTime.now();
+        setState(() => _isPressed = true);
+      },
+      onTapUp: (_) async {
+        if (_lastPressTime != null) {
+          final diff = DateTime.now().difference(_lastPressTime!);
+          if (diff.inMilliseconds < 150) {
+            await Future.delayed(Duration(milliseconds: 150 - diff.inMilliseconds));
+          }
+        }
+        if (mounted) setState(() => _isPressed = false);
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.90 : 1.0, // FABs bounce a bit more deeply
+        duration: const Duration(milliseconds: 300),
+        curve: SpringCurve(),
+        child: widget.child,
       ),
     );
   }
