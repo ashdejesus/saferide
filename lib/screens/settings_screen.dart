@@ -81,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required double value,
     required String valueLabel,
+    required Color color,
     required ValueChanged<double> onChanged,
   }) {
     return Column(
@@ -88,19 +89,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
+          leading: Icon(icon, color: color),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               valueLabel,
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                color: color,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
@@ -108,6 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         Slider(
+          activeColor: color,
           value: value,
           min: 0.0,
           max: 1.0,
@@ -164,6 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Road Condition',
                     subtitle: 'Bumpy roads might trigger false braking alerts',
                     icon: Icons.add_road,
+                    color: const Color(0xFF8E44AD),
                     value: tripController.contextRoad,
                     valueLabel: _getRoadLabel(tripController.contextRoad),
                     onChanged: (val) {
@@ -179,6 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Traffic Density',
                     subtitle: 'Heavy traffic naturally requires sudden stops',
                     icon: Icons.traffic,
+                    color: const Color(0xFFE67E22),
                     value: tripController.contextTraffic,
                     valueLabel: _getTrafficLabel(tripController.contextTraffic),
                     onChanged: (val) {
@@ -194,6 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Environmental Noise',
                     subtitle: 'Loud vehicles or wind affect the microphone',
                     icon: Icons.volume_up,
+                    color: const Color(0xFF2980B9),
                     value: tripController.contextEnvNoise,
                     valueLabel: _getNoiseLabel(tripController.contextEnvNoise),
                     onChanged: (val) {
