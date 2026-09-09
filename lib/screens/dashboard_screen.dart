@@ -170,11 +170,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         ? const Color(0xFFF39C12) // orange — 60–80 km/h
         : colorScheme.primary; // normal
 
-    return _InteractiveCard(
+    return Card(
       elevation: controller.isTracking ? 6 : 2,
       color: controller.isTracking
           ? colorScheme.primaryContainer.withOpacity(0.5)
           : colorScheme.surfaceContainerHighest,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -824,9 +825,9 @@ class _DashboardScreenState extends State<DashboardScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildToolbarAction(context, controller, 'Speeding', Icons.speed, colorScheme.error),
-            _buildToolbarAction(context, controller, 'Braking', Icons.back_hand, colorScheme.primary),
-            _buildToolbarAction(context, controller, 'Pothole', Icons.moving, colorScheme.tertiary),
-            _buildToolbarAction(context, controller, 'Hazard', Icons.warning_rounded, colorScheme.secondary),
+            _buildToolbarAction(context, controller, 'Braking', Icons.back_hand, colorScheme.tertiary),
+            _buildToolbarAction(context, controller, 'Pothole', Icons.moving, colorScheme.secondary),
+            _buildToolbarAction(context, controller, 'Hazard', Icons.warning_rounded, colorScheme.primary),
           ],
         ),
         const SizedBox(height: 16),
@@ -838,54 +839,53 @@ class _DashboardScreenState extends State<DashboardScreen>
       BuildContext context, TripController controller, String category, IconData icon, Color color) {
     return Tooltip(
       message: 'Report $category',
-      child: Material(
+      child: _InteractiveCard(
+        elevation: 0,
+        borderRadius: 20,
         color: color.withOpacity(0.1),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: color.withOpacity(0.2)),
-        ),
-        child: InkWell(
-          onTap: () async {
-            // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
-            int severity = 3; // Default to moderate
-            final peakAccel = controller.peakAcceleration;
-            if (peakAccel > 6.0) severity = 5;
-            else if (peakAccel > 4.0) severity = 4;
-            else if (peakAccel < 1.5) severity = 2; // Very mild event
+        onTap: () async {
+          // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
+          int severity = 3; // Default to moderate
+          final peakAccel = controller.peakAcceleration;
+          if (peakAccel > 6.0) severity = 5;
+          else if (peakAccel > 4.0) severity = 4;
+          else if (peakAccel < 1.5) severity = 2; // Very mild event
 
-            await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$category reported. Thank you!'),
-                backgroundColor: color,
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.2, // Distribute evenly
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 32),
-                const SizedBox(height: 12),
-                Text(
-                  category,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                ),
-              ],
+          await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$category reported. Thank you!'),
+              backgroundColor: color,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
             ),
+          );
+        },
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.2, // Distribute evenly
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+          decoration: BoxDecoration(
+            border: Border.all(color: color.withOpacity(0.2)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                category,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+              ),
+            ],
           ),
         ),
       ),
@@ -919,10 +919,13 @@ class _DashboardScreenState extends State<DashboardScreen>
         const SectionHeader(title: 'Unsafe Events'),
         const SizedBox(height: 12),
         if (!controller.isTracking)
-          _InteractiveCard(
+          Card(
             elevation: 0,
-            borderRadius: 14.0,
+            margin: EdgeInsets.zero,
             color: const Color(0xFF2ECC71).withOpacity(0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14.0),
+            ),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
@@ -1420,17 +1423,21 @@ class _StaggeredItem extends StatelessWidget {
     final start = 0.08 * index;
     final end = (start + 0.6).clamp(0.0, 1.0).toDouble();
     final intervalStart = start.clamp(0.0, 1.0).toDouble();
-    final curve = CurvedAnimation(
+    final opacityCurve = CurvedAnimation(
+      parent: animation,
+      curve: Interval(intervalStart, end, curve: MotionScheme.effectsDefault),
+    );
+    final slideCurve = CurvedAnimation(
       parent: animation,
       curve: Interval(intervalStart, end, curve: MotionScheme.spatialDefault),
     );
     return FadeTransition(
-      opacity: curve,
+      opacity: opacityCurve,
       child: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 0.06),
           end: Offset.zero,
-        ).animate(curve),
+        ).animate(slideCurve),
         child: child,
       ),
     );
@@ -1708,16 +1715,19 @@ class _PulsingRiskBannerState extends State<_PulsingRiskBanner>
 }
 
 class _InteractiveCard extends StatefulWidget {
+  final Widget child;
+  final double elevation;
+  final double borderRadius;
+  final Color? color;
+  final VoidCallback? onTap;
+
   const _InteractiveCard({
     required this.child,
-    this.elevation,
+    this.elevation = 2.0,
+    this.borderRadius = 16.0,
     this.color,
-    this.borderRadius = 28.0,
+    this.onTap,
   });
-  final Widget child;
-  final double? elevation;
-  final Color? color;
-  final double borderRadius;
 
   @override
   State<_InteractiveCard> createState() => _InteractiveCardState();
@@ -1742,6 +1752,7 @@ class _InteractiveCardState extends State<_InteractiveCard> {
           }
         }
         if (mounted) setState(() => _isPressed = false);
+        widget.onTap?.call();
       },
       onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedScale(

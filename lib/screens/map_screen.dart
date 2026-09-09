@@ -2082,17 +2082,21 @@ class _StaggeredItem extends StatelessWidget {
     final start = 0.08 * index;
     final end = (start + 0.6).clamp(0.0, 1.0).toDouble();
     final intervalStart = start.clamp(0.0, 1.0).toDouble();
-    final curve = CurvedAnimation(
+    final opacityCurve = CurvedAnimation(
+      parent: animation,
+      curve: Interval(intervalStart, end, curve: MotionScheme.effectsDefault),
+    );
+    final slideCurve = CurvedAnimation(
       parent: animation,
       curve: Interval(intervalStart, end, curve: MotionScheme.spatialDefault),
     );
     return FadeTransition(
-      opacity: curve,
+      opacity: opacityCurve,
       child: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, 0.06),
           end: Offset.zero,
-        ).animate(curve),
+        ).animate(slideCurve),
         child: child,
       ),
     );

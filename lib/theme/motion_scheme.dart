@@ -32,11 +32,10 @@ class SpringCurve extends Curve {
   @override
   double transformInternal(double t) {
     // A standard SpringSimulation computes x(time).
-    // To map it to a Curve (which takes t from 0 to 1), we scale t by a constant
-    // representing the "settling duration" of the spring.
-    // For stiffness=700, dampingRatio=0.6, the settling time is roughly 0.6s to 1s.
-    // We'll map t (0 to 1) to time (0 to 1.5 seconds) to give the spring room to bounce.
-    final time = t * 1.5; 
+    // To map it to a Curve (which takes t from 0 to 1), we scale t by a constant.
+    // By mapping to 1.2s we give the spring enough time to overshoot and bounce back
+    // while keeping the movement feeling weighty and tactile.
+    final time = t * 1.2; 
     return _sim.x(time);
   }
 }
@@ -44,12 +43,14 @@ class SpringCurve extends Curve {
 /// Pre-defined M3 Expressive Motion specs mapped from the Compose guidelines
 class MotionScheme {
   // Spatial: movement, scale, rotation (Bouncy)
-  static final Curve spatialDefault = SpringCurve(dampingRatio: 0.6, stiffness: 700.0);
-  static final Curve spatialFast = SpringCurve(dampingRatio: 0.6, stiffness: 1400.0);
-  static final Curve spatialSlow = SpringCurve(dampingRatio: 0.6, stiffness: 300.0);
+  // Lowered damping ratio (0.5) for a much more prominent, juicy bounce 
+  // that you can truly "feel". Lower stiffness gives it more physical weight.
+  static final Curve spatialDefault = SpringCurve(dampingRatio: 0.5, stiffness: 450.0);
+  static final Curve spatialFast = SpringCurve(dampingRatio: 0.5, stiffness: 900.0);
+  static final Curve spatialSlow = SpringCurve(dampingRatio: 0.5, stiffness: 250.0);
 
   // Effects: color, opacity (No Bounce)
-  static final Curve effectsDefault = SpringCurve(dampingRatio: 1.0, stiffness: 1600.0);
-  static final Curve effectsFast = SpringCurve(dampingRatio: 1.0, stiffness: 3800.0);
-  static final Curve effectsSlow = SpringCurve(dampingRatio: 1.0, stiffness: 800.0);
+  static final Curve effectsDefault = SpringCurve(dampingRatio: 1.0, stiffness: 1200.0);
+  static final Curve effectsFast = SpringCurve(dampingRatio: 1.0, stiffness: 2400.0);
+  static final Curve effectsSlow = SpringCurve(dampingRatio: 1.0, stiffness: 600.0);
 }
