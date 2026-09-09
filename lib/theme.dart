@@ -20,25 +20,21 @@ ThemeData buildSafeRideTheme() {
     canvasColor: colorScheme.surface,
     visualDensity: VisualDensity.standard,
     textTheme: expressiveTextTheme.copyWith(
-      displaySmall: expressiveTextTheme.displaySmall?.copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.6,
-      ),
-      headlineMedium: expressiveTextTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.4,
-      ),
-      titleLarge: expressiveTextTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.2,
-      ),
-      titleMedium: expressiveTextTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      bodyLarge: expressiveTextTheme.bodyLarge?.copyWith(height: 1.3),
-      labelLarge: expressiveTextTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-      ),
+      displayLarge: expressiveTextTheme.displayLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8, height: 1.12),
+      displayMedium: expressiveTextTheme.displayMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.6, height: 1.16),
+      displaySmall: expressiveTextTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.4, height: 1.22),
+      headlineLarge: expressiveTextTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2, height: 1.25),
+      headlineMedium: expressiveTextTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.2, height: 1.29),
+      headlineSmall: expressiveTextTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.33),
+      titleLarge: expressiveTextTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0, height: 1.27),
+      titleMedium: expressiveTextTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.15, height: 1.5),
+      titleSmall: expressiveTextTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.1, height: 1.43),
+      bodyLarge: expressiveTextTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w400, letterSpacing: 0.5, height: 1.5),
+      bodyMedium: expressiveTextTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w400, letterSpacing: 0.25, height: 1.43),
+      bodySmall: expressiveTextTheme.bodySmall?.copyWith(fontWeight: FontWeight.w400, letterSpacing: 0.4, height: 1.33),
+      labelLarge: expressiveTextTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.1, height: 1.43),
+      labelMedium: expressiveTextTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.5, height: 1.33),
+      labelSmall: expressiveTextTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.5, height: 1.45),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.surface,
