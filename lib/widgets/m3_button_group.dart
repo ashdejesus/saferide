@@ -29,7 +29,7 @@ class M3ButtonGroup<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: colorScheme.outlineVariant,
-          width: 1,
+          width: 2,
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -47,7 +47,7 @@ class M3ButtonGroup<T> extends StatelessWidget {
                 return const SizedBox.shrink();
               }
               return Container(
-                width: 1,
+                width: 2,
                 color: colorScheme.outlineVariant,
               );
             }
@@ -135,6 +135,13 @@ class _SegmentTileState<T> extends State<_SegmentTile<T>> {
             color: widget.isSelected
                 ? widget.colorScheme.secondaryContainer
                 : Colors.transparent,
+            borderRadius: widget.isFirst && widget.isLast
+                ? BorderRadius.circular(22)
+                : widget.isFirst
+                    ? const BorderRadius.horizontal(left: Radius.circular(22))
+                    : widget.isLast
+                        ? const BorderRadius.horizontal(right: Radius.circular(22))
+                        : null,
           ),
           child: Material(
             color: Colors.transparent,
@@ -152,26 +159,21 @@ class _SegmentTileState<T> extends State<_SegmentTile<T>> {
                         size: 16,
                         color: widget.colorScheme.onSecondaryContainer,
                       ),
-                      const SizedBox(width: 6),
+                      if (widget.segment.label != null) const SizedBox(width: 6),
                     ],
-                    if (widget.segment.icon != null && !widget.isSelected) ...[
+                    if (!widget.isSelected && widget.segment.icon != null) ...[
                       Icon(
                         (widget.segment.icon as Icon).icon,
                         size: 18,
-                        color: widget.isSelected
-                            ? widget.colorScheme.onSecondaryContainer
-                            : widget.colorScheme.onSurfaceVariant,
+                        color: widget.colorScheme.onSurfaceVariant,
                       ),
-                      if (widget.segment.label != null) const SizedBox(width: 6),
                     ],
-                    if (widget.segment.label != null)
+                    if (widget.isSelected && widget.segment.label != null)
                       Flexible(
                         child: DefaultTextStyle.merge(
                           style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                            color: widget.isSelected
-                                ? widget.colorScheme.onSecondaryContainer
-                                : widget.colorScheme.onSurfaceVariant,
-                            fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: widget.colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w600,
                           ),
                           child: widget.segment.label!,
                         ),

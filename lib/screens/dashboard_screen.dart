@@ -900,6 +900,31 @@ class _DashboardScreenState extends State<DashboardScreen>
       children: [
         const SectionHeader(title: 'Live Sensor Data'),
         const SizedBox(height: 12),
+        if (!controller.testMode && (controller.currentSpeed * 3.6) < 5.0)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF39C12).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFF39C12).withOpacity(0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Color(0xFFE67E22), size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Auto-detection is paused while stationary (speed < 5 km/h). Drive or enable Test Mode in Settings.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFFD35400),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         SensorDataCard(
           acceleration: controller.currentAcceleration,
           averageAcceleration: controller.averageAcceleration,
@@ -1602,10 +1627,21 @@ class _TripStatusPillState extends State<_TripStatusPill>
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 800),
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.centerLeft,
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
       transitionBuilder: (child, animation) => FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: MotionScheme.effectsDefault),
-        child: ScaleTransition(
-          scale: CurvedAnimation(parent: animation, curve: MotionScheme.spatialDefault),
+        child: SizeTransition(
+          sizeFactor: CurvedAnimation(parent: animation, curve: MotionScheme.spatialDefault),
+          axis: Axis.horizontal,
+          axisAlignment: -1.0,
           child: child,
         ),
       ),

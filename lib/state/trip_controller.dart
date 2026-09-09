@@ -106,6 +106,7 @@ class TripController extends ChangeNotifier {
   StreamSubscription<UserAccelerometerEvent>? _accelSub;
   StreamSubscription<GyroscopeEvent>? _gyroSub;
   Timer? _bufferTimer;
+  Timer? _uiTimer;
   int _tripHistoryVersion = 0;
 
   // Completed trips loaded from local database for map display
@@ -766,7 +767,7 @@ class TripController extends ChangeNotifier {
     if (_testMode || _currentSpeed > _adaptiveThresholds.thetaSpeedMin) {
       final isPothole = risk_scoring.detectPothole(
         verticalAccel: _lastVerticalAccel,
-        gyroMagnitude: _gyroWindow.average,
+        gyroMagnitude: _testMode ? 0.0 : _gyroWindow.average, // Ignore gyro rotation in test mode
         speed: _testMode ? 10.0 : _currentSpeed, // Mock speed if in test mode so pothole formula passes
         thresholds: _adaptiveThresholds,
       );
@@ -803,7 +804,7 @@ class TripController extends ChangeNotifier {
     // Detect sharp turning using adaptive threshold and instantaneous Z-axis turn rate
     // Requires: (1) sufficient vehicle speed, (2) high yaw rate, (3) sustained duration
     final isMoving = _testMode || _currentSpeed >= 3.0; // ~11 km/h minimum to avoid stationary false positives
-    if (!_isRecentPothole() && isMoving && risk_scoring.detectSharpTurning(turnRate, _adaptiveThresholds)) {
+    if ((!_isRecentPothole() || _testMode) && isMoving && risk_scoring.detectSharpTurning(turnRate, _adaptiveThresholds)) {
       _turningStreak++;
       if (_turningCooldownElapsed(_lastTurnEvent)) {
         if (_turningStreak >= 10) {
@@ -978,11 +979,16 @@ class TripController extends ChangeNotifier {
     _bufferTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       unawaited(_persistActiveTripSnapshot());
     });
+    _uiTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      notifyListeners();
+    });
   }
 
   void _stopBuffering() {
     _bufferTimer?.cancel();
     _bufferTimer = null;
+    _uiTimer?.cancel();
+    _uiTimer = null;
   }
 
   Future<void> _persistActiveTripSnapshot() async {
