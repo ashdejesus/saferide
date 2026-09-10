@@ -14,6 +14,7 @@ import 'trip_detail_screen.dart';
 import 'route_detail_screen.dart';
 import '../widgets/m3_button_group.dart';
 import '../theme/motion_scheme.dart';
+import '../widgets/safety_ring_painter.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -24,11 +25,19 @@ class TripsScreen extends StatefulWidget {
 
 class _TripsScreenState extends State<TripsScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  late Future<List<Trip>> _tripsFuture;
+  final List<Trip> _trips = [];
+  final List<RouteAggregation> _routeAggregations = [];
+  
+  bool _isLoadingTrips = false;
+  bool _isLoadingRoutes = false;
+  bool _hasMoreTrips = true;
+  
   late final AnimationController _animationController;
+  late final ScrollController _scrollController;
+  
   int _lastTripHistoryVersion = -1;
-  bool _initialized = false;
   int _routeViewIndex = 0;
+  static const int _limit = 20;
 
   @override
   void initState() {
@@ -37,95 +46,139 @@ class _TripsScreenState extends State<TripsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
+    _scrollController = ScrollController()..addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_routeViewIndex == 0 &&
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreTrips();
+    }
+  }
+
+  Future<void> _loadMoreTrips() async {
+    if (_isLoadingTrips || !_hasMoreTrips) return;
+    setState(() => _isLoadingTrips = true);
+    final database = context.read<AppDatabase>();
+    final newTrips = await database.getTrips(limit: _limit, offset: _trips.length);
+    if (mounted) {
+      setState(() {
+        if (newTrips.length < _limit) _hasMoreTrips = false;
+        _trips.addAll(newTrips);
+        _isLoadingTrips = false;
+      });
+    }
+  }
+
+  Future<void> _loadRoutes() async {
+    if (_isLoadingRoutes) return;
+    setState(() => _isLoadingRoutes = true);
+    final database = context.read<AppDatabase>();
+    final routes = await database.getRouteAggregations();
+    if (mounted) {
+      setState(() {
+        _routeAggregations.clear();
+        _routeAggregations.addAll(routes);
+        _isLoadingRoutes = false;
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    _trips.clear();
+    _hasMoreTrips = true;
+    await Future.wait([_loadMoreTrips(), _loadRoutes()]);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final tripController = context.watch<TripController>();
-    if (!_initialized) {
-      final database = context.read<AppDatabase>();
-      _tripsFuture = database.getTrips();
+    if (_lastTripHistoryVersion != tripController.tripHistoryVersion) {
       _lastTripHistoryVersion = tripController.tripHistoryVersion;
-      _initialized = true;
-    } else if (_lastTripHistoryVersion != tripController.tripHistoryVersion) {
-      final database = context.read<AppDatabase>();
-      _tripsFuture = database.getTrips();
-      _lastTripHistoryVersion = tripController.tripHistoryVersion;
+      // Start async load without blocking build
+      Future.microtask(_refreshAll);
     }
 
-    return FutureBuilder<List<Trip>>(
-      future: _tripsFuture,
-      builder: (context, snapshot) {
-        final trips = snapshot.data ?? [];
-        final isLoading = snapshot.connectionState == ConnectionState.waiting;
+    final itemCount = _routeViewIndex == 0 
+        ? 5 + _trips.length + (_hasMoreTrips ? 1 : 0)
+        : 5 + _routeAggregations.length;
 
-        final Map<String, List<Trip>> routesMap = {};
-        for (var t in trips) {
-          if (t.routeName != null && t.routeName!.trim().isNotEmpty) {
-            routesMap.putIfAbsent(t.routeName!.trim(), () => []).add(t);
-          }
-        }
-
-        final items = <Widget>[
-          Row(
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(20),
+      itemCount: itemCount,
+      itemBuilder: (context, i) {
+        Widget child;
+        if (i == 0) {
+          child = Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Expanded(child: SectionHeader(title: 'Trip Summary')),
               const SyncButton(),
             ],
-          ),
-          _TripsOverview(trips: trips, isLoading: isLoading),
-          const SizedBox(height: 16),
-          M3ButtonGroup<int>(
+          );
+        } else if (i == 1) {
+          child = _TripsOverview(trips: _trips, isLoading: _isLoadingTrips && _trips.isEmpty);
+        } else if (i == 2) {
+          child = const SizedBox(height: 16);
+        } else if (i == 3) {
+          child = M3ButtonGroup<int>(
             segments: const [
               ButtonSegment(value: 0, icon: Icon(Icons.list), label: Text('Individual Trips')),
               ButtonSegment(value: 1, icon: Icon(Icons.route), label: Text('By Route')),
             ],
             selected: {_routeViewIndex},
             onSelectionChanged: (val) => setState(() => _routeViewIndex = val.first),
-          ),
-          const SizedBox(height: 16),
-          if (!isLoading && trips.isEmpty)
-            EmptyState(
+          );
+        } else if (i == 4) {
+          if (_routeViewIndex == 0 && !_isLoadingTrips && _trips.isEmpty) {
+            child = EmptyState(
               icon: Icons.route,
               title: 'No trips yet',
-              message:
-                  'Start recording a trip to generate your first safety summary.',
+              message: 'Start recording a trip to generate your first safety summary.',
               ctaLabel: 'Start Trip',
               onCtaPressed: () => TripActionSheet.show(context),
-            ),
-          if (trips.isNotEmpty && _routeViewIndex == 0)
-            ...trips.map((trip) => _TripCard(trip: trip)),
-          if (trips.isNotEmpty && _routeViewIndex == 1 && routesMap.isEmpty)
-            const Padding(
+            );
+          } else if (_routeViewIndex == 1 && !_isLoadingRoutes && _routeAggregations.isEmpty) {
+            child = const Padding(
               padding: EdgeInsets.all(20),
               child: Text('No named routes found. Add a route name when completing a trip!'),
-            ),
-          if (trips.isNotEmpty && _routeViewIndex == 1)
-            ...routesMap.entries.map((e) => _RouteCard(routeName: e.key, routeTrips: e.value)),
-          const SizedBox(height: 80),
-        ];
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: items.length,
-          itemBuilder: (context, i) {
-            return _StaggeredItem(
-              index: i,
-              animation: _animationController,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
-                child: items[i],
-              ),
             );
-          },
+          } else {
+            child = const SizedBox.shrink();
+          }
+        } else {
+          final index = i - 5;
+          if (_routeViewIndex == 0) {
+            if (index < _trips.length) {
+              child = _TripCard(trip: _trips[index]);
+            } else {
+              child = const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
+            }
+          } else {
+            if (index < _routeAggregations.length) {
+              child = _RouteCardAgg(agg: _routeAggregations[index]);
+            } else {
+              child = const SizedBox.shrink();
+            }
+          }
+        }
+
+        return _StaggeredItem(
+          index: i,
+          animation: _animationController,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
+            child: child,
+          ),
         );
       },
     );
@@ -329,50 +382,113 @@ class _TripsOverview extends StatelessWidget {
 
     final totalTrips = trips.length;
     final averageRisk = totalTrips == 0
-        ? 0
-        : trips.fold<double>(0, (sum, trip) => sum + trip.riskScore) /
-              totalTrips;
+        ? 0.0
+        : trips.fold<double>(0, (sum, trip) => sum + trip.riskScore) / totalTrips;
+    
+    // Convert risk (where high is bad) to safety score (where high is good)
+    final averageSafetyScore = (100.0 - averageRisk).clamp(0.0, 100.0);
+    
+    Color ringColor;
+    if (averageSafetyScore >= 80) {
+      ringColor = const Color(0xFF2ECC71); // Safe
+    } else if (averageSafetyScore >= 50) {
+      ringColor = const Color(0xFFF39C12); // Moderate
+    } else {
+      ringColor = const Color(0xFFE74C3C); // Risky
+    }
+
     final highRiskCount = trips.where((trip) => trip.riskScore >= 40).length;
 
     return Card(
+      elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+        child: Row(
           children: [
-            Text(
-              'Your safety snapshot',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            // Circular gauge
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: averageSafetyScore),
+                duration: const Duration(milliseconds: 800),
+                curve: MotionScheme.spatialDefault,
+                builder: (context, animValue, child) {
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(110, 110),
+                        painter: SafetyRingPainter(
+                          value: (animValue / 100).clamp(0.0, 1.0),
+                          color: ringColor,
+                          trackColor: colorScheme.surfaceContainerHighest,
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${animValue.toInt()}',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: ringColor,
+                                ),
+                          ),
+                          Text(
+                            '/ 100',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurface.withOpacity(0.5),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _OverviewChip(
-                    label: 'Trips',
-                    value: totalTrips.toString(),
-                    color: colorScheme.primaryContainer,
+            const SizedBox(width: 20),
+            // Score explanation & Stats
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Safety Snapshot',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _OverviewChip(
-                    label: 'Avg Risk',
-                    value: averageRisk.toStringAsFixed(0),
-                    color: colorScheme.secondaryContainer,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Average safety across $totalTrips recorded trips.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.6),
+                        ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _OverviewChip(
-                    label: 'High Risk',
-                    value: highRiskCount.toString(),
-                    color: colorScheme.tertiaryContainer,
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _OverviewChip(
+                          label: 'High Risk',
+                          value: highRiskCount.toString(),
+                          color: colorScheme.errorContainer,
+                          textColor: colorScheme.onErrorContainer,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _OverviewChip(
+                          label: 'Avg Risk',
+                          value: averageRisk.toStringAsFixed(0),
+                          color: colorScheme.secondaryContainer,
+                          textColor: colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -386,16 +502,18 @@ class _OverviewChip extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.textColor,
   });
 
   final String label;
   final String value;
   final Color color;
+  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(14),
@@ -403,8 +521,8 @@ class _OverviewChip extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: textColor, fontWeight: FontWeight.bold)),
+          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: textColor?.withOpacity(0.8) ?? Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -502,27 +620,24 @@ class _StaggeredItem extends StatelessWidget {
   }
 }
 
-class _RouteCard extends StatefulWidget {
-  const _RouteCard({required this.routeName, required this.routeTrips});
+class _RouteCardAgg extends StatefulWidget {
+  const _RouteCardAgg({required this.agg});
 
-  final String routeName;
-  final List<Trip> routeTrips;
+  final RouteAggregation agg;
 
   @override
-  State<_RouteCard> createState() => _RouteCardState();
+  State<_RouteCardAgg> createState() => _RouteCardAggState();
 }
 
-class _RouteCardState extends State<_RouteCard> {
+class _RouteCardAggState extends State<_RouteCardAgg> {
   bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final routeTrips = widget.routeTrips;
-    final routeName = widget.routeName;
-    if (routeTrips.isEmpty) return const SizedBox.shrink();
+    final agg = widget.agg;
+    if (agg.tripCount == 0) return const SizedBox.shrink();
 
-    final avgScore = routeTrips.fold(0.0, (sum, t) => sum + t.riskScore) / routeTrips.length;
-    final badge = _RiskBadge.fromScore(context, avgScore);
+    final badge = _RiskBadge.fromScore(context, agg.averageRiskScore);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -534,8 +649,8 @@ class _RouteCardState extends State<_RouteCard> {
           transitionType: ContainerTransitionType.fadeThrough,
           transitionDuration: const Duration(milliseconds: 420),
           openBuilder: (context, _) => RouteDetailScreen(
-            routeName: routeName,
-            routeTrips: routeTrips,
+            routeName: agg.routeName,
+            routeAgg: agg, // We'll modify RouteDetailScreen to accept agg instead of routeTrips
           ),
           closedElevation: 0,
           openElevation: 0,
@@ -574,11 +689,11 @@ class _RouteCardState extends State<_RouteCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _RouteNameDisplay(
-                            routeName: routeName,
+                            routeName: agg.routeName,
                             isTitle: true,
                           ),
                           Text(
-                            '${routeTrips.length} Aggregated Trips',
+                            '${agg.tripCount} Aggregated Trips',
                             style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
                           ),
                         ],

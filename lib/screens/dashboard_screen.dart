@@ -14,6 +14,7 @@ import '../widgets/split_button.dart';
 import '../widgets/m3_progress_indicators.dart';
 import '../widgets/m3_button_group.dart';
 import '../theme/motion_scheme.dart';
+import '../widgets/safety_ring_painter.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Risk classification helpers (mirrors batch_accuracy_test.dart thresholds)
@@ -35,7 +36,6 @@ Color _riskColor(BuildContext context, _RiskLevel level) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dashboard Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
 class DashboardScreen extends StatefulWidget {
@@ -424,7 +424,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         Card(
           elevation: 4,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
             child: Row(
               children: [
                 // Circular gauge
@@ -445,7 +445,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             children: [
                               CustomPaint(
                                 size: const Size(110, 110),
-                                painter: _SafetyRingPainter(
+                                painter: SafetyRingPainter(
                                   value: animValue / 100,
                                   color: colorAnim ?? ringColor,
                                   trackColor: Theme.of(
@@ -1219,60 +1219,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 // NEW WIDGETS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Circular arc safety score painter
-class _SafetyRingPainter extends CustomPainter {
-  const _SafetyRingPainter({
-    required this.value,
-    required this.color,
-    required this.trackColor,
-  });
-
-  final double value; // 0.0–1.0
-  final Color color;
-  final Color trackColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final radius = (size.shortestSide / 2) - 8;
-    const strokeWidth = 12.0;
-
-    final trackPaint = Paint()
-      ..color = trackColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final arcPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    const startAngle = -pi / 2;
-    const fullSweep = 2 * pi;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      startAngle,
-      fullSweep,
-      false,
-      trackPaint,
-    );
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      startAngle,
-      fullSweep * value,
-      false,
-      arcPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_SafetyRingPainter old) =>
-      old.value != value || old.color != color;
-}
+// (Removed _SafetyRingPainter)
 
 /// λ / (1−λ) breakdown mini bar
 class _ScoreBreakdownRow extends StatelessWidget {

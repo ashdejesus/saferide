@@ -18,6 +18,21 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  int _devTapCount = 0;
+  bool _isDevModeEnabled = false;
+
+  void _onDevTap() {
+    if (_isDevModeEnabled) return;
+    _devTapCount++;
+    if (_devTapCount >= 5) {
+      setState(() {
+        _isDevModeEnabled = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Developer mode enabled')),
+      );
+    }
+  }
   Future<void> _handleSignOut(
     BuildContext context,
     AuthService auth,
@@ -147,7 +162,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: GestureDetector(
+          onTap: _onDevTap,
+          child: const Text('Settings'),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -166,7 +184,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          const SectionHeader(title: 'Adaptive Context Factors'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(child: SectionHeader(title: 'Adaptive Context Factors')),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: TextButton(
+                  onPressed: () => tripController.resetContextFactors(),
+                  child: const Text('Reset to Default', style: TextStyle(fontSize: 12)),
+                ),
+              ),
+            ],
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
             child: Text(
@@ -233,38 +263,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          const SectionHeader(title: 'Developer & Testing'),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: const Text('Developer Test Mode'),
-                    subtitle: const Text('Bypass minimum speed limits (11 km/h) to allow testing sensors manually.'),
-                    value: tripController.testMode,
-                    onChanged: tripController.isTracking ? null : (val) {
-                      tripController.setTestMode(val);
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.science_outlined),
-                    title: const Text('Live Algorithm Demo'),
-                    subtitle: const Text('Real-time visualisation of all risk & trust scoring formulas.'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AlgoDemoScreen(),
+          if (_isDevModeEnabled) ...[
+            const SectionHeader(title: 'Developer & Testing'),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      title: const Text('Developer Test Mode'),
+                      subtitle: const Text('Bypass minimum speed limits (11 km/h) to allow testing sensors manually.'),
+                      value: tripController.testMode,
+                      onChanged: tripController.isTracking ? null : (val) {
+                        tripController.setTestMode(val);
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.science_outlined),
+                      title: const Text('Live Algorithm Demo'),
+                      subtitle: const Text('Real-time visualisation of all risk & trust scoring formulas.'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AlgoDemoScreen(),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
+          ],
 
           const SectionHeader(title: 'Privacy'),
           const SizedBox(height: 12),

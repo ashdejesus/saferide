@@ -36,9 +36,22 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final duration = widget.trip.endTime?.difference(widget.trip.startTime);
-    final routePoints = widget.trip.routePoints
+    final allRoutePoints = widget.trip.routePoints
         .map((point) => LatLng(point['lat']!, point['lng']!))
         .toList();
+
+    // Simplify polyline to prevent rendering lag for long trips
+    final int maxPoints = 500;
+    List<LatLng> routePoints;
+    if (allRoutePoints.length > maxPoints) {
+      final step = (allRoutePoints.length / maxPoints).ceil();
+      routePoints = [
+        for (int i = 0; i < allRoutePoints.length; i += step) allRoutePoints[i],
+        if ((allRoutePoints.length - 1) % step != 0) allRoutePoints.last,
+      ];
+    } else {
+      routePoints = allRoutePoints;
+    }
 
     final apiKey = dotenv.env['CARTO_API_KEY'] ?? '';
     final keyParam = apiKey.isNotEmpty ? '?key=$apiKey' : '';

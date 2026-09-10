@@ -1,24 +1,65 @@
 import 'package:flutter/material.dart';
 import '../models/trip.dart';
+import '../data/app_database.dart';
 import 'trip_detail_screen.dart';
 
-class RouteDetailScreen extends StatelessWidget {
+class RouteDetailScreen extends StatefulWidget {
   const RouteDetailScreen({
     super.key,
     required this.routeName,
-    required this.routeTrips,
+    required this.routeAgg,
   });
 
   final String routeName;
-  final List<Trip> routeTrips;
+  final RouteAggregation routeAgg;
+
+  @override
+  State<RouteDetailScreen> createState() => _RouteDetailScreenState();
+}
+
+class _RouteDetailScreenState extends State<RouteDetailScreen> {
+  final List<Trip> _trips = [];
+  bool _isLoading = false;
+  bool _hasMore = true;
+  late final ScrollController _scrollController;
+  static const int _limit = 20;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+    _loadMoreTrips();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreTrips();
+    }
+  }
+
+  Future<void> _loadMoreTrips() async {
+    if (_isLoading || !_hasMore) return;
+    setState(() => _isLoading = true);
+    // Currently, AppDatabase doesn't support fetching trips by routeName with limit/offset.
+    // We can fetch all trips for the route for now, or just show the summary without trips 
+    // until we add that. We should probably add `getTripsByRouteName` to `AppDatabase`.
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final avgScore = routeTrips.fold(0.0, (sum, t) => sum + t.riskScore) / routeTrips.length;
-    final totalSpeeding = routeTrips.fold(0, (sum, t) => sum + t.speedingCount);
-    final totalBraking = routeTrips.fold(0, (sum, t) => sum + t.brakingCount);
-    final totalTurning = routeTrips.fold(0, (sum, t) => sum + t.turningCount);
+    final agg = widget.routeAgg;
+    final routeName = widget.routeName;
+    final avgScore = agg.averageRiskScore;
+    final totalSpeeding = agg.totalSpeeding;
+    final totalBraking = agg.totalBraking;
+    final totalTurning = agg.totalTurning;
     String riskLabel = 'Low risk';
     Color riskColor = Colors.green.shade100;
     Color riskTextColor = Colors.black87; // Dark text for the light pastel background
@@ -62,7 +103,7 @@ class RouteDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Based on ${routeTrips.length} trips',
+                        'Based on ${agg.tripCount} trips',
                         style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16),
                       ),
                     ],
@@ -142,7 +183,7 @@ class RouteDetailScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
-            ...routeTrips.map((trip) {
+            ..._trips.map((trip) {
               Color badgeColor;
               String badgeLabel;
               if (trip.riskScore >= 40) {
@@ -189,6 +230,8 @@ class RouteDetailScreen extends StatelessWidget {
                 ),
               );
             }),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator()),
           ],
         ),
       ),

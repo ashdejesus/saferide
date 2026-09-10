@@ -956,6 +956,16 @@ class TripController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reset adaptive context factors to their defaults
+  void resetContextFactors() {
+    _adaptiveThresholds.updateContextFactors(
+      roadCondition: 1.0, // Default: Good
+      envNoise: 0.5, // Default: Moderate
+      trafficDensity: 0.5, // Default: Moderate
+    );
+    notifyListeners();
+  }
+
   /// Haversine distance between two GPS coordinates in meters
   /// Used for slope calculation: d(t) in S(t) = (h(t) - h(t-1)) / d(t)
   double _haversineDistance(

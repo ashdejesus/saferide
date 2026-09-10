@@ -11,6 +11,24 @@ import '../models/report.dart';
 import '../models/sync_status.dart';
 import '../models/trip.dart';
 
+class RouteAggregation {
+  final String routeName;
+  final int tripCount;
+  final double averageRiskScore;
+  final int totalSpeeding;
+  final int totalBraking;
+  final int totalTurning;
+
+  RouteAggregation({
+    required this.routeName,
+    required this.tripCount,
+    required this.averageRiskScore,
+    required this.totalSpeeding,
+    required this.totalBraking,
+    required this.totalTurning,
+  });
+}
+
 class AppDatabase {
   static const _databaseBaseName = 'saferide';
   static const _databaseVersion = 3;
@@ -264,13 +282,73 @@ class AppDatabase {
     );
   }
 
-  Future<List<Trip>> getTrips() async {
+  Future<List<Trip>> getTrips({int? limit, int? offset}) async {
     if (kIsWeb) {
-      return _webTrips.toList().reversed.toList();
+      var trips = _webTrips.toList().reversed.toList();
+      if (offset != null) trips = trips.skip(offset).toList();
+      if (limit != null) trips = trips.take(limit).toList();
+      return trips;
     }
     final db = await database;
-    final results = await db.query('trips', orderBy: 'start_time DESC');
+    final results = await db.query(
+      'trips',
+      orderBy: 'start_time DESC',
+      limit: limit,
+      offset: offset,
+    );
     return results.map(Trip.fromMap).toList();
+  }
+
+  Future<List<RouteAggregation>> getRouteAggregations() async {
+    if (kIsWeb) {
+      final map = <String, List<Trip>>{};
+      for (var t in _webTrips) {
+        if (t.routeName != null && t.routeName!.trim().isNotEmpty) {
+          map.putIfAbsent(t.routeName!.trim(), () => []).add(t);
+        }
+      }
+      return map.entries.map((e) {
+        final count = e.value.length;
+        final avgScore = count == 0 ? 0.0 : e.value.fold<double>(0, (s, t) => s + t.riskScore) / count;
+        final totalSpeeding = e.value.fold<int>(0, (s, t) => s + t.speedingCount);
+        final totalBraking = e.value.fold<int>(0, (s, t) => s + t.brakingCount);
+        final totalTurning = e.value.fold<int>(0, (s, t) => s + t.turningCount);
+        return RouteAggregation(
+          routeName: e.key,
+          tripCount: count,
+          averageRiskScore: avgScore,
+          totalSpeeding: totalSpeeding,
+          totalBraking: totalBraking,
+          totalTurning: totalTurning,
+        );
+      }).toList();
+    }
+    
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT 
+        route_name, 
+        COUNT(*) as count, 
+        AVG(risk_score) as avg_score,
+        SUM(speeding_count) as total_speeding,
+        SUM(braking_count) as total_braking,
+        SUM(turning_count) as total_turning
+      FROM trips
+      WHERE route_name IS NOT NULL AND route_name != ''
+      GROUP BY route_name
+      ORDER BY count DESC
+    ''');
+    
+    return results.map((row) {
+      return RouteAggregation(
+        routeName: row['route_name'] as String,
+        tripCount: (row['count'] as num).toInt(),
+        averageRiskScore: (row['avg_score'] as num).toDouble(),
+        totalSpeeding: (row['total_speeding'] as num?)?.toInt() ?? 0,
+        totalBraking: (row['total_braking'] as num?)?.toInt() ?? 0,
+        totalTurning: (row['total_turning'] as num?)?.toInt() ?? 0,
+      );
+    }).toList();
   }
 
   Future<Trip?> getTripById(int id) async {
