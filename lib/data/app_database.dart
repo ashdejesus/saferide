@@ -299,6 +299,25 @@ class AppDatabase {
     return results.map(Trip.fromMap).toList();
   }
 
+  Future<List<Trip>> getTripsByRouteName(String routeName, {int? limit, int? offset}) async {
+    if (kIsWeb) {
+      var trips = _webTrips.where((t) => t.routeName == routeName).toList().reversed.toList();
+      if (offset != null) trips = trips.skip(offset).toList();
+      if (limit != null) trips = trips.take(limit).toList();
+      return trips;
+    }
+    final db = await database;
+    final results = await db.query(
+      'trips',
+      where: 'route_name = ?',
+      whereArgs: [routeName],
+      orderBy: 'start_time DESC',
+      limit: limit,
+      offset: offset,
+    );
+    return results.map(Trip.fromMap).toList();
+  }
+
   Future<List<RouteAggregation>> getRouteAggregations() async {
     if (kIsWeb) {
       final map = <String, List<Trip>>{};

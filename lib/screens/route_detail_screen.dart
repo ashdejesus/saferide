@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/trip.dart';
 import '../data/app_database.dart';
 import 'trip_detail_screen.dart';
@@ -46,9 +47,21 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   Future<void> _loadMoreTrips() async {
     if (_isLoading || !_hasMore) return;
     setState(() => _isLoading = true);
-    // Currently, AppDatabase doesn't support fetching trips by routeName with limit/offset.
-    // We can fetch all trips for the route for now, or just show the summary without trips 
-    // until we add that. We should probably add `getTripsByRouteName` to `AppDatabase`.
+    
+    final database = context.read<AppDatabase>();
+    final newTrips = await database.getTripsByRouteName(
+      widget.routeName,
+      limit: _limit,
+      offset: _trips.length,
+    );
+    
+    if (mounted) {
+      setState(() {
+        if (newTrips.length < _limit) _hasMore = false;
+        _trips.addAll(newTrips);
+        _isLoading = false;
+      });
+    }
   }
 
   @override
