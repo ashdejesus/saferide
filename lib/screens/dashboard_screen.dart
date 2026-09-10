@@ -1139,6 +1139,11 @@ class _DashboardScreenState extends State<DashboardScreen>
             'Sharp turn',
             const Color(0xFF8E44AD),
           ),
+          risk_scoring.UnsafeEventType.pothole => (
+            Icons.warning,
+            'Pothole',
+            const Color(0xFF7F8C8D),
+          ),
         };
 
         children.add(
@@ -1515,137 +1520,99 @@ class _TripStatusPillState extends State<_TripStatusPill>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    Widget content;
-    if (!widget.isTracking) {
-      final background = colorScheme.surfaceContainerHighest;
-      final foreground = colorScheme.onSurface;
-      content = Container(
-        key: const ValueKey('idle'),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.pause_circle, size: 14, color: foreground),
-            const SizedBox(width: 8),
-            Text(
-              'Idle',
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: foreground),
-            ),
-          ],
-        ),
-      );
-    } else if (!widget.hasLivePosition) {
-      final background = const Color(0xFFF39C12).withOpacity(0.15);
-      final foreground = const Color(0xFFE67E22);
-      content = Container(
-        key: const ValueKey('searching'),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: foreground,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Searching for GPS...',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      content = AnimatedBuilder(
-        key: const ValueKey('recording'),
-        animation: _pulse,
-        builder: (context, _) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Color.lerp(
-              colorScheme.primaryContainer,
-              colorScheme.primary.withOpacity(0.35),
-              _pulse.value,
-            ),
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.primary.withOpacity(0.25 * _pulse.value),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.radio_button_checked,
-                size: 14,
-                color: Color.lerp(
-                  colorScheme.onPrimaryContainer,
-                  colorScheme.onPrimary,
-                  _pulse.value,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Recording',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Color.lerp(
-                    colorScheme.onPrimaryContainer,
-                    colorScheme.onPrimary,
-                    _pulse.value,
-                  ),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-      );
-    }
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, _) {
+        Color background;
+        Color foreground;
+        Widget iconWidget;
+        String label;
+        List<BoxShadow>? boxShadow;
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 800),
-      layoutBuilder: (currentChild, previousChildren) {
-        return Stack(
-          alignment: Alignment.centerLeft,
-          children: <Widget>[
-            ...previousChildren,
-            if (currentChild != null) currentChild,
-          ],
+        if (!widget.isTracking) {
+          background = colorScheme.surfaceContainerHighest;
+          foreground = colorScheme.onSurface;
+          iconWidget = Icon(Icons.pause_circle, size: 14, color: foreground);
+          label = 'Idle';
+        } else if (!widget.hasLivePosition) {
+          background = const Color(0xFFF39C12).withOpacity(0.15);
+          foreground = const Color(0xFFE67E22);
+          iconWidget = SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
+          );
+          label = 'Searching for GPS...';
+        } else {
+          background = Color.lerp(
+            colorScheme.primaryContainer,
+            colorScheme.primary.withOpacity(0.35),
+            _pulse.value,
+          )!;
+          foreground = Color.lerp(
+            colorScheme.onPrimaryContainer,
+            colorScheme.onPrimary,
+            _pulse.value,
+          )!;
+          boxShadow = [
+            BoxShadow(
+              color: colorScheme.primary.withOpacity(0.25 * _pulse.value),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ];
+          iconWidget = Icon(Icons.radio_button_checked, size: 14, color: foreground);
+          label = 'Recording';
+        }
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: MotionScheme.spatialDefault,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: boxShadow,
+          ),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: MotionScheme.spatialDefault,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: KeyedSubtree(
+                    key: ValueKey(label),
+                    child: iconWidget,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  layoutBuilder: (currentChild, previousChildren) {
+                    return Stack(
+                      alignment: Alignment.centerLeft,
+                      children: <Widget>[
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    );
+                  },
+                  child: Text(
+                    label,
+                    key: ValueKey(label),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: foreground,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: MotionScheme.effectsDefault),
-        child: SizeTransition(
-          sizeFactor: CurvedAnimation(parent: animation, curve: MotionScheme.spatialDefault),
-          axis: Axis.horizontal,
-          axisAlignment: -1.0,
-          child: child,
-        ),
-      ),
-      child: content,
     );
   }
 }

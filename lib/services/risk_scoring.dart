@@ -41,10 +41,9 @@ class AdaptiveThresholds {
   // Base thresholds
   double thetaSpeedingBase =
       40.0; // km/h default for through streets / boulevards
-  double thetaBrakingBase = -8.0; // m/s²
-  double thetaTurningBase =
-      4.5; // rad/s - raised to avoid false positives from phone handling/body movement
-  double thetaPotholeBase = 5.0; // m/s² vertical acceleration - raised to ignore jeepney vibrations (was 2.5)
+  double thetaBrakingBase = -4.0; // m/s² (lowered to realistic harsh braking)
+  double thetaTurningBase = 1.2; // rad/s (lowered to ~70 deg/sec)
+  double thetaPotholeBase = 2.5; // m/s² (reverted to detect average potholes)
   double thetaGyroStable = 0.8; // rad/s
   double thetaSpeedMin = 5.0; // minimum speed for pothole detection
 
@@ -377,7 +376,7 @@ class SlidingWindow {
 }
 
 /// Unsafe event type enumeration
-enum UnsafeEventType { speeding, braking, turning }
+enum UnsafeEventType { speeding, braking, turning, pothole }
 
 /// Represents an unsafe driving event
 class UnsafeEvent {

@@ -774,6 +774,7 @@ class TripController extends ChangeNotifier {
       if (isPothole && _cooldownElapsed(_lastPotholeEvent)) {
         _potholeCount++;
         _lastPotholeEvent = DateTime.now();
+        _recordEvent(risk_scoring.UnsafeEventType.pothole);
       }
     }
 

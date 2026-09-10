@@ -834,35 +834,73 @@ class _ReportingGuidelinesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          childrenPadding: const EdgeInsets.only(
-            left: 20,
-            right: 20,
-            bottom: 20,
-          ),
-          leading: Icon(Icons.lightbulb_outline, color: colorScheme.primary),
-          title: Text(
-            'Reporting Guidelines',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          children: const [
-            _GuidelineItem(
+      elevation: 0,
+      color: colorScheme.primaryContainer.withOpacity(0.4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: colorScheme.primary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.tips_and_updates_rounded,
+                    color: colorScheme.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reporting Guidelines',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Help us keep the community safe',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const _GuidelineItem(
+              icon: Icons.check_circle_outline,
               title: 'Be Accurate',
               description: 'Accurate reports build your trust score.',
             ),
-            SizedBox(height: 12),
-            _GuidelineItem(
+            const SizedBox(height: 16),
+            const _GuidelineItem(
+              icon: Icons.history_rounded,
               title: 'Stay Consistent',
-              description:
-                  'Consistent reporting patterns increase community trust.',
+              description: 'Consistent reporting patterns increase community trust.',
             ),
-            SizedBox(height: 12),
-            _GuidelineItem(
+            const SizedBox(height: 16),
+            const _GuidelineItem(
+              icon: Icons.notes_rounded,
               title: 'Add Details',
               description: 'More context helps validate your report.',
             ),
@@ -874,36 +912,46 @@ class _ReportingGuidelinesCard extends StatelessWidget {
 }
 
 class _GuidelineItem extends StatelessWidget {
-  const _GuidelineItem({required this.title, required this.description});
+  const _GuidelineItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 
+  final IconData icon;
   final String title;
   final String description;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.check_circle_outline, size: 16),
-        const SizedBox(width: 12),
+        Icon(
+          icon, 
+          size: 20, 
+          color: colorScheme.primary,
+        ),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 description,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
-                ),
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                      height: 1.4,
+                    ),
               ),
             ],
           ),
@@ -1060,6 +1108,16 @@ class _ReportFormCard extends StatelessWidget {
               M3SeveritySelector(
                 severity: severity,
                 onChanged: onSeverityChanged,
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  'Drag to select severity',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.8),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(

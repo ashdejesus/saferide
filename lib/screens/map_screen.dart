@@ -374,6 +374,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       return;
     }
 
+    if (!force && !widget.isTracking) {
+      return;
+    }
+
     _animatedMapMove(center, _mapController.camera.zoom);
   }
 
@@ -519,6 +523,16 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   onChanged: (val) {
                     setState(() => selectedSeverity = val);
                   },
+                ),
+                const SizedBox(height: 4),
+                Center(
+                  child: Text(
+                    'Drag to select severity',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -1614,6 +1628,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
           color = colorScheme.primary;
           icon = Icons.turn_right;
           break;
+        case risk_scoring.UnsafeEventType.pothole:
+          color = Colors.grey;
+          icon = Icons.warning;
+          break;
       }
       return Marker(
         point: ping.position,
@@ -1733,7 +1751,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
           ),
 
           // Loading Overlay
-          if (!hasRealTripRoute && widget.controller.currentPosition == null)
+          if (widget.isTracking && !hasRealTripRoute && widget.controller.currentPosition == null)
             Positioned.fill(
               child: Container(
                 color: colorScheme.surface.withOpacity(0.7),
@@ -1992,7 +2010,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               backgroundColor: colorScheme.errorContainer,
               foregroundColor: colorScheme.onErrorContainer,
               elevation: 4,
-              onPressed: () => _showReportHazardDialog(context, null),
+              onPressed: () => _showReportHazardDialog(context, widget.controller.recentEvents.lastOrNull),
               child: const Icon(Icons.warning_rounded),
             ),
           ),

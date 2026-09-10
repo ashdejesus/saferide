@@ -113,15 +113,17 @@ class _SeverityChipState extends State<_SeverityChip> with SingleTickerProviderS
   }
 
   Color _getContainerColor(int val, ColorScheme cs) {
-    if (val >= 4) return cs.error;
-    if (val == 3) return cs.tertiary; 
-    return cs.primary; 
+    switch (val) {
+      case 5: return Colors.red;
+      case 4: return Colors.orange;
+      case 3: return Colors.amber.shade700;
+      case 2: return Colors.lightGreen.shade600;
+      default: return Colors.green;
+    }
   }
 
   Color _getOnColor(int val, ColorScheme cs) {
-    if (val >= 4) return cs.onError;
-    if (val == 3) return cs.onTertiary;
-    return cs.onPrimary;
+    return Colors.white;
   }
 
   @override
