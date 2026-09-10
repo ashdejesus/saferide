@@ -36,6 +36,8 @@ class TripActionSheet {
     final routeController = TextEditingController(
       text: controller.activeTrip?.routeName ?? '',
     );
+    
+    risk_scoring.VehicleType selectedVehicle = vehicle;
 
     if (!context.mounted) return;
 
@@ -60,7 +62,36 @@ class TripActionSheet {
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 12),
-                  if (!controller.isTracking)
+                  if (!controller.isTracking) ...[
+                    SegmentedButton<risk_scoring.VehicleType>(
+                      segments: const [
+                        ButtonSegment(
+                          value: risk_scoring.VehicleType.jeepney,
+                          label: Text('Jeepney'),
+                          icon: Icon(Icons.directions_car),
+                        ),
+                        ButtonSegment(
+                          value: risk_scoring.VehicleType.bus,
+                          label: Text('Bus'),
+                          icon: Icon(Icons.directions_bus),
+                        ),
+                        ButtonSegment(
+                          value: risk_scoring.VehicleType.tricycle,
+                          label: Text('Tricycle'),
+                          icon: Icon(Icons.two_wheeler),
+                        ),
+                      ],
+                      selected: {selectedVehicle},
+                      onSelectionChanged: (val) {
+                        setState(() {
+                          selectedVehicle = val.first;
+                        });
+                      },
+                      style: SegmentedButton.styleFrom(
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     DropdownMenu<String>(
                       controller: routeController,
                       label: const Text('Route name (optional)'),
@@ -81,8 +112,8 @@ class TripActionSheet {
                           
                           final started = await controller.startTrip(
                             routeName: routeName.isEmpty ? null : routeName,
-                            vehicleMultiplier: vehicle.multiplier,
-                            vehicleType: vehicle.name,
+                            vehicleMultiplier: selectedVehicle.multiplier,
+                            vehicleType: selectedVehicle.name,
                           );
                           
                           if (!context.mounted) return;
@@ -106,6 +137,7 @@ class TripActionSheet {
                         }
                       },
                     ),
+                  ],
                   if (!controller.isTracking && suggestedRoutes.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(
@@ -192,8 +224,8 @@ class TripActionSheet {
                         } else {
                           final started = await controller.startTrip(
                             routeName: routeName.isEmpty ? null : routeName,
-                            vehicleMultiplier: vehicle.multiplier,
-                            vehicleType: vehicle.name,
+                            vehicleMultiplier: selectedVehicle.multiplier,
+                            vehicleType: selectedVehicle.name,
                           );
                           if (!context.mounted) return;
                           if (!started) {
