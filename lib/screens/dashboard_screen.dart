@@ -8,8 +8,6 @@ import 'settings_screen.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/section_header.dart';
 import '../widgets/trip_action_sheet.dart';
-import '../widgets/trust_score_meter.dart';
-
 import '../widgets/sensor_data_card.dart';
 import '../widgets/split_button.dart';
 import '../widgets/m3_progress_indicators.dart';
