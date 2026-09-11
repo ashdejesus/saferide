@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/permission_service.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import 'algo_demo_screen.dart';
@@ -20,6 +21,19 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _devTapCount = 0;
   bool _isDevModeEnabled = false;
+  late Future<bool> _batteryExemptFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _batteryExemptFuture = PermissionService.isBatteryOptimizationExempt();
+  }
+
+  void _refreshBatteryStatus() {
+    setState(() {
+      _batteryExemptFuture = PermissionService.isBatteryOptimizationExempt();
+    });
+  }
 
   void _onDevTap() {
     if (_isDevModeEnabled) return;
@@ -337,6 +351,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                      );
+                    },
+                  ),
+                  const Divider(),
+                  FutureBuilder<bool>(
+                    future: _batteryExemptFuture,
+                    builder: (context, snapshot) {
+                      final isExempt = snapshot.data ?? true;
+                      return ListTile(
+                        leading: Icon(
+                          isExempt ? Icons.battery_full : Icons.battery_alert,
+                          color: isExempt
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error,
+                        ),
+                        title: const Text('Battery Optimization'),
+                        subtitle: Text(
+                          isExempt
+                              ? 'Unrestricted — trip recording will work in the background'
+                              : 'Restricted — GPS may stop when screen is off',
+                        ),
+                        trailing: isExempt
+                            ? Icon(Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary)
+                            : FilledButton.tonal(
+                                onPressed: () async {
+                                  await PermissionService
+                                      .requestBatteryOptimizationExemption();
+                                  _refreshBatteryStatus();
+                                },
+                                child: const Text('Fix'),
+                              ),
                       );
                     },
                   ),

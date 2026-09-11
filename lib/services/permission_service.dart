@@ -2,25 +2,27 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-/// Handles all app permissions including location and battery optimization
+/// Handles all app permissions including location and battery optimization.
 class PermissionService {
-  /// Request all required permissions for SafeRide
-  /// Returns true if all critical permissions are granted
+  /// Request all required permissions for SafeRide.
+  /// Returns true if all critical permissions are granted.
   static Future<bool> requestAllPermissions() async {
     // Location permission is critical
     final locationGranted = await _requestLocationPermission();
 
-    // Notify user about battery optimization if needed
+    // Request battery optimization exemption on Android so GPS and sensors
+    // keep running reliably when the screen is off (Doze mode).
     if (!kIsWeb && Platform.isAndroid) {
-      await _notifyBatteryOptimization();
+      await requestBatteryOptimizationExemption();
     }
 
     return locationGranted;
   }
 
-  /// Request location permission with fallback logic
-  /// Accepts both "While Using App" and "Always Allow"
+  /// Request location permission with fallback logic.
+  /// Accepts both "While Using App" and "Always Allow".
   static Future<bool> _requestLocationPermission() async {
     // Check if location services are enabled
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -60,22 +62,41 @@ class PermissionService {
         kIsWeb; // Always allow on web to allow testing
   }
 
-  /// Notify user about battery optimization and provide link to settings
-  /// This doesn't request permission but informs user they may need to disable battery optimization
-  static Future<void> _notifyBatteryOptimization() async {
+  /// Requests battery optimization exemption via the system dialog.
+  ///
+  /// On Android 6+, this opens the system's "Allow unrestricted battery usage"
+  /// dialog directly — no manual settings navigation needed.
+  /// On iOS or web this is a no-op.
+  ///
+  /// Returns true if the app is already exempt or was just granted exemption.
+  static Future<bool> requestBatteryOptimizationExemption() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+
     try {
-      // We can't directly request battery optimization exemption from Flutter,
-      // but we store a flag indicating the user should check this
-      debugPrint(
-        'User should disable battery optimization for SafeRide in Settings',
-      );
-      // The UI layer can use this to show a reminder dialog
+      final status = await Permission.ignoreBatteryOptimizations.status;
+      if (status.isGranted) return true;
+
+      // This triggers the system dialog: "Allow <app> to always run in background?"
+      final result = await Permission.ignoreBatteryOptimizations.request();
+      debugPrint('Battery optimization exemption result: $result');
+      return result.isGranted;
     } catch (e) {
-      debugPrint('Error with battery optimization: $e');
+      debugPrint('Battery optimization exemption failed: $e');
+      return false;
     }
   }
 
-  /// Check if all critical permissions are satisfied
+  /// Whether the app currently has battery optimization exemption.
+  static Future<bool> isBatteryOptimizationExempt() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      return (await Permission.ignoreBatteryOptimizations.status).isGranted;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if all critical permissions are satisfied.
   static Future<bool> checkAllPermissions() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return false;
@@ -85,7 +106,7 @@ class PermissionService {
         permission == LocationPermission.always;
   }
 
-  /// Open app settings for user to manually adjust permissions
+  /// Open app settings for user to manually adjust permissions.
   static Future<void> openAppSettings() async {
     await Geolocator.openAppSettings();
   }
