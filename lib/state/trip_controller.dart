@@ -220,6 +220,7 @@ class TripController extends ChangeNotifier {
     Position? pos;
     try {
       pos = await _locationService.currentPosition();
+      _currentPosition = pos;
       subscribeToAreaReports(pos.latitude, pos.longitude);
     } catch (e) {
       debugPrint('Failed to get location for area reports: $e');
@@ -237,6 +238,19 @@ class TripController extends ChangeNotifier {
     }
     
     notifyListeners();
+  }
+
+  /// Fetches the current location dynamically and updates `_currentPosition`.
+  Future<Position?> fetchCurrentLocation() async {
+    try {
+      final pos = await _locationService.currentPosition();
+      _currentPosition = pos;
+      notifyListeners();
+      return pos;
+    } catch (e) {
+      debugPrint('Failed to fetch current location: $e');
+      return null;
+    }
   }
 
   /// Compute a live fused safety score (0-100) using current sensor counts
@@ -406,130 +420,131 @@ class TripController extends ChangeNotifier {
       debugPrint('TripController: Topic unsubscribe failed ($e)');
     });
 
-    await _positionSub?.cancel();
-    await _accelSub?.cancel();
-    await _gyroSub?.cancel();
-    _stopBuffering();
+    try {
+      await _positionSub?.cancel();
+      await _accelSub?.cancel();
+      await _gyroSub?.cancel();
+      _stopBuffering();
 
-    // Reset notification tracking
-    _consecutiveEventsInWindow = 0;
-    _lastNotificationTime = null;
+      // Reset notification tracking
+      _consecutiveEventsInWindow = 0;
+      _lastNotificationTime = null;
 
-    final endPosition = _currentPosition;
-    // Compute sensor-based risk (legacy counts -> normalized)
-    final weights = risk_scoring.RiskWeights();
-    final sensorRisk = risk_scoring.computeSensorRiskScore(
-      overspeedingCount: _speedingCount,
-      harshBrakingCount: _brakingCount,
-      sharpTurningCount: _turningCount,
-      potholeCount: _potholeCount,
-      totalSlopeDeviation: _totalSlopeDeviation,
-      totalWindows: _tripDurationWindows,
-      weights: weights,
-      contextualAdjustment: _adaptiveThresholds.getContextualAdjustment(),
-    );
+      final endPosition = _currentPosition;
+      // Compute sensor-based risk (legacy counts -> normalized)
+      final weights = risk_scoring.RiskWeights();
+      final sensorRisk = risk_scoring.computeSensorRiskScore(
+        overspeedingCount: _speedingCount,
+        harshBrakingCount: _brakingCount,
+        sharpTurningCount: _turningCount,
+        potholeCount: _potholeCount,
+        totalSlopeDeviation: _totalSlopeDeviation,
+        totalWindows: _tripDurationWindows,
+        weights: weights,
+        contextualAdjustment: _adaptiveThresholds.getContextualAdjustment(),
+      );
 
-    // Map remote reports to risk_scoring.PassengerReport and compute report risk
-    final reportRiskReports = _remoteReports
-        .map((r) => risk_scoring.PassengerReport(
-              riskRating: r.severity,
-              trust: r.passengerTrust,
-              timestamp: r.timestamp,
-            ))
-        .toList();
-    final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
+      // Map remote reports to risk_scoring.PassengerReport and compute report risk
+      final reportRiskReports = _remoteReports
+          .map((r) => risk_scoring.PassengerReport(
+                riskRating: r.severity,
+                trust: r.passengerTrust,
+                timestamp: r.timestamp,
+              ))
+          .toList();
+      final reportRisk = risk_scoring.computeReportRiskScore(reportRiskReports);
 
-    final sensorEventCount = _speedingCount + _brakingCount + _turningCount;
-    final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
-      sensorEventCount,
-      _remoteReports.length,
-    );
+      final sensorEventCount = _speedingCount + _brakingCount + _turningCount;
+      final adaptiveWeight = risk_scoring.computeAdaptiveWeight(
+        sensorEventCount,
+        _remoteReports.length,
+      );
 
-    final tripRisk = risk_scoring.computeTripRiskScore(
-      sensorRisk: sensorRisk,
-      reportRisk: reportRisk,
-      adaptiveWeight: adaptiveWeight,
-      inconsistencyPenalty: weights.phi,
-    );
+      final tripRisk = risk_scoring.computeTripRiskScore(
+        sensorRisk: sensorRisk,
+        reportRisk: reportRisk,
+        adaptiveWeight: adaptiveWeight,
+        inconsistencyPenalty: weights.phi,
+      );
 
-    final riskScore = (tripRisk * 100.0);
+      final riskScore = (tripRisk * 100.0);
 
-    // Auto-name generation using geocoding if routeName is empty
-    String? finalRouteName = _activeTrip!.routeName;
-    final actualStartLat = _activeTrip!.startLat ?? (_routePoints.isNotEmpty ? _routePoints.first['lat'] : null);
-    final actualStartLng = _activeTrip!.startLng ?? (_routePoints.isNotEmpty ? _routePoints.first['lng'] : null);
+      // Auto-name generation using geocoding if routeName is empty
+      String? finalRouteName = _activeTrip!.routeName;
+      final actualStartLat = _activeTrip!.startLat ?? (_routePoints.isNotEmpty ? _routePoints.first['lat'] : null);
+      final actualStartLng = _activeTrip!.startLng ?? (_routePoints.isNotEmpty ? _routePoints.first['lng'] : null);
 
-    if ((finalRouteName == null || finalRouteName.trim().isEmpty) && 
-        actualStartLat != null && 
-        actualStartLng != null && 
-        endPosition != null) {
-      try {
-        final geocoder = geocoding.Geocoding();
-        final startPlacemarks = await geocoder.placemarkFromCoordinates(
-          actualStartLat, 
-          actualStartLng,
-        );
-        final endPlacemarks = await geocoder.placemarkFromCoordinates(
-          endPosition.latitude, 
-          endPosition.longitude,
-        );
-        
-        if (startPlacemarks.isNotEmpty && endPlacemarks.isNotEmpty) {
-          String _getDetailedName(geocoding.Placemark p) {
-            if (p.subLocality != null && p.subLocality!.isNotEmpty) return p.subLocality!; // Barangay
-            if (p.street != null && p.street!.isNotEmpty && !p.street!.contains('+')) return p.street!; // Street
-            if (p.locality != null && p.locality!.isNotEmpty) return p.locality!; // City
-            if (p.name != null && p.name!.isNotEmpty && !p.name!.contains('+')) return p.name!; // Landmark
-            return 'Unknown';
-          }
-
-          final startLoc = _getDetailedName(startPlacemarks.first);
-          final endLoc = _getDetailedName(endPlacemarks.first);
+      if ((finalRouteName == null || finalRouteName.trim().isEmpty) && 
+          actualStartLat != null && 
+          actualStartLng != null && 
+          endPosition != null) {
+        try {
+          final geocoder = geocoding.Geocoding();
+          final results = await Future.wait([
+            geocoder.placemarkFromCoordinates(actualStartLat, actualStartLng),
+            geocoder.placemarkFromCoordinates(endPosition.latitude, endPosition.longitude),
+          ]).timeout(const Duration(seconds: 3));
           
-          if (startLoc != 'Unknown' || endLoc != 'Unknown') {
-            finalRouteName = '${startLoc == 'Unknown' ? 'Start' : startLoc} to ${endLoc == 'Unknown' ? 'Destination' : endLoc}';
+          final startPlacemarks = results[0];
+          final endPlacemarks = results[1];
+          
+          if (startPlacemarks.isNotEmpty && endPlacemarks.isNotEmpty) {
+            String _getDetailedName(geocoding.Placemark p) {
+              if (p.subLocality != null && p.subLocality!.isNotEmpty) return p.subLocality!; // Barangay
+              if (p.street != null && p.street!.isNotEmpty && !p.street!.contains('+')) return p.street!; // Street
+              if (p.locality != null && p.locality!.isNotEmpty) return p.locality!; // City
+              if (p.name != null && p.name!.isNotEmpty && !p.name!.contains('+')) return p.name!; // Landmark
+              return 'Unknown';
+            }
+
+            final startLoc = _getDetailedName(startPlacemarks.first);
+            final endLoc = _getDetailedName(endPlacemarks.first);
+            
+            if (startLoc != 'Unknown' || endLoc != 'Unknown') {
+              finalRouteName = '${startLoc == 'Unknown' ? 'Start' : startLoc} to ${endLoc == 'Unknown' ? 'Destination' : endLoc}';
+            }
           }
+        } catch (e) {
+          debugPrint('TripController: Geocoding failed for auto-naming: $e');
         }
-      } catch (e) {
-        debugPrint('TripController: Geocoding failed for auto-naming: $e');
       }
+
+      final completedTrip = _activeTrip!.copyWith(
+        endTime: DateTime.now(),
+        routeName: finalRouteName,
+        endLat: endPosition?.latitude,
+        endLng: endPosition?.longitude,
+        riskScore: riskScore.toDouble(),
+        speedingCount: _speedingCount,
+        brakingCount: _brakingCount,
+        turningCount: _turningCount,
+        routePoints: List.of(_routePoints),
+        syncStatus: SyncStatus.pending,
+      );
+
+      if (!_testMode) {
+        await _database.updateTrip(completedTrip);
+      }
+
+      // Unsubscribe reports listener
+      await _remoteReportsSub?.cancel();
+      _remoteReportsSub = null;
+      
+      // If there is an area sub we can let it be, or refresh it
+      // When stopping a trip, we revert back to area mode.
+      if (_currentPosition != null) {
+        subscribeToAreaReports(_currentPosition!.latitude, _currentPosition!.longitude);
+      }
+    } finally {
+      _activeTrip = null;
+      _isTracking = false;
+      _hasLivePosition = false;
+      _currentSpeed = 0;
+      _tripHistoryVersion++;
+      // Refresh completed trips so the map shows the new trip immediately
+      loadCompletedTrips().catchError((_) {});
+      notifyListeners();
     }
-
-    final completedTrip = _activeTrip!.copyWith(
-      endTime: DateTime.now(),
-      routeName: finalRouteName,
-      endLat: endPosition?.latitude,
-      endLng: endPosition?.longitude,
-      riskScore: riskScore.toDouble(),
-      speedingCount: _speedingCount,
-      brakingCount: _brakingCount,
-      turningCount: _turningCount,
-      routePoints: List.of(_routePoints),
-      syncStatus: SyncStatus.pending,
-    );
-
-    if (!_testMode) {
-      await _database.updateTrip(completedTrip);
-    }
-
-    // Unsubscribe reports listener
-    await _remoteReportsSub?.cancel();
-    _remoteReportsSub = null;
-    
-    // If there is an area sub we can let it be, or refresh it
-    // When stopping a trip, we revert back to area mode.
-    if (_currentPosition != null) {
-      subscribeToAreaReports(_currentPosition!.latitude, _currentPosition!.longitude);
-    }
-
-    _activeTrip = null;
-    _isTracking = false;
-    _hasLivePosition = false;
-    _currentSpeed = 0;
-    _tripHistoryVersion++;
-    // Refresh completed trips so the map shows the new trip immediately
-    loadCompletedTrips().catchError((_) {});
-    notifyListeners();
   }
 
   Future<void> deleteTrip(int tripId) async {

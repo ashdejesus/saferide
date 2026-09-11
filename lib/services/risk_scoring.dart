@@ -29,9 +29,9 @@ class SensorReading {
 
 /// Adaptive thresholds for event detection
 enum VehicleType {
-  jeepney(1.00),
+  jeepney(0.75), // Lowered from 1.0 to increase thresholds (less sensitive to bumps/turns)
   bus(1.20),
-  tricycle(0.85);
+  tricycle(0.65); // Lowered from 0.85 to increase thresholds significantly for bumpy rides
 
   final double multiplier;
   const VehicleType(this.multiplier);
@@ -42,9 +42,9 @@ class AdaptiveThresholds {
   double thetaSpeedingBase =
       40.0; // km/h default for through streets / boulevards
   double thetaBrakingBase = -4.0; // m/s² (lowered to realistic harsh braking)
-  double thetaTurningBase = 1.2; // rad/s (lowered to ~70 deg/sec)
-  double thetaPotholeBase = 2.5; // m/s² (reverted to detect average potholes)
-  double thetaGyroStable = 0.8; // rad/s
+  double thetaTurningBase = 1.6; // rad/s (increased from 1.2 to reduce false sharp turns)
+  double thetaPotholeBase = 4.0; // m/s² (increased from 2.5 to reduce false potholes)
+  double thetaGyroStable = 1.2; // rad/s (increased from 0.8 to allow more movement during potholes)
   double thetaSpeedMin = 5.0; // minimum speed for pothole detection
 
   // Vehicle type multiplier (Baseline)

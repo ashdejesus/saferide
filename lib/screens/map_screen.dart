@@ -1826,7 +1826,14 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   heroTag: 'map_my_location_${widget.isFullScreen}',
                   backgroundColor: colorScheme.surface,
                   foregroundColor: colorScheme.primary,
-                  onPressed: () {
+                  onPressed: () async {
+                    if (!widget.isTracking) {
+                      final pos = await widget.controller.fetchCurrentLocation();
+                      if (pos != null && mounted) {
+                        _animatedMapMove(LatLng(pos.latitude, pos.longitude), _mapController.camera.zoom);
+                        return;
+                      }
+                    }
                     _syncMapCenter(force: true);
                   },
                   child: const Icon(Icons.my_location),
