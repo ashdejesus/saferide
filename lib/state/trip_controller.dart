@@ -524,6 +524,12 @@ class TripController extends ChangeNotifier {
 
       if (!_testMode) {
         await _database.updateTrip(completedTrip);
+        
+        // Schedule a sync reminder if there are pending items
+        final counts = await _database.getPendingCounts();
+        if (counts.total > 0) {
+          _notificationService.scheduleSyncReminder();
+        }
       }
 
       // Unsubscribe reports listener

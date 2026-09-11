@@ -15,6 +15,7 @@ import 'route_detail_screen.dart';
 import '../widgets/m3_button_group.dart';
 import '../theme/motion_scheme.dart';
 import '../widgets/safety_ring_painter.dart';
+import '../services/sync_service.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -118,11 +119,17 @@ class _TripsScreenState extends State<TripsScreen>
       itemBuilder: (context, i) {
         Widget child;
         if (i == 0) {
-          child = Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Expanded(child: SectionHeader(title: 'Trip Summary')),
-              const SyncButton(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Expanded(child: SectionHeader(title: 'Trip Summary')),
+                  SyncButton(),
+                ],
+              ),
+              PendingSyncBanner(),
             ],
           );
         } else if (i == 1) {
@@ -213,8 +220,17 @@ class _TripCardState extends State<_TripCard> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Dismissible(
         key: ValueKey(trip.id),
-        direction: DismissDirection.endToStart,
+        direction: DismissDirection.horizontal,
         background: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(Icons.cloud_upload, color: colorScheme.onPrimaryContainer),
+        ),
+        secondaryBackground: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
@@ -224,6 +240,25 @@ class _TripCardState extends State<_TripCard> {
           child: Icon(Icons.delete, color: colorScheme.onError),
         ),
         confirmDismiss: (direction) async {
+          if (direction == DismissDirection.startToEnd) {
+            // Swipe from left to right: Sync
+            final syncService = context.read<SyncService>();
+            if (!syncService.isSyncing) {
+              syncService.syncPending().then((result) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result.success ? 'Sync successful' : 'Sync failed: ${result.message}'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              });
+            }
+            return false; // Do not dismiss the card when syncing
+          }
+          
+          // Swipe from right to left: Delete
           return await showDialog<bool>(
             context: context,
             builder: (BuildContext context) {
@@ -246,10 +281,12 @@ class _TripCardState extends State<_TripCard> {
           );
         },
         onDismissed: (direction) {
-          context.read<TripController>().deleteTrip(trip.id!);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Trip deleted')),
-          );
+          if (direction == DismissDirection.endToStart) {
+            context.read<TripController>().deleteTrip(trip.id!);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Trip deleted')),
+            );
+          }
         },
         child: OpenContainer<void>(
           transitionType: ContainerTransitionType.fadeThrough,

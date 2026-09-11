@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../data/app_database.dart';
+import '../services/notification_service.dart';
 import '../models/sync_status.dart';
 import '../models/trip.dart';
 
@@ -235,6 +238,9 @@ class SyncService extends ChangeNotifier {
       _lastResult = result;
       _isSyncing = false;
       notifyListeners();
+      
+      NotificationService().cancelSyncReminder();
+      
       return result;
     } catch (error) {
       final result = SyncResult.failed(error.toString());

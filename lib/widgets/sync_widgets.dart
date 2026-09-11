@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -131,3 +132,88 @@ class _SyncButtonState extends State<SyncButton> {
     );
   }
 }
+
+/// Listens for Wi-Fi connections and prompts the user to sync offline data
+class WifiSyncListener extends StatefulWidget {
+  final Widget child;
+  const WifiSyncListener({super.key, required this.child});
+
+  @override
+  State<WifiSyncListener> createState() => _WifiSyncListenerState();
+}
+
+class _WifiSyncListenerState extends State<WifiSyncListener> {
+  late final Stream<List<ConnectivityResult>> _connectivityStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectivityStream = Connectivity().onConnectivityChanged;
+    
+    _connectivityStream.listen((List<ConnectivityResult> results) async {
+      if (results.contains(ConnectivityResult.wifi)) {
+        if (!mounted) return;
+        final database = context.read<AppDatabase>();
+        final counts = await database.getPendingCounts();
+        
+        if (counts.total > 0 && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text("You're on Wi-Fi! 📶 Sync your pending trips now without using your mobile data."),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 10),
+              action: SnackBarAction(
+                label: 'Sync Now',
+                onPressed: () {
+                  context.read<SyncService>().syncPending();
+                },
+              ),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+
+class PendingSyncBanner extends StatelessWidget {
+  const PendingSyncBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final database = context.read<AppDatabase>();
+    return FutureBuilder(
+      future: database.getPendingCounts(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+        final counts = snapshot.data;
+        if (counts == null || counts.total == 0) return const SizedBox.shrink();
+        return Card(
+          color: Theme.of(context).colorScheme.tertiaryContainer,
+          margin: const EdgeInsets.only(top: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(Icons.cloud_off, color: Theme.of(context).colorScheme.onTertiaryContainer),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'You have  pending items to sync.',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+

@@ -10,8 +10,12 @@ import 'services/sync_service.dart';
 import 'services/auth_service.dart';
 import 'services/preferences_service.dart';
 import 'state/trip_controller.dart';
+import 'services/passenger_reporting_service.dart';
 import 'theme.dart';
 import 'theme/motion_scheme.dart';
+import 'screens/auth_screen.dart';
+import 'widgets/sync_widgets.dart';
+import 'main_demo.dart' as demo;
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
@@ -82,16 +86,20 @@ class _SafeRideAppState extends State<SafeRideApp> {
       providers: [
         Provider<AppDatabase>.value(value: widget.database),
         Provider<AuthService>.value(value: widget.auth),
+        Provider<PassengerReportingService>(
+          create: (_) => PassengerReportingService(),
+        ),
         ChangeNotifierProvider.value(value: widget.sync),
         ChangeNotifierProvider(
           key: ValueKey(_controllerScopeKey),
           create: (context) => TripController(database: widget.database),
         ),
       ],
-      child: MaterialApp(
-        title: 'SafeRide',
-        theme: buildSafeRideTheme(),
-        home: _AgreementCheckWrapper(
+      child: WifiSyncListener(
+        child: MaterialApp(
+          title: 'SafeRide',
+          theme: buildSafeRideTheme(),
+          home: _AgreementCheckWrapper(
           preferences: widget.preferences,
           child: StreamBuilder<User?>(
             stream: widget.auth.authStateChanges(),
@@ -257,6 +265,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
               );
             },
           ),
+        ),
         ),
       ),
     );

@@ -12,6 +12,7 @@ import '../theme/motion_scheme.dart';
 import '../widgets/m3_severity_selector.dart';
 import '../widgets/m3_bouncy_chip.dart';
 import '../widgets/m3_severity_label.dart';
+import '../data/app_database.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -625,10 +626,19 @@ class _TrustMetricsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trustColor = _getTrustColor(context, metrics.overallTrust);
-    final cs = Theme.of(context).colorScheme;
+    final database = context.watch<AppDatabase>();
+    
+    return FutureBuilder<PendingCounts>(
+      future: database.getPendingCounts(),
+      builder: (context, snapshot) {
+        final pendingCounts = snapshot.data;
+        final hasPending = pendingCounts != null && pendingCounts.total > 0;
+        final currentTrust = metrics.overallTrust;
+        final potentialTrust = hasPending ? (currentTrust + 0.15).clamp(0.0, 1.0) : currentTrust;
+        final trustColor = _getTrustColor(context, currentTrust);
+        final cs = Theme.of(context).colorScheme;
 
-    return Card(
+        return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -653,6 +663,16 @@ class _TrustMetricsCard extends StatelessWidget {
                         'Your Trust Score',
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
+                      if (hasPending) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '+15 potential points pending',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -699,6 +719,42 @@ class _TrustMetricsCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: trustColor,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Stack(
+              children: [
+                // Background
+                Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                // Potential Gain (Ghosted)
+                if (hasPending)
+                  FractionallySizedBox(
+                    widthFactor: potentialTrust,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: cs.primary.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                // Current Trust
+                FractionallySizedBox(
+                  widthFactor: currentTrust,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: trustColor,
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
@@ -765,6 +821,8 @@ class _TrustMetricsCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }

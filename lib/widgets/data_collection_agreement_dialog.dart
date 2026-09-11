@@ -97,37 +97,33 @@ class DataCollectionAgreementDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                spacing: 8,
                 children: [
-                  Expanded(
-                    child: FilledButton.tonal(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Learn More'),
-                    ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Decline'),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () async {
-                        // Request location permission first
-                        final hasPermission =
-                            await PermissionService.requestAllPermissions();
+                  FilledButton(
+                    onPressed: () async {
+                      // Request location permission first
+                      final hasPermission =
+                          await PermissionService.requestAllPermissions();
 
-                        if (!context.mounted) return;
+                      if (!context.mounted) return;
 
-                        // Show battery optimization reminder
-                        if (hasPermission) {
-                          await _showBatteryOptimizationReminder(context);
-                        }
+                      // Show battery optimization reminder
+                      if (hasPermission) {
+                        await _showBatteryOptimizationReminder(context);
+                      }
 
-                        if (!context.mounted) return;
+                      if (!context.mounted) return;
 
-                        onAccept();
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('I Understand & Accept'),
-                    ),
+                      onAccept();
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('I Understand & Accept'),
                   ),
                 ],
               ),

@@ -135,6 +135,7 @@ class WindowMetrics {
   final double maxAngularVelocity; // g_w_max
   final List<double> speedVariations; // Δv(k) values
   final double maxSpeedDeceleration; // Most negative speed change
+  final double maxLinearAcceleration; // Max linear accel magnitude
   final List<SensorReading> readings;
 
   WindowMetrics({
@@ -142,14 +143,15 @@ class WindowMetrics {
     required this.maxAngularVelocity,
     required this.speedVariations,
     required this.maxSpeedDeceleration,
+    required this.maxLinearAcceleration,
     required this.readings,
   });
 
   bool get hasOverspeeding =>
       averageSpeed > 40.0; // km/h default overspeeding threshold
   bool get hasHarshBraking =>
-      maxSpeedDeceleration < -5.0; // Harsh braking threshold
-  bool get hasSharpTurning => maxAngularVelocity > 4.5; // Sharp turn threshold
+      maxLinearAcceleration > 2.5 && maxSpeedDeceleration < -0.5; // Hybrid braking threshold
+  bool get hasSharpTurning => maxAngularVelocity > 1.5; // Sharp turn threshold
 }
 
 /// Sensor magnitude computation
@@ -205,6 +207,7 @@ WindowMetrics extractWindowMetrics(
       maxAngularVelocity: 0,
       speedVariations: [],
       maxSpeedDeceleration: 0,
+      maxLinearAcceleration: 0,
       readings: [],
     );
   }
@@ -229,11 +232,20 @@ WindowMetrics extractWindowMetrics(
       ? 0.0
       : speedVariations.reduce((a, b) => a < b ? a : b);
 
+  // maxLinearAcceleration: maximum acceleration force (excluding gravity)
+  double maxLinearAcceleration = 0.0;
+  for (final r in windowReadings) {
+    final magnitude = computeAccelerationMagnitude(r.accelX, r.accelY, r.accelZ);
+    final linearAccel = (magnitude - 9.81).abs();
+    maxLinearAcceleration = max(maxLinearAcceleration, linearAccel);
+  }
+
   return WindowMetrics(
     averageSpeed: averageSpeed,
     maxAngularVelocity: maxAngularVelocity,
     speedVariations: speedVariations,
     maxSpeedDeceleration: maxSpeedDeceleration,
+    maxLinearAcceleration: maxLinearAcceleration,
     readings: windowReadings,
   );
 }

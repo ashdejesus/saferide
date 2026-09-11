@@ -1,7 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
-/// Handles push notifications for critical incidents
+/// Handles push notifications for critical incidents and local reminders
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
 
@@ -12,10 +15,23 @@ class NotificationService {
   NotificationService._internal();
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   /// Initialize notification service and set up handlers
   Future<void> initialize() async {
     try {
+      tz.initializeTimeZones();
+      
+      // Initialize local notifications
+      const initializationSettingsAndroid = AndroidInitializationSettings('launcher_icon');
+      const initializationSettingsIOS = DarwinInitializationSettings();
+      const initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
+      
+      await _localNotifications.initialize(initializationSettings);
+
       // Request notification permissions
       NotificationSettings settings = await _firebaseMessaging
           .requestPermission(
@@ -128,6 +144,44 @@ class NotificationService {
       debugPrint('Unsubscribed from topic: $topic');
     } catch (e) {
       debugPrint('Error unsubscribing from topic: $e');
+    }
+  }
+
+  /// Schedule a local reminder to sync offline data
+  Future<void> scheduleSyncReminder() async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'sync_reminder_channel',
+        'Sync Reminders',
+        channelDescription: 'Reminders to sync offline trips',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _localNotifications.zonedSchedule(
+        999, // Unique ID for sync reminder
+        '🚗 Safe ride today!',
+        'You have offline trips pending. Sync them to boost your Trust Score and help the community!',
+        tz.TZDateTime.now(tz.local).add(const Duration(hours: 1)),
+        details,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      debugPrint('Scheduled sync reminder for 1 hour from now');
+    } catch (e) {
+      debugPrint('Error scheduling sync reminder: $e');
+    }
+  }
+
+  /// Cancel the pending sync reminder
+  Future<void> cancelSyncReminder() async {
+    try {
+      await _localNotifications.cancel(999);
+      debugPrint('Cancelled pending sync reminder');
+    } catch (e) {
+      debugPrint('Error cancelling sync reminder: $e');
     }
   }
 }

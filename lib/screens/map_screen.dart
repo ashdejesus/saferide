@@ -422,7 +422,24 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     final lat = widget.controller.currentPosition?.latitude ?? widget.routePoints.last.latitude;
     final lng = widget.controller.currentPosition?.longitude ?? widget.routePoints.last.longitude;
 
-    String selectedCategory = recentEvent?.type.name.split('.').last.replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m.group(0)}').trim() ?? 'Hazard';
+    String selectedCategory = 'Hazard';
+    if (recentEvent != null) {
+      switch (recentEvent.type) {
+        case risk_scoring.UnsafeEventType.speeding:
+          selectedCategory = 'Speeding';
+          break;
+        case risk_scoring.UnsafeEventType.braking:
+          selectedCategory = 'Sudden Braking';
+          break;
+        case risk_scoring.UnsafeEventType.turning:
+          selectedCategory = 'Sharp Turning';
+          break;
+        case risk_scoring.UnsafeEventType.pothole:
+          selectedCategory = 'Pothole';
+          break;
+      }
+    }
+
     if (!['Speeding', 'Sudden Braking', 'Sharp Turning', 'Pothole', 'Reckless Driving', 'Accident', 'Hazard', 'Other'].contains(selectedCategory)) {
       selectedCategory = 'Other';
     }
