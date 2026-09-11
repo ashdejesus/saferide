@@ -605,10 +605,23 @@ class _IntroCard extends StatelessWidget {
   }
 }
 
-class _TrustMetricsCard extends StatelessWidget {
+class _TrustMetricsCard extends StatefulWidget {
   const _TrustMetricsCard({required this.metrics});
 
   final PassengerTrustMetrics metrics;
+
+  @override
+  State<_TrustMetricsCard> createState() => _TrustMetricsCardState();
+}
+
+class _TrustMetricsCardState extends State<_TrustMetricsCard> {
+  late Future<PendingCounts> _pendingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+  }
 
   Color _getTrustColor(BuildContext context, double trust) {
     final cs = Theme.of(context).colorScheme;
@@ -626,14 +639,12 @@ class _TrustMetricsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final database = context.watch<AppDatabase>();
-    
     return FutureBuilder<PendingCounts>(
-      future: database.getPendingCounts(),
+      future: _pendingFuture,
       builder: (context, snapshot) {
         final pendingCounts = snapshot.data;
         final hasPending = pendingCounts != null && pendingCounts.total > 0;
-        final currentTrust = metrics.overallTrust;
+        final currentTrust = widget.metrics.overallTrust;
         final potentialTrust = hasPending ? (currentTrust + 0.15).clamp(0.0, 1.0) : currentTrust;
         final trustColor = _getTrustColor(context, currentTrust);
         final cs = Theme.of(context).colorScheme;
@@ -696,7 +707,7 @@ class _TrustMetricsCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              _getTrustLabel(metrics.overallTrust),
+                              _getTrustLabel(widget.metrics.overallTrust),
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
                                     color: trustColor,
@@ -710,10 +721,10 @@ class _TrustMetricsCard extends StatelessWidget {
                   ),
                 ),
                 TweenAnimationBuilder<double>(
-                  key: ValueKey(metrics.overallTrust),
+                  key: ValueKey(widget.metrics.overallTrust),
                   duration: const Duration(milliseconds: 800),
                   curve: MotionScheme.spatialDefault,
-                  tween: Tween<double>(begin: 0.0, end: metrics.overallTrust),
+                  tween: Tween<double>(begin: 0.0, end: widget.metrics.overallTrust),
                   builder: (context, val, _) => Text(
                     '${(val * 100).toStringAsFixed(0)}%',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -763,29 +774,29 @@ class _TrustMetricsCard extends StatelessWidget {
             const SizedBox(height: 16),
             _TrustMetricRow(
               label: 'Consistency',
-              value: metrics.consistencyScore,
+              value: widget.metrics.consistencyScore,
               icon: Icons.timeline,
             ),
             const SizedBox(height: 12),
             _TrustMetricRow(
               label: 'Alignment with Sensors',
-              value: metrics.sensorAlignmentScore,
+              value: widget.metrics.sensorAlignmentScore,
               icon: Icons.sensors,
             ),
             const SizedBox(height: 12),
             _TrustMetricRow(
               label: 'Anomaly Detection',
-              value: 1.0 - metrics.anomalyScore,
+              value: 1.0 - widget.metrics.anomalyScore,
               icon: Icons.notifications,
             ),
-            if (metrics.totalReports > 0)
+            if (widget.metrics.totalReports > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Wrap(
                   spacing: 12,
                   children: [
                     Chip(
-                      label: Text('${metrics.totalReports} reports'),
+                      label: Text('${widget.metrics.totalReports} reports'),
                       avatar: Icon(
                         Icons.assignment,
                         size: 16,
@@ -796,7 +807,7 @@ class _TrustMetricsCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
                     Chip(
-                      label: Text('${metrics.verifiedCount} verified'),
+                      label: Text('${widget.metrics.verifiedCount} verified'),
                       avatar: Icon(
                         Icons.check_circle,
                         size: 16,
@@ -806,9 +817,9 @@ class _TrustMetricsCard extends StatelessWidget {
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
-                    if (metrics.flaggedCount > 0)
+                    if (widget.metrics.flaggedCount > 0)
                       Chip(
-                        label: Text('${metrics.flaggedCount} flagged'),
+                        label: Text('${widget.metrics.flaggedCount} flagged'),
                         avatar: Icon(
                           Icons.flag,
                           size: 18,

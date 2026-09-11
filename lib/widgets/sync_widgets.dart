@@ -70,7 +70,11 @@ class SyncStatusIndicator extends StatelessWidget {
   }
 }
 
-/// Sync button with progress indicator
+/// Sync button with progress indicator.
+///
+/// Caches the pending-counts future in [initState] so that [FutureBuilder]
+/// doesn't restart the DB query on every rebuild (which would flash through
+/// [ConnectionState.waiting] and cause a visible flicker).
 class SyncButton extends StatefulWidget {
   const SyncButton({super.key});
 
@@ -80,6 +84,20 @@ class SyncButton extends StatefulWidget {
 
 class _SyncButtonState extends State<SyncButton> {
   bool _isManualSyncing = false;
+  late Future<PendingCounts> _pendingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+  }
+
+  /// Re-query pending counts after a sync so the button reflects the new state.
+  void _refresh() {
+    setState(() {
+      _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+    });
+  }
 
   Future<void> _handleSync() async {
     if (_isManualSyncing) return;
@@ -91,6 +109,8 @@ class _SyncButtonState extends State<SyncButton> {
       final result = await sync.syncPending();
 
       if (!mounted) return;
+
+      _refresh();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -114,10 +134,9 @@ class _SyncButtonState extends State<SyncButton> {
   @override
   Widget build(BuildContext context) {
     final sync = context.watch<SyncService>();
-    final database = context.read<AppDatabase>();
 
-    return FutureBuilder(
-      future: database.getPendingCounts(),
+    return FutureBuilder<PendingCounts>(
+      future: _pendingFuture,
       builder: (context, snapshot) {
         final counts = snapshot.data;
         final hasPending = counts != null && counts.total > 0;
@@ -181,14 +200,31 @@ class _WifiSyncListenerState extends State<WifiSyncListener> {
   }
 }
 
-class PendingSyncBanner extends StatelessWidget {
+/// Banner shown when there are unsynced items pending upload.
+///
+/// Uses a cached future (set in [initState]) to avoid re-querying the DB on
+/// every rebuild — which was causing a flicker as [FutureBuilder] flashed
+/// through [ConnectionState.waiting] each time a parent notified listeners.
+class PendingSyncBanner extends StatefulWidget {
   const PendingSyncBanner({super.key});
 
   @override
+  State<PendingSyncBanner> createState() => _PendingSyncBannerState();
+}
+
+class _PendingSyncBannerState extends State<PendingSyncBanner> {
+  late Future<PendingCounts> _pendingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final database = context.read<AppDatabase>();
-    return FutureBuilder(
-      future: database.getPendingCounts(),
+    return FutureBuilder<PendingCounts>(
+      future: _pendingFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
         final counts = snapshot.data;
@@ -204,7 +240,7 @@ class PendingSyncBanner extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'You have  pending items to sync.',
+                    'You have pending items to sync.',
                     style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
                   ),
                 ),
@@ -216,4 +252,3 @@ class PendingSyncBanner extends StatelessWidget {
     );
   }
 }
-

@@ -48,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _controller;
   risk_scoring.VehicleType _selectedVehicle = risk_scoring.VehicleType.jeepney;
+  bool _wasTracking = false;
 
   @override
   void initState() {
@@ -69,6 +70,21 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.build(context);
     final controller = context.watch<TripController>();
     final colorScheme = Theme.of(context).colorScheme;
+
+    // When tracking starts, replay the stagger animation so the newly
+    // inserted tracking widgets animate in instead of popping/flickering.
+    if (controller.isTracking && !_wasTracking) {
+      _wasTracking = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _controller
+            ..reset()
+            ..forward();
+        }
+      });
+    } else if (!controller.isTracking && _wasTracking) {
+      _wasTracking = false;
+    }
 
     final items = <Widget>[
       _buildHeader(context, controller),
