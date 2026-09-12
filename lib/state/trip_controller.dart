@@ -915,6 +915,13 @@ class TripController extends ChangeNotifier {
 
     debugPrint('CRITICAL NOTIFICATION: [$criticality] $title - $body');
 
+    // Display the notification to the user
+    _notificationService.showLocalNotification(
+      title: title,
+      body: body,
+      payload: incidentType,
+    );
+
     // Log notification data
     final notificationData = CriticalIncidentNotification(
       incidentType: incidentType,

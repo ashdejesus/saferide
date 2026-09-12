@@ -127,6 +127,35 @@ class NotificationService {
     }
   }
 
+  /// Show a local notification for critical incidents
+  Future<void> showLocalNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'critical_incidents_channel',
+        'Critical Incidents',
+        channelDescription: 'Notifications for critical driving incidents',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _localNotifications.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        details,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('Error showing local notification: $e');
+    }
+  }
+
   /// Subscribe to topic for group notifications
   Future<void> subscribeToTopic(String topic) async {
     try {
@@ -167,7 +196,7 @@ class NotificationService {
         tz.TZDateTime.now(tz.local).add(const Duration(hours: 1)),
         details,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
       debugPrint('Scheduled sync reminder for 1 hour from now');
     } catch (e) {
