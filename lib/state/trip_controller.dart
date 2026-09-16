@@ -201,6 +201,15 @@ class TripController extends ChangeNotifier {
 
   void setTestMode(bool value) {
     _testMode = value;
+    if (_testMode && !_isTracking) {
+      _listenToSensors();
+      _startBuffering();
+    } else if (!_testMode && !_isTracking) {
+      _positionSub?.cancel();
+      _accelSub?.cancel();
+      _gyroSub?.cancel();
+      _stopBuffering();
+    }
     notifyListeners();
   }
 
@@ -916,7 +925,7 @@ class TripController extends ChangeNotifier {
     }
 
     // Get current safety score
-    final currentScore = liveSafetyScore;
+    final currentScore = liveSafetyScore ?? (_testMode ? 100 : null);
     if (currentScore == null) return;
 
     final riskScore = 1.0 - (currentScore / 100.0);

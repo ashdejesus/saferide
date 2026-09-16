@@ -11,6 +11,7 @@ import 'services/auth_service.dart';
 import 'services/preferences_service.dart';
 import 'state/trip_controller.dart';
 import 'services/passenger_reporting_service.dart';
+import 'services/notification_service.dart';
 import 'theme.dart';
 import 'theme/motion_scheme.dart';
 import 'screens/auth_screen.dart';
@@ -53,6 +54,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
   @override
   void initState() {
     super.initState();
+    NotificationService().initialize();
     _handleAuthChanged(widget.auth.currentUser);
     _authSubscription = widget.auth.authStateChanges().listen(
       _handleAuthChanged,

@@ -23,8 +23,12 @@ class NotificationService {
       tz.initializeTimeZones();
       
       // Initialize local notifications
-      const initializationSettingsAndroid = AndroidInitializationSettings('launcher_icon');
-      const initializationSettingsIOS = DarwinInitializationSettings();
+      const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initializationSettingsIOS = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       const initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid,
         iOS: initializationSettingsIOS,
@@ -151,12 +155,14 @@ class NotificationService {
   }) async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'critical_incidents_channel_v3',
+        'critical_incidents_channel_v4',
         'Critical Incidents',
         channelDescription: 'Notifications for critical driving incidents',
         importance: Importance.max,
         priority: Priority.high,
         playSound: true,
+        enableVibration: true,
+        icon: '@mipmap/ic_launcher',
       );
       const iosDetails = DarwinNotificationDetails(
         presentSound: true,
