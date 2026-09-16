@@ -937,11 +937,7 @@ class TripController extends ChangeNotifier {
       reportSeveritySum: _reportSeveritySum,
     );
 
-    // Only send notifications for medium and above
-    if (!_testMode && criticality.index < IncidentCriticality.medium.index) {
-      return;
-    }
-
+    // Send notifications for all recorded unsafe events (removed medium criticality filter)
     _lastNotificationTime = DateTime.now();
     _sendCriticalIncidentNotification(criticality);
 
@@ -989,15 +985,23 @@ class TripController extends ChangeNotifier {
     if (_reportSeveritySum > 15) {
       return 'high_report_severity';
     }
-    if (_speedingCount > 2) {
-      return 'speeding';
+    
+    if (_recentEvents.isNotEmpty) {
+      final type = _recentEvents.first.type;
+      switch (type) {
+        case risk_scoring.UnsafeEventType.speeding:
+          return 'speeding';
+        case risk_scoring.UnsafeEventType.braking:
+          return 'harsh_braking';
+        case risk_scoring.UnsafeEventType.turning:
+          return 'sharp_turn';
+        case risk_scoring.UnsafeEventType.pothole:
+          return 'pothole';
+        default:
+          return 'unsafe_event';
+      }
     }
-    if (_brakingCount > 2) {
-      return 'harsh_braking';
-    }
-    if (_turningCount > 2) {
-      return 'sharp_turn';
-    }
+    
     return 'unsafe_event';
   }
 

@@ -71,6 +71,7 @@ class LocationService {
           notificationTitle: 'SafeRide trip running',
           notificationText: 'Collecting driving data in the background.',
           enableWakeLock: true,
+          setReturnToActivity: true,
           notificationIcon: AndroidResource(
             name: 'ic_launcher',
             defType: 'mipmap',
@@ -111,6 +112,7 @@ class LocationService {
             notificationTitle: 'SafeRide trip running',
             notificationText: 'Collecting driving data in the background.',
             enableWakeLock: true,
+            setReturnToActivity: true,
             notificationIcon: AndroidResource(
               name: 'ic_launcher',
               defType: 'mipmap',

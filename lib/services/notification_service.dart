@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:permission_handler/permission_handler.dart';
 
 /// Handles push notifications for critical incidents and local reminders
 class NotificationService {
@@ -22,6 +23,9 @@ class NotificationService {
     try {
       tz.initializeTimeZones();
       
+      // Explicitly request permission using permission_handler for Android 13+
+      await Permission.notification.request();
+
       // Initialize local notifications
       const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
       const initializationSettingsIOS = DarwinInitializationSettings(
@@ -35,6 +39,22 @@ class NotificationService {
       );
       
       await _localNotifications.initialize(initializationSettings);
+
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _localNotifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      // Explicitly create the channel so it appears in Android Settings immediately
+      await androidImplementation?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'critical_incidents_channel_v5', // Changed to v5 to ensure fresh settings
+          'Critical Incidents',
+          description: 'Notifications for critical driving incidents',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
 
       // Request notification permissions
       NotificationSettings settings = await _firebaseMessaging
@@ -155,7 +175,7 @@ class NotificationService {
   }) async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'critical_incidents_channel_v4',
+        'critical_incidents_channel_v5',
         'Critical Incidents',
         channelDescription: 'Notifications for critical driving incidents',
         importance: Importance.max,
