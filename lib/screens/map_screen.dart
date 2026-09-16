@@ -327,6 +327,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   double _currentZoom = 15.0;
   StreamSubscription<CompassEvent>? _compassSubscription;
   double _heading = 0.0;
+  bool _followUser = true;
 
   late bool _showHighRiskAreas;
   late bool _showSaferRoutes;
@@ -375,6 +376,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     }
 
     if (!force && !widget.isTracking) {
+      return;
+    }
+
+    if (!force && !_followUser) {
       return;
     }
 
@@ -1413,10 +1418,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       polylines.add(
         Polyline<Object>(
           points: points,
-          color: color.withOpacity(0.6),
-          strokeWidth: 5.0,
-          borderStrokeWidth: 2.0,
-          borderColor: color,
+          color: color.withOpacity(0.25),
+          strokeWidth: 10.0,
           strokeCap: StrokeCap.round,
           strokeJoin: StrokeJoin.round,
         ),
@@ -1527,7 +1530,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
         : (avgSafety >= 50 ? Colors.orange : colorScheme.error);
 
     return Card(
-      elevation: 0,
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.3),
       margin: EdgeInsets.zero,
       color: colorScheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(
@@ -1575,7 +1579,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     'Avg Score',
                     style: TextStyle(
                       fontSize: 12,
-                      color: colorScheme.onSurface.withOpacity(0.6),
+                      color: colorScheme.onSurface.withOpacity(0.85),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -1669,6 +1674,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               initialZoom: hasRealTripRoute || hasCompletedTrips ? 15 : 2,
               onMapReady: _handleMapReady,
               onPositionChanged: (position, hasGesture) {
+                if (hasGesture && _followUser) {
+                  setState(() => _followUser = false);
+                }
                 final newZoom = position.zoom;
                 if (newZoom != null && newZoom != _currentZoom) {
                   setState(() => _currentZoom = newZoom as double);
@@ -1690,7 +1698,28 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               // Safer routes layer (green, score >= 80)
               PolylineLayer<Object>(polylines: saferRoutesPolylines),
               // High-risk area markers
-              MarkerLayer(markers: highRiskMarkers),
+              if (highRiskMarkers.isNotEmpty)
+                MarkerClusterLayerWidget(
+                  options: MarkerClusterLayerOptions(
+                    maxClusterRadius: 40,
+                    size: const Size(40, 40),
+                    markers: highRiskMarkers,
+                    builder: (context, markers) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            markers.length.toString(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               // Route interactive markers (info + arrows)
               MarkerLayer(markers: routeInteractiveMarkers),
               // Active trip polyline (on top)
@@ -1718,8 +1747,28 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   ],
                 ),
               // Reported incidents layer
-              if (_showReportedIncidents)
-                MarkerLayer(markers: incidentMarkers),
+              if (_showReportedIncidents && incidentMarkers.isNotEmpty)
+                MarkerClusterLayerWidget(
+                  options: MarkerClusterLayerOptions(
+                    maxClusterRadius: 40,
+                    size: const Size(40, 40),
+                    markers: incidentMarkers,
+                    builder: (context, markers) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            markers.length.toString(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               // Real-time Event Pings
               if (activePingMarkers.isNotEmpty)
                 MarkerLayer(markers: activePingMarkers),
@@ -1734,32 +1783,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                               widget.controller.currentPosition!.latitude,
                               widget.controller.currentPosition!.longitude,
                             ),
-                      width: 32,
-                      height: 32,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.surface,
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.3),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: Transform.rotate(
-                          angle: widget.isTracking ? (_heading * (pi / 180.0)) : 0.0,
-                          child: Icon(
-                            Icons.navigation,
-                            color: colorScheme.onPrimary,
-                            size: 16,
-                          ),
-                        ),
+                      width: 50,
+                      height: 50,
+                      child: _PulsingLocationMarker(
+                        color: colorScheme.primary,
+                        heading: widget.isTracking ? _heading : 0.0,
                       ),
                     ),
                   ],
@@ -1844,6 +1872,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   backgroundColor: colorScheme.surface,
                   foregroundColor: colorScheme.primary,
                   onPressed: () async {
+                    setState(() => _followUser = true);
                     if (!widget.isTracking) {
                       final pos = await widget.controller.fetchCurrentLocation();
                       if (pos != null && mounted) {
@@ -1853,26 +1882,24 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     }
                     _syncMapCenter(force: true);
                   },
-                  child: const Icon(Icons.my_location),
+                  child: Icon(
+                    _followUser ? Icons.my_location : Icons.location_searching,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton.small(
-                  heroTag: 'map_zoom_in_${widget.isFullScreen}',
+                  heroTag: 'zoom_in',
                   backgroundColor: colorScheme.surface,
                   foregroundColor: colorScheme.primary,
-                  onPressed: () {
-                    _animatedMapMove(_mapController.camera.center, _mapController.camera.zoom + 1);
-                  },
+                  onPressed: () => _animatedMapMove(_mapController.camera.center, _mapController.camera.zoom + 1),
                   child: const Icon(Icons.add),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton.small(
-                  heroTag: 'map_zoom_out_${widget.isFullScreen}',
+                  heroTag: 'zoom_out',
                   backgroundColor: colorScheme.surface,
                   foregroundColor: colorScheme.primary,
-                  onPressed: () {
-                    _animatedMapMove(_mapController.camera.center, _mapController.camera.zoom - 1);
-                  },
+                  onPressed: () => _animatedMapMove(_mapController.camera.center, _mapController.camera.zoom - 1),
                   child: const Icon(Icons.remove),
                 ),
                 const SizedBox(height: 8),
@@ -1921,17 +1948,91 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               ],
             ),
           ),
-          // Live tracking chip
-          if (widget.isTracking)
-            const Positioned(
-              top: 132,
+          // Live tracking UI group (top-left)
+          if (widget.controller.isTracking)
+            Positioned(
+              top: 12,
               left: 12,
-              child: _PulsingLiveTrackingChip(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 1. Live Safety Score (styled like Community Safety)
+                  Builder(
+                    builder: (context) {
+                      final score = widget.controller.liveSafetyScore;
+                      final color = (score == null)
+                          ? colorScheme.surface
+                          : (score >= 80
+                                ? Colors.green
+                                : (score >= 50
+                                      ? Colors.orange
+                                      : colorScheme.error));
+                      return Card(
+                        elevation: 0,
+                        margin: EdgeInsets.zero,
+                        color: colorScheme.surfaceContainerHigh,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: colorScheme.outline.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.shield_rounded, size: 22, color: colorScheme.primary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Live Safety',
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    score == null ? '--%' : '${score.toStringAsFixed(0)}%',
+                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: color,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text('Score', style: Theme.of(context).textTheme.bodySmall),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // 2. Live tracking chip
+                  const _PulsingLiveTrackingChip(),
+                ],
+              ),
             ),
           // "No trips yet" message when no data at all
-          if (!hasRealTripRoute && !hasCompletedTrips)
+          if (!hasRealTripRoute && !hasCompletedTrips && !widget.controller.isTracking)
             Positioned(
-              top: widget.isTracking ? 172 : 132,
+              top: 132,
               left: 12,
               child: Chip(
                 avatar: Icon(
@@ -1956,68 +2057,6 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 turningCount: widget.controller.turningCount,
               ),
             ),
-          // Live safety score overlay (top left)
-          if (widget.controller.isTracking)
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Builder(
-                builder: (context) {
-                  final score = widget.controller.liveSafetyScore;
-                  final color = (score == null)
-                      ? colorScheme.surface
-                      : (score >= 80
-                            ? Colors.green
-                            : (score >= 50
-                                  ? Colors.orange
-                                  : colorScheme.error));
-                  return Card(
-                    elevation: 0,
-                    margin: EdgeInsets.zero,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surface.withOpacity(0.96),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: colorScheme.outline.withOpacity(0.2),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Live Safety',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                score == null ? '--' : '$score%',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: color,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(Icons.shield, color: color, size: 28),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
           // Community Safety Stats (top-left, when not tracking)
           if (!widget.controller.isTracking && hasCompletedTrips)
             Positioned(
@@ -2027,8 +2066,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
             ),
           // Report Hazard FAB
           Positioned(
-            bottom: 60,
-            right: 12,
+            bottom: 84,
+            right: 16,
             child: FloatingActionButton(
               heroTag: 'report_fab',
               backgroundColor: colorScheme.errorContainer,
@@ -2040,8 +2079,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
           ),
           // Legend
           Positioned(
-            bottom: 12,
-            right: 12,
+            bottom: 24,
+            right: 16,
             child: _CollapsibleLegend(
               showHighRiskAreas: widget.showHighRiskAreas,
               showSaferRoutes: widget.showSaferRoutes,
@@ -2605,4 +2644,68 @@ Widget _mapControlDivider(ColorScheme colorScheme) {
     thickness: 1,
     color: colorScheme.outlineVariant.withOpacity(0.5),
   );
+}
+
+class _PulsingLocationMarker extends StatefulWidget {
+  final Color color;
+  final double heading;
+
+  const _PulsingLocationMarker({super.key, required this.color, this.heading = 0.0});
+
+  @override
+  State<_PulsingLocationMarker> createState() => _PulsingLocationMarkerState();
+}
+
+class _PulsingLocationMarkerState extends State<_PulsingLocationMarker> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 50 * _controller.value,
+              height: 50 * _controller.value,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withOpacity((1.0 - _controller.value) * 0.5),
+              ),
+            ),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: widget.color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                boxShadow: [
+                  BoxShadow(color: widget.color.withOpacity(0.3), blurRadius: 6, spreadRadius: 1),
+                ],
+              ),
+              child: Transform.rotate(
+                angle: widget.heading * (3.1415926535897932 / 180),
+                child: const Icon(Icons.navigation, size: 14, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

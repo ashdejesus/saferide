@@ -135,13 +135,16 @@ class NotificationService {
   }) async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'critical_incidents_channel',
+        'critical_incidents_channel_v2',
         'Critical Incidents',
         channelDescription: 'Notifications for critical driving incidents',
         importance: Importance.max,
         priority: Priority.high,
+        playSound: true,
       );
-      const iosDetails = DarwinNotificationDetails();
+      const iosDetails = DarwinNotificationDetails(
+        presentSound: true,
+      );
       const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
       await _localNotifications.show(
@@ -180,13 +183,16 @@ class NotificationService {
   Future<void> scheduleSyncReminder() async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'sync_reminder_channel',
+        'sync_reminder_channel_v2',
         'Sync Reminders',
         channelDescription: 'Reminders to sync offline trips',
         importance: Importance.defaultImportance,
         priority: Priority.defaultPriority,
+        playSound: true,
       );
-      const iosDetails = DarwinNotificationDetails();
+      const iosDetails = DarwinNotificationDetails(
+        presentSound: true,
+      );
       const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
       await _localNotifications.zonedSchedule(
