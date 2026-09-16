@@ -799,6 +799,44 @@ class TripController extends ChangeNotifier {
       }
     }
 
+    // In test mode, allow simulating speeding and braking via forward/backward phone thrusts
+    if (_testMode) {
+      if (event.y > 3.0) {
+        // Feed mock speed into the sliding window to trigger the real algorithm's average
+        final mockSpeedMs = (_adaptiveThresholds.getAdaptiveThreshold(_adaptiveThresholds.thetaSpeedingBase, applyVehicleMultiplier: false) + 15.0) / 3.6;
+        for (int i = 0; i < _speedWindow.size; i++) {
+          _speedWindow.add(mockSpeedMs);
+        }
+        
+        final avgSpeedKmh = _speedWindow.average * 3.6;
+        if (risk_scoring.detectOverspeeding(avgSpeedKmh, _adaptiveThresholds) && _cooldownElapsed(_lastSpeedEvent)) {
+          _speedingCount++;
+          _lastSpeedEvent = DateTime.now();
+          _recordEvent(risk_scoring.UnsafeEventType.speeding);
+        }
+      }
+      if (event.y < -3.0) {
+        // Feed mock deceleration into the sliding window to trigger the real algorithm's delta
+        final mockDecelMs = _adaptiveThresholds.getAdaptiveThreshold(_adaptiveThresholds.thetaBrakingBase) - 2.0;
+        
+        // Simulate previous window having a high speed, and current window stopping
+        _lastFilteredSpeed = -mockDecelMs; 
+        for (int i = 0; i < _speedWindow.size; i++) {
+          _speedWindow.add(0.0);
+        }
+        
+        final currentFilteredSpeed = _speedWindow.average;
+        final speedDelta = _lastFilteredSpeed != null ? currentFilteredSpeed - _lastFilteredSpeed! : 0.0;
+        _lastFilteredSpeed = currentFilteredSpeed;
+        
+        if (risk_scoring.detectHarshBraking(speedDelta, _adaptiveThresholds) && _cooldownElapsed(_lastBrakeEvent)) {
+          _brakingCount++;
+          _lastBrakeEvent = DateTime.now();
+          _recordEvent(risk_scoring.UnsafeEventType.braking);
+        }
+      }
+    }
+
     // Note: Braking detection is now based on speed variation (Δv) from GPS
     // which is calculated in _onPosition using _speedWindow
 
@@ -829,7 +867,7 @@ class TripController extends ChangeNotifier {
     if ((!_isRecentPothole() || _testMode) && isMoving && risk_scoring.detectSharpTurning(turnRate, _adaptiveThresholds)) {
       _turningStreak++;
       if (_turningCooldownElapsed(_lastTurnEvent)) {
-        if (_turningStreak >= 10) {
+        if (_turningStreak >= 10 || _testMode) {
           // Require sustained turn (10 samples min) to filter out bumps/phone jitter
           _turningCount++;
           _lastTurnEvent = DateTime.now();
@@ -872,7 +910,7 @@ class TripController extends ChangeNotifier {
 
   void _checkAndSendCriticalNotification() {
     // Throttle notifications: max one every 10 seconds
-    if (_lastNotificationTime != null &&
+    if (!_testMode && _lastNotificationTime != null &&
         DateTime.now().difference(_lastNotificationTime!).inSeconds < 10) {
       return;
     }
@@ -891,7 +929,7 @@ class TripController extends ChangeNotifier {
     );
 
     // Only send notifications for medium and above
-    if (criticality.index < IncidentCriticality.medium.index) {
+    if (!_testMode && criticality.index < IncidentCriticality.medium.index) {
       return;
     }
 

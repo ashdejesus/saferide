@@ -56,6 +56,17 @@ class NotificationService {
           'User declined or has not yet granted notification permission',
         );
       }
+
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
     } catch (e) {
       debugPrint('Error initializing notifications: $e');
     }
@@ -87,7 +98,12 @@ class NotificationService {
     debugPrint('Notification Body: ${notification?.body}');
     debugPrint('Notification Data: ${message.data}');
 
-    // Data can be used to update UI or trigger app behavior
+    if (notification != null) {
+      showLocalNotification(
+        title: notification.title ?? 'Notification',
+        body: notification.body ?? '',
+      );
+    }
   }
 
   /// Handle notification tap from background/terminated state
@@ -135,7 +151,7 @@ class NotificationService {
   }) async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'critical_incidents_channel_v2',
+        'critical_incidents_channel_v3',
         'Critical Incidents',
         channelDescription: 'Notifications for critical driving incidents',
         importance: Importance.max,

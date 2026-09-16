@@ -20,4 +20,10 @@ class PreferencesService {
   Future<void> resetDataCollectionAgreement() async {
     await _prefs.remove(_dataCollectionAgreementKey);
   }
+
+  bool get isDevModeEnabled => _prefs.getBool('developer_mode_enabled') ?? false;
+
+  Future<void> setDevMode(bool value) async {
+    await _prefs.setBool('developer_mode_enabled', value);
+  }
 }

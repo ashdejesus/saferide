@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../services/permission_service.dart';
+import '../services/preferences_service.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
 import 'algo_demo_screen.dart';
@@ -27,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _batteryExemptFuture = PermissionService.isBatteryOptimizationExempt();
+    _isDevModeEnabled = Provider.of<PreferencesService>(context, listen: false).isDevModeEnabled;
   }
 
   void _refreshBatteryStatus() {
@@ -42,6 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _isDevModeEnabled = true;
       });
+      Provider.of<PreferencesService>(context, listen: false).setDevMode(true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Developer mode enabled')),
       );
@@ -291,6 +294,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: tripController.testMode,
                       onChanged: tripController.isTracking ? null : (val) {
                         tripController.setTestMode(val);
+                        if (!val) {
+                          setState(() {
+                            _isDevModeEnabled = false;
+                            _devTapCount = 0;
+                          });
+                          Provider.of<PreferencesService>(context, listen: false).setDevMode(false);
+                        }
                       },
                     ),
                     const Divider(),
