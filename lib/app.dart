@@ -84,6 +84,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<PreferencesService>.value(value: widget.preferences),
         Provider<AppDatabase>.value(value: widget.database),
         Provider<AuthService>.value(value: widget.auth),
         Provider<PassengerReportingService>(
