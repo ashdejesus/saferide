@@ -33,6 +33,8 @@ class SyncService extends ChangeNotifier {
   double? get syncProgress => _syncProgress;
   int? get totalItems => _totalItems;
   int? get syncedItems => _syncedItems;
+  DateTime? _lastRestoreAt;
+  DateTime? get lastRestoreAt => _lastRestoreAt;
 
   Future<bool> initialize() async {
     if (_initialized) {
@@ -116,6 +118,9 @@ class SyncService extends ChangeNotifier {
 
         await _database.insertTrip(trip);
       }
+      // Notify listeners so TripsScreen can reload after cloud restore
+      _lastRestoreAt = DateTime.now();
+      notifyListeners();
     } catch (e) {
       debugPrint('SyncService: Failed to restore trips from cloud: $e');
     }

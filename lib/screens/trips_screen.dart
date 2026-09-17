@@ -39,7 +39,9 @@ class _TripsScreenState extends State<TripsScreen>
   int _lastTripHistoryVersion = -1;
   int _routeViewIndex = 0;
   String _selectedFilter = 'All';
+  String _selectedRouteFilter = 'All';
   static const int _limit = 20;
+  DateTime? _lastKnownRestoreAt;
 
   @override
   void initState() {
@@ -103,17 +105,26 @@ class _TripsScreenState extends State<TripsScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final tripController = context.watch<TripController>();
+    final syncService = context.watch<SyncService>();
+
+    // Refresh when a trip version change happens (new/deleted trip)
     if (_lastTripHistoryVersion != tripController.tripHistoryVersion) {
       _lastTripHistoryVersion = tripController.tripHistoryVersion;
-      // Start async load without blocking build
+      Future.microtask(_refreshAll);
+    }
+
+    // Refresh when cloud restore completes
+    if (_lastKnownRestoreAt != syncService.lastRestoreAt && syncService.lastRestoreAt != null) {
+      _lastKnownRestoreAt = syncService.lastRestoreAt;
       Future.microtask(_refreshAll);
     }
 
     final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
     final filteredTrips = _trips.where((t) {
       if (t.startTime.isBefore(ninetyDaysAgo)) return false;
-      if (_selectedFilter == 'Perfect' && (t.speedingCount + t.brakingCount + t.turningCount) > 0) return false;
-      if (_selectedFilter == 'Has Events' && (t.speedingCount + t.brakingCount + t.turningCount) == 0) return false;
+      if (_selectedFilter == 'Safe' && t.riskScore >= 20) return false;
+      if (_selectedFilter == 'Moderate' && (t.riskScore < 20 || t.riskScore >= 40)) return false;
+      if (_selectedFilter == 'Risky' && t.riskScore < 40) return false;
       return true;
     }).toList();
 
@@ -169,7 +180,7 @@ class _TripsScreenState extends State<TripsScreen>
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', 'Perfect', 'Has Events'].map((filter) {
+              children: ['All', 'Safe', 'Moderate', 'Risky'].map((filter) {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
@@ -221,7 +232,38 @@ class _TripsScreenState extends State<TripsScreen>
         }
       }
     } else {
-      if (!_isLoadingRoutes && _routeAggregations.isEmpty) {
+      // Route filter chips
+      children.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ['All', 'Safe', 'Moderate', 'Risky'].map((filter) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(filter),
+                    selected: _selectedRouteFilter == filter,
+                    onSelected: (selected) {
+                      if (selected) setState(() => _selectedRouteFilter = filter);
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      );
+
+      final filteredRoutes = _routeAggregations.where((agg) {
+        if (_selectedRouteFilter == 'Safe') return agg.averageRiskScore < 20;
+        if (_selectedRouteFilter == 'Moderate') return agg.averageRiskScore >= 20 && agg.averageRiskScore < 40;
+        if (_selectedRouteFilter == 'Risky') return agg.averageRiskScore >= 40;
+        return true;
+      }).toList();
+
+      if (!_isLoadingRoutes && filteredRoutes.isEmpty) {
         children.add(
           const Padding(
             padding: EdgeInsets.all(20),
@@ -229,7 +271,7 @@ class _TripsScreenState extends State<TripsScreen>
           ),
         );
       } else {
-        for (var agg in _routeAggregations) {
+        for (var agg in filteredRoutes) {
           children.add(_RouteCardAgg(agg: agg));
         }
       }

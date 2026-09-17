@@ -17,16 +17,23 @@ class NotificationService {
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  bool _initialized = false;
 
   /// Initialize notification service and set up handlers
   Future<void> initialize() async {
+    if (_initialized) return; // Prevent double-initialization
     try {
       tz.initializeTimeZones();
-      
-      // Explicitly request permission using permission_handler for Android 13+
-      await Permission.notification.request();
 
-      // Initialize local notifications
+      // Request notification permission (Android 13+)
+      final notifStatus = await Permission.notification.request();
+      debugPrint('[NotifService] Notification permission: $notifStatus');
+
+      // Request battery optimization exemption — critical for Samsung One UI
+      final batteryStatus = await Permission.ignoreBatteryOptimizations.request();
+      debugPrint('[NotifService] Battery optimization exemption: $batteryStatus');
+
+      // Initialize local notifications plugin
       const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
       const initializationSettingsIOS = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -37,62 +44,54 @@ class NotificationService {
         android: initializationSettingsAndroid,
         iOS: initializationSettingsIOS,
       );
-      
       await _localNotifications.initialize(initializationSettings);
+      debugPrint('[NotifService] flutter_local_notifications initialized');
 
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+      final AndroidFlutterLocalNotificationsPlugin? androidImpl =
           _localNotifications.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
-      // Explicitly create the channel so it appears in Android Settings immediately
-      await androidImplementation?.createNotificationChannel(
+      // Create high-priority channel (v8)
+      await androidImpl?.createNotificationChannel(
         const AndroidNotificationChannel(
-          'critical_incidents_channel_v7', // Changed to v7 for Samsung override
+          'critical_incidents_channel_v8',
           'Critical Incidents',
           description: 'Notifications for critical driving incidents',
           importance: Importance.max,
           playSound: true,
           enableVibration: true,
+          showBadge: true,
         ),
       );
+      debugPrint('[NotifService] Channel v8 created');
 
-      // Request notification permissions
-      NotificationSettings settings = await _firebaseMessaging
-          .requestPermission(
-            alert: true,
-            announcement: false,
-            badge: true,
-            carPlay: false,
-            criticalAlert: true,
-            provisional: false,
-            sound: true,
-          );
+      // Request notification permission via Android plugin
+      await androidImpl?.requestNotificationsPermission();
 
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('User granted notification permission');
+      // Firebase permission
+      final settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        criticalAlert: true,
+      );
+      debugPrint('[NotifService] Firebase auth: ${settings.authorizationStatus}');
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
         _setupMessageHandlers();
-      } else if (settings.authorizationStatus ==
-          AuthorizationStatus.provisional) {
-        debugPrint('User granted provisional notification permission');
-        _setupMessageHandlers();
-      } else {
-        debugPrint(
-          'User declined or has not yet granted notification permission',
-        );
       }
-
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
 
       await _firebaseMessaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
       );
+
+      _initialized = true;
+      debugPrint('[NotifService] Fully initialized ✓');
     } catch (e) {
-      debugPrint('Error initializing notifications: $e');
+      debugPrint('[NotifService] Error initializing: $e');
     }
   }
 
@@ -174,8 +173,11 @@ class NotificationService {
     String? payload,
   }) async {
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'critical_incidents_channel_v7',
+      // Auto-initialize if not done yet (safeguard for Samsung cold-start)
+      if (!_initialized) await initialize();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final androidDetails = AndroidNotificationDetails(
+        'critical_incidents_channel_v8',
         'Critical Incidents',
         channelDescription: 'Notifications for critical driving incidents',
         importance: Importance.max,
@@ -185,12 +187,24 @@ class NotificationService {
         icon: '@mipmap/ic_launcher',
         fullScreenIntent: true,
         ticker: 'Critical Incident',
-        category: AndroidNotificationCategory.alarm, // High priority category for Samsung
+        category: AndroidNotificationCategory.alarm, // Bypass Samsung battery restrictions
+        channelShowBadge: true,
+        showWhen: true,
+        when: now,
+        // BigTextStyle forces the notification to expand and be more prominent
+        styleInformation: BigTextStyleInformation(
+          body,
+          htmlFormatBigText: false,
+          contentTitle: title,
+          htmlFormatContentTitle: false,
+          summaryText: 'SafeRide Safety Alert',
+          htmlFormatSummaryText: false,
+        ),
       );
-      const iosDetails = DarwinNotificationDetails(
+      final iosDetails = DarwinNotificationDetails(
         presentSound: true,
       );
-      const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
       await _localNotifications.show(
         DateTime.now().millisecondsSinceEpoch.remainder(100000),

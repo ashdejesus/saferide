@@ -79,6 +79,10 @@ class _SafeRideAppState extends State<SafeRideApp> {
       setState(() {
         _controllerScopeKey = nextScope;
       });
+      // Restore trips from Firestore on sign-in or cold-start with active session
+      if (user != null && !user.isAnonymous) {
+        widget.sync.restoreTripsFromCloud();
+      }
     }
   }
 
