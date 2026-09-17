@@ -431,14 +431,7 @@ class AppDatabase {
           ),
         ) ??
         0;
-    final reportCount =
-        Sqflite.firstIntValue(
-          await db.rawQuery(
-            'SELECT COUNT(*) FROM reports WHERE sync_status = ?',
-            [SyncStatus.pending.label],
-          ),
-        ) ??
-        0;
+    final reportCount = 0; // Legacy reports removed
     return PendingCounts(trips: tripCount, reports: reportCount);
   }
 

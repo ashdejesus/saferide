@@ -87,6 +87,15 @@ class PassengerReportingService {
     }
   }
 
+  /// Delete a passenger report
+  Future<void> deleteReport(String reportId) async {
+    try {
+      await _firestore.collection('passenger_reports').doc(reportId).delete();
+    } catch (e) {
+      throw Exception('Failed to delete report: $e');
+    }
+  }
+
   /// Get trust metrics for a specific passenger
   Future<PassengerTrustMetrics?> getPassengerTrustMetrics(
     String passengerId,
@@ -151,6 +160,43 @@ class PassengerReportingService {
       _trustCache[passengerId] = _CachedTrust(metrics, DateTime.now());
       return metrics;
     });
+  }
+
+  /// Stream a user's report history
+  Stream<List<ReportWithTrust>> streamUserReports(String passengerId) {
+    return _firestore
+        .collection('passenger_reports')
+        .where('passengerId', isEqualTo: passengerId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          // We can fetch the user's own trust score once, since they're all theirs.
+          double passengerTrust = 0.5;
+          final metrics = await getPassengerTrustMetrics(passengerId);
+          if (metrics != null) passengerTrust = metrics.overallTrust;
+
+          final reports = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return ReportWithTrust(
+              reportId: doc.id.hashCode,
+              firestoreId: doc.id,
+              passengerId: passengerId,
+              category: data['category'] as String,
+              severity: data['severity'] as int,
+              description: data['description'] as String?,
+              latitude: (data['latitude'] as num?)?.toDouble(),
+              longitude: (data['longitude'] as num?)?.toDouble(),
+              timestamp: data['timestamp'] != null
+                  ? (data['timestamp'] as Timestamp).toDate()
+                  : DateTime.parse(data['createdAt'] as String),
+              passengerTrust: passengerTrust,
+              isVerified: data['isVerified'] as bool? ?? false,
+              isFlagged: data['isFlagged'] as bool? ?? false,
+            );
+          }).toList();
+          
+          reports.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return reports;
+        });
   }
 
   /// Get reports for a specific trip with trust scores

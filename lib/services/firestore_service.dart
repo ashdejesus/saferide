@@ -154,6 +154,7 @@ class FirestoreService {
             brakingCount: (metadata['brakingCount'] as num?)?.toInt() ?? 0,
             turningCount: (metadata['turningCount'] as num?)?.toInt() ?? 0,
             routePoints: routePoints,
+            vehicleType: metadata['vehicleType'] as String?,
           ),
         );
       }

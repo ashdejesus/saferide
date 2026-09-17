@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../services/sync_service.dart';
 import '../data/app_database.dart';
+import '../state/trip_controller.dart';
 import 'm3_progress_indicators.dart';
 
 /// Floating sync status indicator that shows when syncing is in progress
@@ -85,11 +86,24 @@ class SyncButton extends StatefulWidget {
 class _SyncButtonState extends State<SyncButton> {
   bool _isManualSyncing = false;
   late Future<PendingCounts> _pendingFuture;
+  int _lastVersion = -1;
 
   @override
   void initState() {
     super.initState();
     _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tripController = context.watch<TripController>();
+    if (_lastVersion != -1 && _lastVersion != tripController.tripHistoryVersion) {
+      _lastVersion = tripController.tripHistoryVersion;
+      _refresh();
+    } else if (_lastVersion == -1) {
+      _lastVersion = tripController.tripHistoryVersion;
+    }
   }
 
   /// Re-query pending counts after a sync so the button reflects the new state.
@@ -214,11 +228,26 @@ class PendingSyncBanner extends StatefulWidget {
 
 class _PendingSyncBannerState extends State<PendingSyncBanner> {
   late Future<PendingCounts> _pendingFuture;
+  int _lastVersion = -1;
 
   @override
   void initState() {
     super.initState();
     _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tripController = context.watch<TripController>();
+    if (_lastVersion != -1 && _lastVersion != tripController.tripHistoryVersion) {
+      _lastVersion = tripController.tripHistoryVersion;
+      setState(() {
+        _pendingFuture = context.read<AppDatabase>().getPendingCounts();
+      });
+    } else if (_lastVersion == -1) {
+      _lastVersion = tripController.tripHistoryVersion;
+    }
   }
 
   @override

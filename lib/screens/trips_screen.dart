@@ -38,6 +38,7 @@ class _TripsScreenState extends State<TripsScreen>
   
   int _lastTripHistoryVersion = -1;
   int _routeViewIndex = 0;
+  String _selectedFilter = 'All';
   static const int _limit = 20;
 
   @override
@@ -108,83 +109,143 @@ class _TripsScreenState extends State<TripsScreen>
       Future.microtask(_refreshAll);
     }
 
-    final itemCount = _routeViewIndex == 0 
-        ? 5 + _trips.length + (_hasMoreTrips ? 1 : 0)
-        : 5 + _routeAggregations.length;
+    final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
+    final filteredTrips = _trips.where((t) {
+      if (t.startTime.isBefore(ninetyDaysAgo)) return false;
+      if (_selectedFilter == 'Perfect' && (t.speedingCount + t.brakingCount + t.turningCount) > 0) return false;
+      if (_selectedFilter == 'Has Events' && (t.speedingCount + t.brakingCount + t.turningCount) == 0) return false;
+      return true;
+    }).toList();
+
+    final groupedTrips = <String, List<Trip>>{};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (var trip in filteredTrips) {
+      final groupKey = '${months[trip.startTime.month - 1]} ${trip.startTime.year}';
+      groupedTrips.putIfAbsent(groupKey, () => []).add(trip);
+    }
+
+    final children = <Widget>[];
+
+    // 0: Header
+    children.add(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: SectionHeader(title: 'Trip Summary')),
+              SyncButton(),
+            ],
+          ),
+          PendingSyncBanner(),
+        ],
+      ),
+    );
+
+    // 1: Overview
+    children.add(_TripsOverview(trips: _trips, isLoading: _isLoadingTrips && _trips.isEmpty));
+
+    // 2: Spacing
+    children.add(const SizedBox(height: 16));
+
+    // 3: Tabs
+    children.add(
+      M3ButtonGroup<int>(
+        segments: const [
+          ButtonSegment(value: 0, icon: Icon(Icons.list), label: Text('Individual Trips')),
+          ButtonSegment(value: 1, icon: Icon(Icons.route), label: Text('By Route')),
+        ],
+        selected: {_routeViewIndex},
+        onSelectionChanged: (val) => setState(() => _routeViewIndex = val.first),
+      ),
+    );
+
+    // 4+: Content
+    if (_routeViewIndex == 0) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ['All', 'Perfect', 'Has Events'].map((filter) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(filter),
+                    selected: _selectedFilter == filter,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => _selectedFilter = filter);
+                      }
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      );
+
+      if (!_isLoadingTrips && filteredTrips.isEmpty) {
+        children.add(
+          EmptyState(
+            icon: Icons.route,
+            title: _trips.isEmpty ? 'No trips yet' : 'No trips match filter',
+            message: _trips.isEmpty ? 'Start recording a trip to generate your first safety summary.' : 'Try changing your filter settings.',
+            ctaLabel: 'Start Trip',
+            onCtaPressed: () => TripActionSheet.show(context),
+          ),
+        );
+      } else {
+        for (var group in groupedTrips.entries) {
+          children.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              child: Text(
+                group.key,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+          for (var trip in group.value) {
+            children.add(_TripCard(trip: trip));
+          }
+        }
+        if (_hasMoreTrips) {
+          children.add(const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())));
+        }
+      }
+    } else {
+      if (!_isLoadingRoutes && _routeAggregations.isEmpty) {
+        children.add(
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Text('No named routes found. Add a route name when completing a trip!'),
+          ),
+        );
+      } else {
+        for (var agg in _routeAggregations) {
+          children.add(_RouteCardAgg(agg: agg));
+        }
+      }
+    }
 
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(20),
-      itemCount: itemCount,
+      itemCount: children.length,
       itemBuilder: (context, i) {
-        Widget child;
-        if (i == 0) {
-          child = Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Expanded(child: SectionHeader(title: 'Trip Summary')),
-                  SyncButton(),
-                ],
-              ),
-              PendingSyncBanner(),
-            ],
-          );
-        } else if (i == 1) {
-          child = _TripsOverview(trips: _trips, isLoading: _isLoadingTrips && _trips.isEmpty);
-        } else if (i == 2) {
-          child = const SizedBox(height: 16);
-        } else if (i == 3) {
-          child = M3ButtonGroup<int>(
-            segments: const [
-              ButtonSegment(value: 0, icon: Icon(Icons.list), label: Text('Individual Trips')),
-              ButtonSegment(value: 1, icon: Icon(Icons.route), label: Text('By Route')),
-            ],
-            selected: {_routeViewIndex},
-            onSelectionChanged: (val) => setState(() => _routeViewIndex = val.first),
-          );
-        } else if (i == 4) {
-          if (_routeViewIndex == 0 && !_isLoadingTrips && _trips.isEmpty) {
-            child = EmptyState(
-              icon: Icons.route,
-              title: 'No trips yet',
-              message: 'Start recording a trip to generate your first safety summary.',
-              ctaLabel: 'Start Trip',
-              onCtaPressed: () => TripActionSheet.show(context),
-            );
-          } else if (_routeViewIndex == 1 && !_isLoadingRoutes && _routeAggregations.isEmpty) {
-            child = const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text('No named routes found. Add a route name when completing a trip!'),
-            );
-          } else {
-            child = const SizedBox.shrink();
-          }
-        } else {
-          final index = i - 5;
-          if (_routeViewIndex == 0) {
-            if (index < _trips.length) {
-              child = _TripCard(trip: _trips[index]);
-            } else {
-              child = const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
-            }
-          } else {
-            if (index < _routeAggregations.length) {
-              child = _RouteCardAgg(agg: _routeAggregations[index]);
-            } else {
-              child = const SizedBox.shrink();
-            }
-          }
-        }
-
         return _StaggeredItem(
           index: i,
           animation: _animationController,
           child: Padding(
             padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
-            child: child,
+            child: children[i],
           ),
         );
       },

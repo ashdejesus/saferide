@@ -47,7 +47,7 @@ class NotificationService {
       // Explicitly create the channel so it appears in Android Settings immediately
       await androidImplementation?.createNotificationChannel(
         const AndroidNotificationChannel(
-          'critical_incidents_channel_v5', // Changed to v5 to ensure fresh settings
+          'critical_incidents_channel_v7', // Changed to v7 for Samsung override
           'Critical Incidents',
           description: 'Notifications for critical driving incidents',
           importance: Importance.max,
@@ -160,8 +160,8 @@ class NotificationService {
   }) async {
     try {
       debugPrint('Sending test notification: $title - $body');
-      // This would typically be done via Firebase Cloud Messaging from backend
-      // For testing purposes, we log the notification
+      // Actually show the local notification for dev testing
+      await showLocalNotification(title: title, body: body, payload: 'test_payload');
     } catch (e) {
       debugPrint('Error sending test notification: $e');
     }
@@ -175,14 +175,17 @@ class NotificationService {
   }) async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'critical_incidents_channel_v5',
+        'critical_incidents_channel_v7',
         'Critical Incidents',
         channelDescription: 'Notifications for critical driving incidents',
         importance: Importance.max,
-        priority: Priority.high,
+        priority: Priority.max,
         playSound: true,
         enableVibration: true,
         icon: '@mipmap/ic_launcher',
+        fullScreenIntent: true,
+        ticker: 'Critical Incident',
+        category: AndroidNotificationCategory.alarm, // High priority category for Samsung
       );
       const iosDetails = DarwinNotificationDetails(
         presentSound: true,

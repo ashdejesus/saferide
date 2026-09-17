@@ -86,15 +86,15 @@ class SyncService extends ChangeNotifier {
         
         // Safely parse routePoints
         List<Map<String, double>> parsedRoutePoints = [];
-        if (metadata['routePoints'] != null) {
-          final rpList = metadata['routePoints'] as List<dynamic>;
-          parsedRoutePoints = rpList.map((p) {
-            final pMap = p as Map<String, dynamic>;
-            return {
-              'lat': (pMap['lat'] as num).toDouble(),
-              'lng': (pMap['lng'] as num).toDouble(),
-            };
-          }).toList();
+        if (metadata['routePoints'] is List) {
+          for (final p in metadata['routePoints']) {
+            if (p is Map) {
+              parsedRoutePoints.add({
+                'lat': (p['lat'] as num).toDouble(),
+                'lng': (p['lng'] as num).toDouble(),
+              });
+            }
+          }
         }
 
         final trip = Trip(
@@ -111,6 +111,7 @@ class SyncService extends ChangeNotifier {
           turningCount: (metadata['turningCount'] as num?)?.toInt() ?? 0,
           routePoints: parsedRoutePoints,
           syncStatus: SyncStatus.synced,
+          vehicleType: metadata['vehicleType'] as String?,
         );
 
         await _database.insertTrip(trip);
@@ -159,16 +160,14 @@ class SyncService extends ChangeNotifier {
 
     final firestore = FirebaseFirestore.instance;
     final pendingTrips = await _database.getPendingTrips();
-    final pendingReports = await _database.getPendingReports();
 
-    _totalItems = pendingTrips.length + pendingReports.length;
+    _totalItems = pendingTrips.length;
     _syncedItems = 0;
     notifyListeners();
 
     final batch = firestore.batch();
 
     final userTripsRoot = firestore.collection('trips').doc(user.uid);
-    final userIncidentsRoot = firestore.collection('incidents').doc(user.uid);
 
     for (final trip in pendingTrips) {
       final docId =
@@ -192,38 +191,19 @@ class SyncService extends ChangeNotifier {
           'startLng': trip.startLng,
           'endLat': trip.endLat,
           'endLng': trip.endLng,
+          'vehicleType': trip.vehicleType,
         },
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
 
-    for (final report in pendingReports) {
-      final docId =
-          report.id?.toString() ??
-          report.createdAt.millisecondsSinceEpoch.toString();
-      final doc = userIncidentsRoot.collection('items').doc(docId);
-      batch.set(doc, {
-        'reportedBy': user.uid,
-        'description': report.description,
-        'createdAt': FieldValue.serverTimestamp(),
-        'metadata': {
-          'tripId': report.tripId,
-          'category': report.category,
-          'severity': report.severity,
-        },
-      });
-    }
 
     try {
       await batch.commit();
       await Future.wait([
         for (final trip in pendingTrips)
           _database.updateTrip(trip.copyWith(syncStatus: SyncStatus.synced)),
-        for (final report in pendingReports)
-          _database.updateReport(
-            report.copyWith(syncStatus: SyncStatus.synced),
-          ),
       ]);
 
       _syncedItems = _totalItems;
@@ -232,7 +212,7 @@ class SyncService extends ChangeNotifier {
 
       final result = SyncResult.success(
         tripsSynced: pendingTrips.length,
-        reportsSynced: pendingReports.length,
+        reportsSynced: 0,
       );
       _lastSyncAt = DateTime.now();
       _lastResult = result;

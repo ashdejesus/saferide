@@ -333,9 +333,28 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   late bool _showSaferRoutes;
   late bool _showReportedIncidents;
   late bool _showCommunitySafety;
+  bool _isPinpointing = false;
+  bool _isMapInteracting = false;
 
   final List<_Ping> _activePings = [];
   final Set<DateTime> _pingedTimestamps = {};
+  Timer? _fabTimer;
+
+  void _handleMapInteractionStart(_) {
+    _fabTimer?.cancel();
+    if (!_isMapInteracting) {
+      setState(() => _isMapInteracting = true);
+    }
+  }
+
+  void _handleMapInteractionEnd(_) {
+    _fabTimer?.cancel();
+    _fabTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _isMapInteracting = false);
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -357,6 +376,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
 
   @override
   void dispose() {
+    _fabTimer?.cancel();
     _compassSubscription?.cancel();
     super.dispose();
   }
@@ -421,11 +441,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     controller.forward();
   }
 
-  void _showReportHazardDialog(BuildContext context, risk_scoring.UnsafeEvent? recentEvent) {
-    if (widget.controller.currentPosition == null && widget.routePoints.isEmpty) return;
+  void _showReportIncidentDialog(BuildContext context, risk_scoring.UnsafeEvent? recentEvent, {LatLng? location}) {
+    if (widget.controller.currentPosition == null && widget.routePoints.isEmpty && location == null) return;
 
-    final lat = widget.controller.currentPosition?.latitude ?? widget.routePoints.last.latitude;
-    final lng = widget.controller.currentPosition?.longitude ?? widget.routePoints.last.longitude;
+    final lat = location?.latitude ?? widget.controller.currentPosition?.latitude ?? widget.routePoints.last.latitude;
+    final lng = location?.longitude ?? widget.controller.currentPosition?.longitude ?? widget.routePoints.last.longitude;
 
     String selectedCategory = 'Hazard';
     if (recentEvent != null) {
@@ -472,7 +492,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Report Hazard',
+                  'Report Incident',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 if (recentEvent != null) ...[
@@ -1667,132 +1687,137 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: mapCenter,
-              initialZoom: hasRealTripRoute || hasCompletedTrips ? 15 : 2,
-              onMapReady: _handleMapReady,
-              onPositionChanged: (position, hasGesture) {
-                if (hasGesture && _followUser) {
-                  setState(() => _followUser = false);
-                }
-                final newZoom = position.zoom;
-                if (newZoom != null && newZoom != _currentZoom) {
-                  setState(() => _currentZoom = newZoom as double);
-                }
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: Theme.of(context).brightness == Brightness.dark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png$keyParam'
-                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png$keyParam',
-                subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'com.saferide.app',
+          Listener(
+            onPointerDown: _handleMapInteractionStart,
+            onPointerUp: _handleMapInteractionEnd,
+            onPointerCancel: _handleMapInteractionEnd,
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: mapCenter,
+                initialZoom: hasRealTripRoute || hasCompletedTrips ? 15 : 2,
+                onMapReady: _handleMapReady,
+                onPositionChanged: (position, hasGesture) {
+                  if (hasGesture && _followUser) {
+                    setState(() => _followUser = false);
+                  }
+                  final newZoom = position.zoom;
+                  if (newZoom != null && newZoom != _currentZoom) {
+                    setState(() => _currentZoom = newZoom as double);
+                  }
+                },
               ),
-              // Historical trip routes (color-coded by safety score)
-              PolylineLayer<Object>(polylines: historicalPolylines),
-              // Community heatmap polylines
-              PolylineLayer<Object>(polylines: communityPolylines),
-              // Safer routes layer (green, score >= 80)
-              PolylineLayer<Object>(polylines: saferRoutesPolylines),
-              // High-risk area markers
-              if (highRiskMarkers.isNotEmpty)
-                MarkerClusterLayerWidget(
-                  options: MarkerClusterLayerOptions(
-                    maxClusterRadius: 40,
-                    size: const Size(40, 40),
-                    markers: highRiskMarkers,
-                    builder: (context, markers) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            markers.length.toString(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              children: [
+                TileLayer(
+                  urlTemplate: Theme.of(context).brightness == Brightness.dark
+                      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png$keyParam'
+                      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png$keyParam',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.saferide.app',
+                ),
+                // Historical trip routes (color-coded by safety score)
+                PolylineLayer<Object>(polylines: historicalPolylines),
+                // Community heatmap polylines
+                PolylineLayer<Object>(polylines: communityPolylines),
+                // Safer routes layer (green, score >= 80)
+                PolylineLayer<Object>(polylines: saferRoutesPolylines),
+                // High-risk area markers
+                if (highRiskMarkers.isNotEmpty)
+                  MarkerClusterLayerWidget(
+                    options: MarkerClusterLayerOptions(
+                      maxClusterRadius: 40,
+                      size: const Size(40, 40),
+                      markers: highRiskMarkers,
+                      builder: (context, markers) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.9),
+                            shape: BoxShape.circle,
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              // Route interactive markers (info + arrows)
-              MarkerLayer(markers: routeInteractiveMarkers),
-              // Active trip polyline (on top)
-              if (hasRealTripRoute)
-                PolylineLayer<Object>(
-                  polylines: [
-                    // Outer glow (simulates a glowing neon effect and hides rough edges)
-                    Polyline<Object>(
-                      points: _smoothRoute(widget.routePoints, windowSize: 3),
-                      strokeWidth: 14.0,
-                      color: colorScheme.primary.withOpacity(0.25),
-                      strokeCap: StrokeCap.round,
-                      strokeJoin: StrokeJoin.round,
-                    ),
-                    // Inner core (crisp and smoothed)
-                    Polyline<Object>(
-                      points: _smoothRoute(widget.routePoints, windowSize: 3),
-                      strokeWidth: 5.0,
-                      color: colorScheme.primary,
-                      borderStrokeWidth: 1.5,
-                      borderColor: Theme.of(context).colorScheme.surface,
-                      strokeCap: StrokeCap.round,
-                      strokeJoin: StrokeJoin.round,
-                    ),
-                  ],
-                ),
-              // Reported incidents layer
-              if (_showReportedIncidents && incidentMarkers.isNotEmpty)
-                MarkerClusterLayerWidget(
-                  options: MarkerClusterLayerOptions(
-                    maxClusterRadius: 40,
-                    size: const Size(40, 40),
-                    markers: incidentMarkers,
-                    builder: (context, markers) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.error,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            markers.length.toString(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              // Real-time Event Pings
-              if (activePingMarkers.isNotEmpty)
-                MarkerLayer(markers: activePingMarkers),
-              // Current location marker
-              if (hasRealTripRoute || widget.controller.currentPosition != null)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: hasRealTripRoute
-                          ? widget.routePoints.last
-                          : LatLng(
-                              widget.controller.currentPosition!.latitude,
-                              widget.controller.currentPosition!.longitude,
+                          child: Center(
+                            child: Text(
+                              markers.length.toString(),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             ),
-                      width: 50,
-                      height: 50,
-                      child: _PulsingLocationMarker(
-                        color: colorScheme.primary,
-                        heading: widget.isTracking ? _heading : 0.0,
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-            ],
+                  ),
+                // Route interactive markers (info + arrows)
+                MarkerLayer(markers: routeInteractiveMarkers),
+                // Active trip polyline (on top)
+                if (hasRealTripRoute)
+                  PolylineLayer<Object>(
+                    polylines: [
+                      // Outer glow (simulates a glowing neon effect and hides rough edges)
+                      Polyline<Object>(
+                        points: _smoothRoute(widget.routePoints, windowSize: 3),
+                        strokeWidth: 14.0,
+                        color: colorScheme.primary.withOpacity(0.25),
+                        strokeCap: StrokeCap.round,
+                        strokeJoin: StrokeJoin.round,
+                      ),
+                      // Inner core (crisp and smoothed)
+                      Polyline<Object>(
+                        points: _smoothRoute(widget.routePoints, windowSize: 3),
+                        strokeWidth: 5.0,
+                        color: colorScheme.primary,
+                        borderStrokeWidth: 1.5,
+                        borderColor: Theme.of(context).colorScheme.surface,
+                        strokeCap: StrokeCap.round,
+                        strokeJoin: StrokeJoin.round,
+                      ),
+                    ],
+                  ),
+                // Reported incidents layer
+                if (_showReportedIncidents && incidentMarkers.isNotEmpty)
+                  MarkerClusterLayerWidget(
+                    options: MarkerClusterLayerOptions(
+                      maxClusterRadius: 40,
+                      size: const Size(40, 40),
+                      markers: incidentMarkers,
+                      builder: (context, markers) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              markers.length.toString(),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                // Real-time Event Pings
+                if (activePingMarkers.isNotEmpty)
+                  MarkerLayer(markers: activePingMarkers),
+                // Current location marker
+                if (hasRealTripRoute || widget.controller.currentPosition != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: hasRealTripRoute
+                            ? widget.routePoints.last
+                            : LatLng(
+                                widget.controller.currentPosition!.latitude,
+                                widget.controller.currentPosition!.longitude,
+                              ),
+                        width: 50,
+                        height: 50,
+                        child: _PulsingLocationMarker(
+                          color: colorScheme.primary,
+                          heading: widget.isTracking ? _heading : 0.0,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
 
           // Loading Overlay
@@ -2064,18 +2089,70 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               left: 12,
               child: _buildCommunitySafetyCard(colorScheme),
             ),
-          // Report Hazard FAB
+          // Pinpoint Crosshair Overlay
+          if (_isPinpointing)
+            Positioned.fill(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24), // Offset for marker pin
+                  child: Icon(
+                    Icons.location_on,
+                    size: 48,
+                    color: colorScheme.error,
+                  ),
+                ),
+              ),
+            ),
+          // Report Incident / Confirm Location Buttons
           Positioned(
             bottom: 84,
             right: 16,
-            child: FloatingActionButton(
-              heroTag: 'report_fab',
-              backgroundColor: colorScheme.errorContainer,
-              foregroundColor: colorScheme.onErrorContainer,
-              elevation: 4,
-              onPressed: () => _showReportHazardDialog(context, widget.controller.recentEvents.lastOrNull),
-              child: const Icon(Icons.warning_rounded),
-            ),
+            left: _isPinpointing ? 16 : null, // Expand across when pinpointing
+            child: _isPinpointing
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: FloatingActionButton.extended(
+                          heroTag: 'cancel_pinpoint_fab',
+                          backgroundColor: colorScheme.surfaceContainerHighest,
+                          foregroundColor: colorScheme.onSurface,
+                          elevation: 4,
+                          onPressed: () => setState(() => _isPinpointing = false),
+                          icon: const Icon(Icons.close),
+                          label: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: FloatingActionButton.extended(
+                          heroTag: 'confirm_location_fab',
+                          backgroundColor: colorScheme.errorContainer,
+                          foregroundColor: colorScheme.onErrorContainer,
+                          elevation: 4,
+                          onPressed: () {
+                            setState(() => _isPinpointing = false);
+                            _showReportIncidentDialog(
+                              context, 
+                              null, 
+                              location: _mapController.camera.center,
+                            );
+                          },
+                          icon: const Icon(Icons.check),
+                          label: const Text('Confirm Location', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  )
+                : FloatingActionButton.extended(
+                    heroTag: 'report_fab',
+                    isExtended: !_isMapInteracting,
+                    backgroundColor: colorScheme.errorContainer,
+                    foregroundColor: colorScheme.onErrorContainer,
+                    elevation: 4,
+                    onPressed: () => setState(() => _isPinpointing = true),
+                    icon: const Icon(Icons.warning_rounded),
+                    label: const Text('Report Incident', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
           ),
           // Legend
           Positioned(

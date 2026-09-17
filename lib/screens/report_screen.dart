@@ -12,7 +12,9 @@ import '../theme/motion_scheme.dart';
 import '../widgets/m3_severity_selector.dart';
 import '../widgets/m3_bouncy_chip.dart';
 import '../widgets/m3_severity_label.dart';
+import '../widgets/m3_button_group.dart';
 import '../data/app_database.dart';
+import '../widgets/m3_progress_indicators.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -27,9 +29,11 @@ class _ReportScreenState extends State<ReportScreen>
   String? _category;
   double _severity = 3;
   final TextEditingController _descriptionController = TextEditingController();
+  int _currentViewIndex = 0;
   late final AnimationController _animationController;
   late final PassengerReportingService _reportingService;
   PassengerTrustMetrics? _userTrustMetrics;
+  String _selectedFilter = 'All';
 
   static const List<String> _categories = [
     'Speeding',
@@ -43,6 +47,8 @@ class _ReportScreenState extends State<ReportScreen>
   ];
 
   StreamSubscription<PassengerTrustMetrics?>? _trustMetricsSubscription;
+  StreamSubscription<List<ReportWithTrust>>? _reportsSubscription;
+  List<ReportWithTrust>? _reports;
 
   @override
   void initState() {
@@ -67,11 +73,22 @@ class _ReportScreenState extends State<ReportScreen>
             });
           }
         });
+        
+    _reportsSubscription = _reportingService
+        .streamUserReports(passengerId)
+        .listen((reports) {
+          if (mounted) {
+            setState(() {
+              _reports = reports;
+            });
+          }
+        });
   }
 
   @override
   void dispose() {
     _trustMetricsSubscription?.cancel();
+    _reportsSubscription?.cancel();
     _descriptionController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -81,7 +98,26 @@ class _ReportScreenState extends State<ReportScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final controller = context.watch<TripController>();
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
+    final filteredReports = _reports?.where((r) {
+      if (r.timestamp.isBefore(ninetyDaysAgo)) return false;
+      if (_selectedFilter == 'Verified' && !r.isVerified) return false;
+      if (_selectedFilter == 'Flagged' && !r.isFlagged) return false;
+      if (_selectedFilter == 'High Severity' && r.severity < 4) return false;
+      return true;
+    }).toList();
+
+    final groupedReports = <String, List<ReportWithTrust>>{};
+    if (filteredReports != null) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      for (var report in filteredReports) {
+        final groupKey = '${months[report.timestamp.month - 1]} ${report.timestamp.year}';
+        groupedReports.putIfAbsent(groupKey, () => []).add(report);
+      }
+    }
 
     final recentEvent = controller.getRecentSensorEventCategory();
     final displayCategory = _category ?? recentEvent;
@@ -90,23 +126,6 @@ class _ReportScreenState extends State<ReportScreen>
         : _severity;
 
     final items = <Widget>[
-      const SectionHeader(title: 'Incident Report'),
-      _IntroCard(isTracking: controller.isTracking),
-      _TrustMetricsCard(
-        metrics:
-            _userTrustMetrics ??
-            PassengerTrustMetrics(
-              passengerId: 'demo_user',
-              totalReports: 5,
-              consistencyScore: 0.85,
-              anomalyScore: 0.1,
-              sensorAlignmentScore: 0.90,
-              overallTrust: 0.88,
-              lastUpdated: DateTime.now(),
-              verifiedCount: 4,
-              flaggedCount: 0,
-            ),
-      ),
       _ReportFormCard(
         formKey: _formKey,
         categories: _categories,
@@ -462,22 +481,193 @@ class _ReportScreenState extends State<ReportScreen>
             ),
           ),
         ),
-      _ReportingGuidelinesCard(),
-      const SizedBox(height: 80),
     ];
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        for (var i = 0; i < items.length; i++)
+        const SectionHeader(title: 'Incident Report'),
+        const SizedBox(height: 12),
+        _IntroCard(isTracking: controller.isTracking),
+        const SizedBox(height: 16),
+        M3ButtonGroup<int>(
+          segments: const [
+            ButtonSegment(value: 0, icon: Icon(Icons.edit_document), label: Text('Submit Report')),
+            ButtonSegment(value: 1, icon: Icon(Icons.history), label: Text('My History')),
+          ],
+          selected: {_currentViewIndex},
+          onSelectionChanged: (val) => setState(() => _currentViewIndex = val.first),
+        ),
+        const SizedBox(height: 16),
+        if (_currentViewIndex == 0) ...[
+          for (var i = 0; i < items.length; i++)
+            _StaggeredItem(
+              index: i,
+              animation: _animationController,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
+                child: items[i],
+              ),
+            ),
+          const SizedBox(height: 8),
+          const _ReportingGuidelinesCard(),
+        ] else ...[
           _StaggeredItem(
-            index: i,
+            index: 0,
             animation: _animationController,
             child: Padding(
-              padding: EdgeInsets.only(bottom: i == 0 ? 12 : 16),
-              child: items[i],
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _TrustMetricsCard(
+                metrics: _userTrustMetrics ??
+                    PassengerTrustMetrics(
+                      passengerId: 'demo_user',
+                      totalReports: 5,
+                      consistencyScore: 0.85,
+                      anomalyScore: 0.1,
+                      sensorAlignmentScore: 0.90,
+                      overallTrust: 0.88,
+                      lastUpdated: DateTime.now(),
+                      verifiedCount: 4,
+                      flaggedCount: 0,
+                    ),
+              ),
             ),
           ),
+          if (_reports == null)
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Center(child: M3LoadingIndicator(contained: true)),
+            )
+          else if (_reports!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                elevation: 0,
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  side: BorderSide(
+                    color: colorScheme.outlineVariant.withOpacity(0.3),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.history,
+                        size: 48,
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No Reports Yet',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Your submitted reports will appear here.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Report History',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 48,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ['All', 'Verified', 'High Severity', 'Flagged'].map((filter) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(filter),
+                            selected: _selectedFilter == filter,
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() => _selectedFilter = filter);
+                              }
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (filteredReports == null || filteredReports.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Center(
+                  child: Text(
+                    'No reports match this filter in the last 90 days.',
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            else
+              for (var group in groupedReports.entries) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  child: Text(
+                    group.key,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                for (var report in group.value)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _ReportHistoryCard(
+                      report: report,
+                      onDelete: () {
+                        _reportingService.deleteReport(report.firestoreId!);
+                      },
+                    ),
+                  ),
+              ],
+          ],
+        ],
+        const SizedBox(height: 80),
       ],
     );
   }
@@ -706,13 +896,16 @@ class _TrustMetricsCardState extends State<_TrustMetricsCard> {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              _getTrustLabel(widget.metrics.overallTrust),
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: trustColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            Flexible(
+                              child: Text(
+                                _getTrustLabel(widget.metrics.overallTrust),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: trustColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),
@@ -1290,5 +1483,216 @@ class _StaggeredItem extends StatelessWidget {
         child: child,
       ),
     );
+  }
+}
+
+class _ReportHistoryCard extends StatefulWidget {
+  final ReportWithTrust report;
+  final VoidCallback onDelete;
+
+  const _ReportHistoryCard({required this.report, required this.onDelete});
+
+  @override
+  State<_ReportHistoryCard> createState() => _ReportHistoryCardState();
+}
+
+class _ReportHistoryCardState extends State<_ReportHistoryCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final report = widget.report;
+    
+    // Determine severity color dynamically
+    Color severityColor;
+    if (report.severity >= 5) {
+      severityColor = colorScheme.error;
+    } else if (report.severity == 4) {
+      severityColor = Colors.orange;
+    } else if (report.severity == 3) {
+      severityColor = Colors.amber.shade700;
+    } else {
+      severityColor = Colors.green;
+    }
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        // Handle navigation or details view here if needed
+      },
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 300),
+        curve: MotionScheme.spatialFast,
+        child: Dismissible(
+          key: ValueKey(report.firestoreId),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            decoration: BoxDecoration(
+              color: colorScheme.error,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(Icons.delete, color: colorScheme.onError),
+          ),
+          onDismissed: (direction) {
+            widget.onDelete();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Report deleted')),
+            );
+          },
+          child: Card(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          color: colorScheme.surfaceContainer,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: severityColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.report_problem_rounded,
+                    color: severityColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              report.category,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (report.isVerified)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.verified, color: Colors.green, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Verified',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (report.isFlagged) ...[
+                            if (report.isVerified) const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.flag, color: colorScheme.onErrorContainer, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Flagged',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: colorScheme.onErrorContainer,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Severity Level ${report.severity}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: severityColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(report.timestamp),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (report.description != null && report.description!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Text(
+                            '"${report.description}"',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.month}/${date.day}/${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

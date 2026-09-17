@@ -384,3 +384,95 @@ class ProgressButton extends StatelessWidget {
 }
 
 enum ButtonSize { small, medium, large }
+
+/// M3 Expressive Loading Indicator replacing indeterminate CircularProgressIndicator
+class M3LoadingIndicator extends StatefulWidget {
+  const M3LoadingIndicator({
+    super.key,
+    this.contained = false,
+    this.color,
+  });
+
+  final bool contained;
+  final Color? color;
+
+  @override
+  State<M3LoadingIndicator> createState() => _M3LoadingIndicatorState();
+}
+
+class _M3LoadingIndicatorState extends State<M3LoadingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final activeColor = widget.color ?? colorScheme.primary;
+
+    Widget indicator = AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            // Create a staggered pulsing effect
+            final delay = index * 0.2;
+            double progress = (_controller.value - delay);
+            if (progress < 0) progress += 1.0;
+            
+            // Pulse logic (0 to 0.5 increases size, 0.5 to 1.0 decreases)
+            double scale = 1.0;
+            if (progress < 0.5) {
+              scale = 1.0 + (progress * 2) * 0.5;
+            } else {
+              scale = 1.5 - ((progress - 0.5) * 2) * 0.5;
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: scale > 1.2 ? 1.0 : 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+
+    if (widget.contained) {
+      indicator = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: indicator,
+      );
+    }
+
+    return indicator;
+  }
+}

@@ -614,21 +614,25 @@ class TripController extends ChangeNotifier {
     String? description,
   }) async {
     final activeTrip = _activeTrip;
-    if (activeTrip == null || activeTrip.id == null) {
-      return;
-    }
+    
+    // Fallback to null if not actively tracking a trip. The reporting service handles guest users/no trip.
+    final tripId = activeTrip?.id;
 
-    final report = PassengerReport(
-      tripId: activeTrip.id!,
+    await _passengerReportingService.submitReport(
       category: category,
       severity: severity,
       description: description,
-      createdAt: DateTime.now(),
+      latitude: _currentPosition?.latitude,
+      longitude: _currentPosition?.longitude,
+      tripId: tripId,
+      tripSensorRisk: activeTrip?.riskScore ?? 0.5,
+      tripEventCount: _speedingCount + _brakingCount + _turningCount,
     );
 
-    await _database.insertReport(report);
     _reportSeveritySum += severity;
-    unawaited(_persistActiveTripSnapshot());
+    if (activeTrip != null) {
+      unawaited(_persistActiveTripSnapshot());
+    }
     notifyListeners();
   }
 
