@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -17,11 +19,22 @@ class NotificationService {
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  bool _initialized = false;
+  
+  // Completer-based lock: prevents race conditions when initialize() is called
+  // from multiple places (main.dart, app.dart, startTrip) before it completes.
+  Completer<void>? _initCompleter;
 
-  /// Initialize notification service and set up handlers
+  bool get _initialized => _initCompleter?.isCompleted == true;
+
+  /// Initialize notification service and set up handlers.
+  /// Safe to call multiple times — subsequent calls await the first.
   Future<void> initialize() async {
-    if (_initialized) return; // Prevent double-initialization
+    if (_initCompleter != null) {
+      // Already started — await the in-progress or completed init
+      return _initCompleter!.future;
+    }
+    _initCompleter = Completer<void>();
+
     try {
       tz.initializeTimeZones();
 
@@ -34,7 +47,7 @@ class NotificationService {
       debugPrint('[NotifService] Battery optimization exemption: $batteryStatus');
 
       // Initialize local notifications plugin
-      const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initializationSettingsAndroid = AndroidInitializationSettings('ic_notification');
       const initializationSettingsIOS = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -44,14 +57,17 @@ class NotificationService {
         android: initializationSettingsAndroid,
         iOS: initializationSettingsIOS,
       );
-      await _localNotifications.initialize(initializationSettings);
+      await _localNotifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _onNotificationResponse,
+      );
       debugPrint('[NotifService] flutter_local_notifications initialized');
 
       final AndroidFlutterLocalNotificationsPlugin? androidImpl =
           _localNotifications.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
-      // Create high-priority channel (v8)
+      // Create high-priority channel for critical driving incidents
       await androidImpl?.createNotificationChannel(
         const AndroidNotificationChannel(
           'critical_incidents_channel_v8',
@@ -63,7 +79,20 @@ class NotificationService {
           showBadge: true,
         ),
       );
-      debugPrint('[NotifService] Channel v8 created');
+      debugPrint('[NotifService] critical_incidents_channel_v8 created');
+
+      // Create channel for sync reminders — required for zonedSchedule() to work
+      await androidImpl?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'sync_reminder_channel_v2',
+          'Sync Reminders',
+          description: 'Reminders to sync offline trips',
+          importance: Importance.defaultImportance,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+      debugPrint('[NotifService] sync_reminder_channel_v2 created');
 
       // Request notification permission via Android plugin
       await androidImpl?.requestNotificationsPermission();
@@ -88,12 +117,22 @@ class NotificationService {
         sound: true,
       );
 
-      _initialized = true;
+      _initCompleter!.complete();
       debugPrint('[NotifService] Fully initialized ✓');
     } catch (e) {
       debugPrint('[NotifService] Error initializing: $e');
+      // Complete with error so callers don't hang forever
+      _initCompleter!.completeError(e);
+      // Reset so a future call can retry
+      _initCompleter = null;
     }
   }
+
+  /// Called when the user taps on a local notification
+  void _onNotificationResponse(NotificationResponse response) {
+    debugPrint('[NotifService] Notification tapped: id=${response.id}, payload=${response.payload}');
+  }
+
 
   /// Set up handlers for foreground and background messages
   void _setupMessageHandlers() {
@@ -184,7 +223,7 @@ class NotificationService {
         priority: Priority.max,
         playSound: true,
         enableVibration: true,
-        icon: '@mipmap/ic_launcher',
+        icon: 'ic_notification',
         fullScreenIntent: true,
         ticker: 'Critical Incident',
         category: AndroidNotificationCategory.alarm, // Bypass Samsung battery restrictions

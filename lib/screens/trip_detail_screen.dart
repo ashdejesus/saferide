@@ -225,18 +225,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                                 PolylineLayer(
                                   polylines: [
                                     if (animatedPoints.length > 1)
-                                      for (int i = 0; i < animatedPoints.length - 1; i++)
-                                        Polyline(
-                                          points: [animatedPoints[i], animatedPoints[i + 1]],
-                                          strokeWidth: 6,
-                                          strokeCap: StrokeCap.round,
-                                          strokeJoin: StrokeJoin.round,
-                                          color: Color.lerp(
-                                            Colors.green,
-                                            endColor,
-                                            i / (animatedPoints.length - 1),
-                                          ) ?? endColor,
-                                        )
+                                      Polyline(
+                                        points: animatedPoints,
+                                        strokeWidth: 6,
+                                        strokeCap: StrokeCap.round,
+                                        strokeJoin: StrokeJoin.round,
+                                        gradientColors: [Colors.green, endColor],
+                                      )
                                     else if (animatedPoints.isNotEmpty)
                                       Polyline(
                                         points: animatedPoints,

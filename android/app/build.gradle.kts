@@ -27,6 +27,8 @@ android {
         targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Required by flutter_local_notifications when using coreLibraryDesugaring
+        multiDexEnabled = true
     }
 
     buildTypes {

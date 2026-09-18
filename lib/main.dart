@@ -17,6 +17,9 @@ Future<void> main() async {
   final preferences = PreferencesService();
   await preferences.init();
 
+  // Initialize notification channels and permissions before the app starts
+  await NotificationService().initialize();
+
   final database = AppDatabase();
   final auth = AuthService();
   final sync = SyncService(database);

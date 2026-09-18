@@ -11,19 +11,15 @@ import 'services/auth_service.dart';
 import 'services/preferences_service.dart';
 import 'state/trip_controller.dart';
 import 'services/passenger_reporting_service.dart';
-import 'services/notification_service.dart';
 import 'theme.dart';
 import 'theme/motion_scheme.dart';
 import 'screens/auth_screen.dart';
 import 'widgets/sync_widgets.dart';
-import 'main_demo.dart' as demo;
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/trips_screen.dart';
 import 'widgets/trip_action_sheet.dart';
-import 'widgets/sync_widgets.dart';
-import 'screens/auth_screen.dart';
 import 'widgets/offline_banner.dart';
 import 'widgets/data_collection_agreement_dialog.dart';
 
@@ -54,7 +50,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
   @override
   void initState() {
     super.initState();
-    NotificationService().initialize();
+    // NotificationService is initialized in main() before runApp — no need to call here.
     _handleAuthChanged(widget.auth.currentUser);
     _authSubscription = widget.auth.authStateChanges().listen(
       _handleAuthChanged,
@@ -120,15 +116,17 @@ class _SafeRideAppState extends State<SafeRideApp> {
                 builder: (context, controller, _) {
                   return Stack(
                     children: [
-                      WillPopScope(
-                        onWillPop: () async {
+                      PopScope(
+                        canPop: false,
+                        onPopInvokedWithResult: (didPop, _) {
+                          if (didPop) return;
                           if (_selectedIndex != 0) {
                             setState(() {
                               _selectedIndex = 0;
                             });
-                            return false;
+                            return;
                           }
-                          
+
                           final now = DateTime.now();
                           if (_lastBackPressTime == null ||
                               now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
@@ -136,11 +134,10 @@ class _SafeRideAppState extends State<SafeRideApp> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Press back again to exit')),
                             );
-                            return false;
+                            return;
                           }
-                          
+
                           SystemNavigator.pop();
-                          return true;
                         },
                         child: Scaffold(
                           body: SafeArea(
