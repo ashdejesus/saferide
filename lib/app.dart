@@ -22,6 +22,7 @@ import 'screens/trips_screen.dart';
 import 'widgets/trip_action_sheet.dart';
 import 'widgets/offline_banner.dart';
 import 'widgets/data_collection_agreement_dialog.dart';
+import 'services/permission_service.dart';
 
 class SafeRideApp extends StatefulWidget {
   const SafeRideApp({
@@ -341,18 +342,33 @@ class _AgreementCheckWrapperState extends State<_AgreementCheckWrapper> {
   }
 
   void _showAgreementIfNeeded() {
-    if (!_shownAgreement && !widget.preferences.hasAcceptedDataCollection) {
+    if (!_shownAgreement) {
       _shownAgreement = true;
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (!mounted) return;
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => DataCollectionAgreementDialog(
-            onAccept: () => widget.preferences.acceptDataCollection(),
-          ),
-        );
-      });
+      if (!widget.preferences.hasAcceptedDataCollection) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (!mounted) return;
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => DataCollectionAgreementDialog(
+              onAccept: () async {
+                await widget.preferences.acceptDataCollection();
+                if (mounted) {
+                  context.read<TripController>().fetchCurrentLocation();
+                }
+              },
+            ),
+          );
+        });
+      } else {
+        // Returning user: verify permissions and fetch GPS immediately
+        Future.microtask(() async {
+          await PermissionService.requestAllPermissions();
+          if (mounted) {
+            context.read<TripController>().fetchCurrentLocation();
+          }
+        });
+      }
     }
   }
 
