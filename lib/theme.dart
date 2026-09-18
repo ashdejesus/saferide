@@ -112,7 +112,8 @@ ThemeData buildSafeRideTheme() {
     chipTheme: base.chipTheme.copyWith(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       labelStyle: expressiveTextTheme.labelMedium,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: EdgeInsets.zero,
     ),
     sliderTheme: base.sliderTheme.copyWith(
       activeTrackColor: colorScheme.primary,

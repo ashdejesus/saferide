@@ -2168,7 +2168,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
           // Crowd Alert Banner (Placed at end of Stack so it stays on top of other HUDs)
           if (widget.controller.currentAlert != null)
             Positioned(
-              top: 90,
+              top: 120,
               left: 12,
               right: 60,
               child: _CrowdAlertBanner(

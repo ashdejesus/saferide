@@ -205,14 +205,13 @@ class NotificationService {
     }
   }
 
-  /// Show a local notification for critical incidents
+  /// Show a local notification for critical incidents (heads-up with sound)
   Future<void> showLocalNotification({
     required String title,
     required String body,
     String? payload,
   }) async {
     try {
-      // Auto-initialize if not done yet (safeguard for Samsung cold-start)
       if (!_initialized) await initialize();
       final now = DateTime.now().millisecondsSinceEpoch;
       final androidDetails = AndroidNotificationDetails(
@@ -225,12 +224,11 @@ class NotificationService {
         enableVibration: true,
         icon: 'ic_notification',
         fullScreenIntent: true,
-        ticker: 'Critical Incident',
-        category: AndroidNotificationCategory.alarm, // Bypass Samsung battery restrictions
+        ticker: title,
+        category: AndroidNotificationCategory.alarm,
         channelShowBadge: true,
         showWhen: true,
         when: now,
-        // BigTextStyle forces the notification to expand and be more prominent
         styleInformation: BigTextStyleInformation(
           body,
           htmlFormatBigText: false,
@@ -240,9 +238,7 @@ class NotificationService {
           htmlFormatSummaryText: false,
         ),
       );
-      final iosDetails = DarwinNotificationDetails(
-        presentSound: true,
-      );
+      const iosDetails = DarwinNotificationDetails(presentSound: true);
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
       await _localNotifications.show(
@@ -253,9 +249,164 @@ class NotificationService {
         payload: payload,
       );
     } catch (e) {
-      debugPrint('Error showing local notification: $e');
+      debugPrint('[NotifService] Error showing local notification: $e');
     }
   }
+
+  // ─── Ongoing Trip Notification ────────────────────────────────────────────
+  // Uses a fixed notification ID so the same card updates in-place instead of
+  // stacking new notifications every second.
+  static const int _ongoingTripNotifId = 1001;
+
+  /// Show (or update) the persistent "Trip in Progress" notification.
+  /// Call this on trip start and periodically during tracking.
+  Future<void> showOngoingTripNotification({
+    required int safetyScore,
+    required int totalEvents,
+    String? routeName,
+    String? lastEventLabel,
+  }) async {
+    try {
+      if (!_initialized) await initialize();
+
+      final String scoreLabel;
+      if (safetyScore >= 80) {
+        scoreLabel = 'Safe 🟢';
+      } else if (safetyScore >= 50) {
+        scoreLabel = 'Moderate 🟡';
+      } else {
+        scoreLabel = 'Risky 🔴';
+      }
+
+      final String subtitle = routeName != null && routeName.isNotEmpty
+          ? routeName
+          : 'Monitoring your ride…';
+
+      final String body = lastEventLabel != null
+          ? '$scoreLabel · $totalEvents event${totalEvents == 1 ? '' : 's'} · Last: $lastEventLabel'
+          : '$scoreLabel · ${totalEvents == 0 ? 'No incidents detected' : '$totalEvents event${totalEvents == 1 ? '' : 's'} recorded'}';
+
+      final androidDetails = AndroidNotificationDetails(
+        'ongoing_trip_channel_v1',
+        'Trip Status',
+        channelDescription: 'Live status while a trip is being recorded',
+        importance: Importance.low, // Low so it doesn't make sound on updates
+        priority: Priority.low,
+        ongoing: true,           // Cannot be swiped away by the user
+        autoCancel: false,
+        showProgress: false,
+        playSound: false,
+        enableVibration: false,
+        icon: 'ic_notification',
+        ticker: 'SafeRide trip in progress',
+        category: AndroidNotificationCategory.service,
+        styleInformation: BigTextStyleInformation(
+          body,
+          contentTitle: '🚌 Trip in Progress · Score: $safetyScore',
+          summaryText: subtitle,
+        ),
+      );
+      const iosDetails = DarwinNotificationDetails(presentSound: false);
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _localNotifications.show(
+        _ongoingTripNotifId,
+        '🚌 Trip in Progress · Score: $safetyScore',
+        body,
+        details,
+        payload: 'ongoing_trip',
+      );
+    } catch (e) {
+      debugPrint('[NotifService] Error showing ongoing trip notification: $e');
+    }
+  }
+
+  /// Cancel the persistent trip notification. Call this when the trip ends.
+  Future<void> cancelOngoingTripNotification() async {
+    try {
+      await _localNotifications.cancel(_ongoingTripNotifId);
+    } catch (e) {
+      debugPrint('[NotifService] Error cancelling ongoing trip notification: $e');
+    }
+  }
+
+  // ─── Trip Summary Notification ────────────────────────────────────────────
+
+  /// Show a trip summary notification when a trip ends.
+  Future<void> showTripSummaryNotification({
+    required int safetyScore,
+    required int speedingCount,
+    required int brakingCount,
+    required int turningCount,
+    String? routeName,
+    required Duration tripDuration,
+  }) async {
+    try {
+      if (!_initialized) await initialize();
+
+      final String riskLabel;
+      final String emoji;
+      if (safetyScore >= 80) {
+        riskLabel = 'Low Risk';
+        emoji = '✅';
+      } else if (safetyScore >= 50) {
+        riskLabel = 'Moderate Risk';
+        emoji = '⚠️';
+      } else {
+        riskLabel = 'High Risk';
+        emoji = '🚨';
+      }
+
+      final totalEvents = speedingCount + brakingCount + turningCount;
+      final title = '$emoji Trip Complete · Safety Score: $safetyScore';
+      final tripName = (routeName != null && routeName.isNotEmpty)
+          ? routeName
+          : '${tripDuration.inMinutes}-minute trip';
+
+      final List<String> parts = [];
+      if (speedingCount > 0) parts.add('$speedingCount speeding');
+      if (brakingCount > 0) parts.add('$brakingCount braking');
+      if (turningCount > 0) parts.add('$turningCount turning');
+
+      final String body = totalEvents == 0
+          ? '$tripName · $riskLabel · No unsafe events — great ride!'
+          : '$tripName · $riskLabel · ${parts.join(', ')}. Tap to review.';
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final androidDetails = AndroidNotificationDetails(
+        'trip_summary_channel_v1',
+        'Trip Summaries',
+        channelDescription: 'Summary notification when a trip ends',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        icon: 'ic_notification',
+        autoCancel: true,
+        showWhen: true,
+        when: now,
+        styleInformation: BigTextStyleInformation(
+          body,
+          contentTitle: title,
+          summaryText: 'SafeRide',
+        ),
+      );
+      const iosDetails = DarwinNotificationDetails(presentSound: true);
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _localNotifications.show(
+        1002,
+        title,
+        body,
+        details,
+        payload: 'trip_summary',
+      );
+    } catch (e) {
+      debugPrint('[NotifService] Error showing trip summary notification: $e');
+    }
+  }
+
+  // ─── Scheduled Reminders ─────────────────────────────────────────────────
 
   /// Subscribe to topic for group notifications
   Future<void> subscribeToTopic(String topic) async {
@@ -288,13 +439,11 @@ class NotificationService {
         priority: Priority.defaultPriority,
         playSound: true,
       );
-      const iosDetails = DarwinNotificationDetails(
-        presentSound: true,
-      );
+      const iosDetails = DarwinNotificationDetails(presentSound: true);
       const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
       await _localNotifications.zonedSchedule(
-        999, // Unique ID for sync reminder
+        999,
         '🚗 Safe ride today!',
         'You have offline trips pending. Sync them to boost your Trust Score and help the community!',
         tz.TZDateTime.now(tz.local).add(const Duration(hours: 1)),
@@ -319,10 +468,23 @@ class NotificationService {
   }
 }
 
+/// Send local notification for testing
+Future<void> sendTestNotification(NotificationService service, {
+  required String title,
+  required String body,
+}) async {
+  try {
+    debugPrint('Sending test notification: $title - $body');
+    await service.showLocalNotification(title: title, body: body, payload: 'test_payload');
+  } catch (e) {
+    debugPrint('Error sending test notification: $e');
+  }
+}
+
 /// Critical incident notification data
 class CriticalIncidentNotification {
-  final String incidentType; // 'speeding', 'harsh_braking', 'sharp_turn'
-  final double severity; // 0-1
+  final String incidentType;
+  final double severity;
   final String message;
   final DateTime timestamp;
   final double? latitude;
@@ -358,69 +520,64 @@ IncidentCriticality determineCriticality({
   required double riskScore,
   required int reportSeveritySum,
 }) {
-  // High-frequency incidents (3+ in rapid succession)
-  if (consecutiveEvents >= 3) {
-    return IncidentCriticality.critical;
-  }
-
-  // Risk score thresholds (0-1)
-  if (riskScore >= 0.75) {
-    return IncidentCriticality.critical;
-  } else if (riskScore >= 0.60) {
-    return IncidentCriticality.high;
-  } else if (riskScore >= 0.40) {
-    return IncidentCriticality.medium;
-  }
-
-  // Report severity thresholds (5 = max)
-  if (reportSeveritySum >= 20) {
-    return IncidentCriticality.critical;
-  } else if (reportSeveritySum >= 15) {
-    return IncidentCriticality.high;
-  }
-
+  if (consecutiveEvents >= 3) return IncidentCriticality.critical;
+  if (riskScore >= 0.75) return IncidentCriticality.critical;
+  if (riskScore >= 0.60) return IncidentCriticality.high;
+  if (riskScore >= 0.40) return IncidentCriticality.medium;
+  if (reportSeveritySum >= 20) return IncidentCriticality.critical;
+  if (reportSeveritySum >= 15) return IncidentCriticality.high;
   return IncidentCriticality.low;
 }
 
-/// Get notification title based on incident type
+/// Get notification title — short, commuter-first wording
 String getNotificationTitle(String incidentType) {
   switch (incidentType) {
-    case 'speeding':
-      return 'Excessive Speeding Detected';
-    case 'harsh_braking':
-      return 'Harsh Braking Event';
-    case 'sharp_turn':
-      return 'Sharp Turn Detected';
-    case 'rapid_sequence':
-      return 'Multiple Unsafe Events';
-    case 'high_report_severity':
-      return 'Critical Incident Reported';
-    default:
-      return 'Safety Alert';
+    case 'speeding':       return '⚡ Driver Going Too Fast';
+    case 'harsh_braking':  return '🛑 Sudden Stop Detected';
+    case 'sharp_turn':     return '↩️ Sharp Turn';
+    case 'pothole':        return '🕳️ Rough Road Ahead';
+    case 'rapid_sequence': return '⚠️ Multiple Unsafe Events';
+    case 'high_report_severity': return '🚨 Danger Reported Nearby';
+    default:               return '⚠️ Safety Alert';
   }
 }
 
-/// Get notification body based on incident details
+/// Get notification body — actionable tip for the commuter, escalates with criticality
 String getNotificationBody(
   String incidentType,
   IncidentCriticality criticality, {
   int? consecutiveEvents,
   double? riskScore,
 }) {
-  final severityLabel = criticality.toString().split('.').last.toUpperCase();
-
   switch (incidentType) {
     case 'speeding':
-      return 'Speed exceeded safe threshold. [$severityLabel]';
+      return criticality == IncidentCriticality.critical
+          ? 'Driver is going dangerously fast — hold on tight and stay seated!'
+          : 'Driver is exceeding safe speed — brace yourself and hold the rail.';
+
     case 'harsh_braking':
-      return 'Emergency braking detected. [$severityLabel]';
+      return criticality == IncidentCriticality.critical
+          ? 'Emergency braking! Brace your knees and grip the handle now.'
+          : 'Sudden deceleration detected — keep both feet on the floor and hold on.';
+
     case 'sharp_turn':
-      return 'Unsafe turning maneuver. [$severityLabel]';
+      return criticality == IncidentCriticality.critical
+          ? 'Very sharp turn! Lean into it and grip the nearest handle.'
+          : 'Sharp turn detected — shift your weight and hold on.';
+
+    case 'pothole':
+      return 'Rough road or bump detected — hold on tight to avoid being thrown.';
+
     case 'rapid_sequence':
-      return '$consecutiveEvents unsafe events in quick succession. [$severityLabel]';
+      final count = consecutiveEvents ?? 3;
+      return '$count unsafe events in a row — consider reporting this driver when you arrive safely.';
+
     case 'high_report_severity':
-      return 'High-severity incident from community reports. Risk: ${(riskScore! * 100).toStringAsFixed(0)}%';
+      final risk = riskScore != null ? '${(riskScore * 100).toStringAsFixed(0)}%' : 'high';
+      return 'Community reports flagged this ride as dangerous ($risk risk). Stay alert and hold on.';
+
     default:
-      return 'Check SafeRide for details. [$severityLabel]';
+      return 'Unsafe driving detected — stay seated and hold on tight.';
   }
 }
+

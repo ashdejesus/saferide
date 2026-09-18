@@ -94,8 +94,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         _buildRiskBanner(context, controller),
         _buildTripStatsRow(context, controller),
         _buildContextFactorsStrip(context, controller),
-        _buildQuickReportStrip(context, controller, colorScheme),
-        _buildLiveSensorSection(controller),
       ],
       _buildUnsafeEvents(controller),
       _buildRecentEvents(context, controller),
@@ -251,6 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   M3ButtonGroup<risk_scoring.VehicleType>(
+                    hideUnselectedLabel: true,
                     segments: const [
                       ButtonSegment(
                         value: risk_scoring.VehicleType.jeepney,
@@ -824,98 +823,17 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ── M3 Expressive Toolbar (Quick Report) ──────────────────────────────────
-  
-  Widget _buildQuickReportStrip(
-    BuildContext context,
-    TripController controller,
-    ColorScheme colorScheme,
-  ) {
+
+
+  // ── Unsafe Events (expanded with Pothole + Slope) ─────────────────────────
+
+  Widget _buildUnsafeEvents(TripController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeader(title: 'Quick Report'),
+        const SectionHeader(title: 'Unsafe Events'),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildToolbarAction(context, controller, 'Speeding', Icons.speed, colorScheme.error),
-            _buildToolbarAction(context, controller, 'Braking', Icons.back_hand, colorScheme.tertiary),
-            _buildToolbarAction(context, controller, 'Pothole', Icons.moving, colorScheme.secondary),
-            _buildToolbarAction(context, controller, 'Hazard', Icons.warning_rounded, colorScheme.primary),
-          ],
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildToolbarAction(
-      BuildContext context, TripController controller, String category, IconData icon, Color color) {
-    return Tooltip(
-      message: 'Report $category',
-      child: _InteractiveCard(
-        elevation: 0,
-        borderRadius: 20,
-        color: color.withOpacity(0.1),
-        onTap: () async {
-          // RQ2: Dynamic Severity based on physical sensor peaks during the quick report
-          int severity = 3; // Default to moderate
-          final peakAccel = controller.peakAcceleration;
-          if (peakAccel > 6.0) severity = 5;
-          else if (peakAccel > 4.0) severity = 4;
-          else if (peakAccel < 1.5) severity = 2; // Very mild event
-
-          await controller.addReport(category: category, severity: severity, description: '1-Tap Quick Report (Auto-Severity: $severity)');
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$category reported. Thank you!'),
-              backgroundColor: color,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.2, // Distribute evenly
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-          decoration: BoxDecoration(
-            border: Border.all(color: color.withOpacity(0.2)),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(height: 12),
-              Text(
-                category,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Live Sensor Section (existing, unchanged) ─────────────────────────────
-
-  Widget _buildLiveSensorSection(TripController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(title: 'Live Sensor Data'),
-        const SizedBox(height: 12),
-        if (!controller.testMode && (controller.currentSpeed * 3.6) < 5.0)
+        if (controller.isTracking && !controller.testMode && (controller.currentSpeed * 3.6) < 5.0)
           Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -940,24 +858,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               ],
             ),
           ),
-        SensorDataCard(
-          acceleration: controller.currentAcceleration,
-          averageAcceleration: controller.averageAcceleration,
-          turnRate: controller.currentTurnRate,
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  // ── Unsafe Events (expanded with Pothole + Slope) ─────────────────────────
-
-  Widget _buildUnsafeEvents(TripController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionHeader(title: 'Unsafe Events'),
-        const SizedBox(height: 12),
         if (!controller.isTracking)
           Card(
             elevation: 0,

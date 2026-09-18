@@ -13,12 +13,14 @@ class M3ButtonGroup<T> extends StatelessWidget {
     required this.selected,
     required this.onSelectionChanged,
     this.gap = 0.0,
+    this.hideUnselectedLabel = false,
   });
 
   final List<ButtonSegment<T>> segments;
   final Set<T> selected;
   final ValueChanged<Set<T>> onSelectionChanged;
   final double gap;
+  final bool hideUnselectedLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +28,7 @@ class M3ButtonGroup<T> extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: colorScheme.outlineVariant,
           width: 2,
@@ -59,12 +61,14 @@ class M3ButtonGroup<T> extends StatelessWidget {
             final isLast = segmentIndex == segments.length - 1;
 
             return Expanded(
+              flex: (hideUnselectedLabel && isSelected) ? 2 : 1,
               child: _SegmentTile<T>(
                 segment: segment,
                 isSelected: isSelected,
                 isFirst: isFirst,
                 isLast: isLast,
                 colorScheme: colorScheme,
+                hideUnselectedLabel: hideUnselectedLabel,
                 onTap: () {
                   if (!isSelected) {
                     onSelectionChanged({segment.value});
@@ -86,6 +90,7 @@ class _SegmentTile<T> extends StatefulWidget {
     required this.isFirst,
     required this.isLast,
     required this.colorScheme,
+    this.hideUnselectedLabel = false,
     required this.onTap,
   });
 
@@ -94,6 +99,7 @@ class _SegmentTile<T> extends StatefulWidget {
   final bool isFirst;
   final bool isLast;
   final ColorScheme colorScheme;
+  final bool hideUnselectedLabel;
   final VoidCallback onTap;
 
   @override
@@ -136,11 +142,11 @@ class _SegmentTileState<T> extends State<_SegmentTile<T>> {
                 ? widget.colorScheme.secondaryContainer
                 : Colors.transparent,
             borderRadius: widget.isFirst && widget.isLast
-                ? BorderRadius.circular(22)
+                ? BorderRadius.circular(999)
                 : widget.isFirst
-                    ? const BorderRadius.horizontal(left: Radius.circular(22))
+                    ? const BorderRadius.horizontal(left: Radius.circular(999))
                     : widget.isLast
-                        ? const BorderRadius.horizontal(right: Radius.circular(22))
+                        ? const BorderRadius.horizontal(right: Radius.circular(999))
                         : null,
           ),
           child: Material(
@@ -148,32 +154,37 @@ class _SegmentTileState<T> extends State<_SegmentTile<T>> {
             child: IgnorePointer(
               ignoring: true,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (widget.isSelected) ...[
                       Icon(
-                        Icons.check,
-                        size: 16,
+                        widget.segment.icon != null 
+                            ? (widget.segment.icon as Icon).icon 
+                            : Icons.check,
+                        size: 18,
                         color: widget.colorScheme.onSecondaryContainer,
                       ),
-                      if (widget.segment.label != null) const SizedBox(width: 6),
-                    ],
-                    if (!widget.isSelected && widget.segment.icon != null) ...[
+                      if (widget.segment.label != null) const SizedBox(width: 8),
+                    ] else if (widget.segment.icon != null) ...[
                       Icon(
                         (widget.segment.icon as Icon).icon,
                         size: 18,
                         color: widget.colorScheme.onSurfaceVariant,
                       ),
+                      if (widget.segment.label != null && !widget.hideUnselectedLabel) 
+                        const SizedBox(width: 8),
                     ],
-                    if (widget.isSelected && widget.segment.label != null)
+                    if (widget.segment.label != null && (widget.isSelected || !widget.hideUnselectedLabel))
                       Flexible(
                         child: DefaultTextStyle.merge(
                           style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                            color: widget.colorScheme.onSecondaryContainer,
-                            fontWeight: FontWeight.w600,
+                            color: widget.isSelected
+                                ? widget.colorScheme.onSecondaryContainer
+                                : widget.colorScheme.onSurfaceVariant,
+                            fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.normal,
                           ),
                           child: widget.segment.label!,
                         ),

@@ -510,7 +510,6 @@ class _ReportScreenState extends State<ReportScreen>
               ),
             ),
           const SizedBox(height: 8),
-          const _ReportingGuidelinesCard(),
         ] else ...[
           _StaggeredItem(
             index: 0,
@@ -596,6 +595,14 @@ class _ReportScreenState extends State<ReportScreen>
                           child: ChoiceChip(
                             label: Text(filter),
                             selected: _selectedFilter == filter,
+                            showCheckmark: false,
+                            avatar: _selectedFilter == filter 
+                                ? Icon(
+                                    Icons.check, 
+                                    size: 18, 
+                                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                  ) 
+                                : null,
                             onSelected: (selected) {
                               if (selected) {
                                 setState(() => _selectedFilter = filter);
@@ -719,57 +726,7 @@ class _IntroCard extends StatelessWidget {
         ),
       );
     }
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      color: colorScheme.primary.withOpacity(0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.report_gmailerrorred,
-                color: colorScheme.primary,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Report an Incident',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Your reports help improve community safety.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const _ReportingGuidelinesCard();
   }
 }
 

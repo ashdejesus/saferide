@@ -186,6 +186,14 @@ class _TripsScreenState extends State<TripsScreen>
                   child: ChoiceChip(
                     label: Text(filter),
                     selected: _selectedFilter == filter,
+                    showCheckmark: false,
+                    avatar: _selectedFilter == filter 
+                        ? Icon(
+                            Icons.check, 
+                            size: 18, 
+                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          ) 
+                        : null,
                     onSelected: (selected) {
                       if (selected) {
                         setState(() => _selectedFilter = filter);
@@ -245,6 +253,14 @@ class _TripsScreenState extends State<TripsScreen>
                   child: ChoiceChip(
                     label: Text(filter),
                     selected: _selectedRouteFilter == filter,
+                    showCheckmark: false,
+                    avatar: _selectedRouteFilter == filter 
+                        ? Icon(
+                            Icons.check, 
+                            size: 18, 
+                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          ) 
+                        : null,
                     onSelected: (selected) {
                       if (selected) setState(() => _selectedRouteFilter = filter);
                     },

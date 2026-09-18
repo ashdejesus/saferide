@@ -54,7 +54,7 @@ class TripController extends ChangeNotifier {
   double _totalSlopeDeviation = 0; // Σ|S(t)|: accumulated slope deviation
   int _reportSeveritySum = 0;
   int _consecutiveEventsInWindow = 0; // For rapid-fire event detection
-  DateTime? _lastNotificationTime; // Throttle notifications
+  final Map<String, DateTime> _lastNotificationByType = {}; // Throttles distinct events
   List<ReportWithTrust> _remoteReports = [];
   StreamSubscription<List<ReportWithTrust>>? _remoteReportsSub;
   StreamSubscription<List<ReportWithTrust>>? _areaReportsSub;
@@ -410,6 +410,14 @@ class TripController extends ChangeNotifier {
       if (_activeTrip?.id != null) {
         _subscribeToRemoteReports(_activeTrip!.id!);
       }
+      
+      _lastNotificationByType.clear();
+      _notificationService.showOngoingTripNotification(
+        safetyScore: 100,
+        totalEvents: 0,
+        routeName: routeName,
+      );
+
       _startBuffering();
       notifyListeners();
       return true;
@@ -437,7 +445,8 @@ class TripController extends ChangeNotifier {
 
       // Reset notification tracking
       _consecutiveEventsInWindow = 0;
-      _lastNotificationTime = null;
+      _lastNotificationByType.clear();
+      _notificationService.cancelOngoingTripNotification();
 
       final endPosition = _currentPosition;
       // Compute sensor-based risk (legacy counts -> normalized)
@@ -529,6 +538,15 @@ class TripController extends ChangeNotifier {
         turningCount: _turningCount,
         routePoints: List.of(_routePoints),
         syncStatus: SyncStatus.pending,
+      );
+
+      _notificationService.showTripSummaryNotification(
+        safetyScore: riskScore.toInt(),
+        speedingCount: _speedingCount,
+        brakingCount: _brakingCount,
+        turningCount: _turningCount,
+        routeName: finalRouteName,
+        tripDuration: DateTime.now().difference(_activeTrip!.startTime),
       );
 
       if (!_testMode) {
@@ -922,10 +940,16 @@ class TripController extends ChangeNotifier {
   }
 
   void _checkAndSendCriticalNotification() {
-    // Throttle notifications: max one every 10 seconds
-    if (!_testMode && _lastNotificationTime != null &&
-        DateTime.now().difference(_lastNotificationTime!).inSeconds < 10) {
-      return;
+    if (!_isTracking) return;
+
+    final incidentType = _getIncidentTypeString();
+    
+    // Throttle distinct event types (45s per type)
+    if (!_testMode) {
+      final lastTime = _lastNotificationByType[incidentType];
+      if (lastTime != null && DateTime.now().difference(lastTime).inSeconds < 45) {
+        return; // Already alerted for this specific event recently
+      }
     }
 
     // Get current safety score
@@ -941,16 +965,16 @@ class TripController extends ChangeNotifier {
       reportSeveritySum: _reportSeveritySum,
     );
 
-    // Send notifications for all recorded unsafe events (removed medium criticality filter)
-    _lastNotificationTime = DateTime.now();
-    _sendCriticalIncidentNotification(criticality);
+    // Record when this specific type was last alerted
+    _lastNotificationByType[incidentType] = DateTime.now();
+    
+    _sendCriticalIncidentNotification(criticality, incidentType);
 
     // Reset counter after sending notification
     _consecutiveEventsInWindow = 0;
   }
 
-  void _sendCriticalIncidentNotification(IncidentCriticality criticality) {
-    final incidentType = _getIncidentTypeString();
+  void _sendCriticalIncidentNotification(IncidentCriticality criticality, String incidentType) {
     final title = getNotificationTitle(incidentType);
     final currentScore = liveSafetyScore;
     final body = getNotificationBody(
@@ -1074,6 +1098,15 @@ class TripController extends ChangeNotifier {
       unawaited(_persistActiveTripSnapshot());
     });
     _uiTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      // Update persistent trip card periodically (only every ~10s to avoid spamming the plugin)
+      if (_isTracking && DateTime.now().second % 10 == 0) {
+        _notificationService.showOngoingTripNotification(
+          safetyScore: liveSafetyScore ?? 100,
+          totalEvents: _speedingCount + _brakingCount + _turningCount,
+          routeName: _activeTrip?.routeName,
+          lastEventLabel: _recentEvents.isNotEmpty ? getNotificationTitle(_getIncidentTypeString()).replaceAll(RegExp(r'[^\w\s]'), '').trim() : null,
+        );
+      }
       notifyListeners();
     });
   }

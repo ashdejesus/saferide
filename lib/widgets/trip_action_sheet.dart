@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../data/app_database.dart';
 import '../state/trip_controller.dart';
 import '../services/risk_scoring.dart' as risk_scoring;
+import 'm3_button_group.dart';
 
 class TripActionSheet {
   static Future<void> show(BuildContext context, {risk_scoring.VehicleType vehicle = risk_scoring.VehicleType.jeepney}) async {
@@ -63,7 +64,8 @@ class TripActionSheet {
                   ),
                   const SizedBox(height: 12),
                   if (!controller.isTracking) ...[
-                    SegmentedButton<risk_scoring.VehicleType>(
+                    M3ButtonGroup<risk_scoring.VehicleType>(
+                      hideUnselectedLabel: true,
                       segments: const [
                         ButtonSegment(
                           value: risk_scoring.VehicleType.jeepney,
@@ -87,9 +89,6 @@ class TripActionSheet {
                           selectedVehicle = val.first;
                         });
                       },
-                      style: SegmentedButton.styleFrom(
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
                     ),
                     const SizedBox(height: 16),
                     DropdownMenu<String>(
@@ -154,7 +153,9 @@ class TripActionSheet {
                       children: suggestedRoutes.map((route) {
                         return ActionChip(
                           label: Text(route),
-                          avatar: const Icon(Icons.history, size: 16),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          avatar: const Icon(Icons.history, size: 18),
                           onPressed: () {
                             // Automatically fill the text field when a suggestion is tapped
                             routeController.text = route;
