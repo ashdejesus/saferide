@@ -241,7 +241,7 @@ class NotificationService {
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
       await _localNotifications.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        payload?.hashCode ?? (DateTime.now().millisecondsSinceEpoch.remainder(100000)),
         title,
         body,
         details,
@@ -443,9 +443,9 @@ class NotificationService {
 
       await _localNotifications.zonedSchedule(
         999,
-        '🚗 Safe ride today!',
-        'You have offline trips pending. Sync them to boost your Trust Score and help the community!',
-        tz.TZDateTime.now(tz.local).add(const Duration(hours: 1)),
+        '🚗 Trip recorded!',
+        'Your offline trip will automatically sync in 30 minutes. Make sure you are connected to the internet!',
+        tz.TZDateTime.now(tz.local).add(const Duration(minutes: 30)),
         details,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

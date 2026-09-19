@@ -12,6 +12,7 @@ import '../data/app_database.dart';
 import '../models/report.dart';
 import '../models/sync_status.dart';
 import '../models/trip.dart';
+import '../services/sync_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/risk_scoring.dart' as risk_scoring;
@@ -23,6 +24,7 @@ import '../models/passenger_trust_metrics.dart';
 class TripController extends ChangeNotifier {
   TripController({
     required AppDatabase database,
+    this.syncService,
     LocationService? locationService,
     SensorService? sensorService,
     FirestoreService? firestoreService,
@@ -34,6 +36,7 @@ class TripController extends ChangeNotifier {
        _passengerReportingService = passengerReportingService ?? PassengerReportingService();
   final FirestoreService _firestoreService;
   final PassengerReportingService _passengerReportingService;
+  final SyncService? syncService;
 
   final AppDatabase _database;
   final LocationService _locationService;
@@ -88,6 +91,11 @@ class TripController extends ChangeNotifier {
   final Set<int> _alertedReportIds = {};
 
   ReportWithTrust? get currentAlert => _currentAlert;
+
+  void clearCurrentAlert() {
+    _currentAlert = null;
+    notifyListeners();
+  }
 
   // Slope calculation state: S(t) = (h(t) - h(t-1)) / d(t)
   double _lastAltitude = 0;
@@ -556,6 +564,12 @@ class TripController extends ChangeNotifier {
         final counts = await _database.getPendingCounts();
         if (counts.total > 0) {
           _notificationService.scheduleSyncReminder();
+          // Auto-sync 30 mins after a trip
+          if (syncService != null) {
+            Timer(const Duration(minutes: 30), () {
+              syncService!.syncPending();
+            });
+          }
         }
       }
 
@@ -573,6 +587,7 @@ class TripController extends ChangeNotifier {
       _isTracking = false;
       _hasLivePosition = false;
       _currentSpeed = 0;
+      _notificationService.cancelOngoingTripNotification();
       _tripHistoryVersion++;
       // Refresh completed trips so the map shows the new trip immediately
       loadCompletedTrips().catchError((_) {});
@@ -786,10 +801,20 @@ class TripController extends ChangeNotifier {
 
       if (distanceKm < 0.5) {
         // Within 500 meters
-        _currentAlert = report;
         _lastAlertTime = DateTime.now();
         _alertedReportIds.add(report.reportId);
-        notifyListeners();
+        
+        final title = '${report.category} Reported Ahead';
+        final body = report.description?.isNotEmpty == true 
+            ? '"${report.description}" (Severity: ${report.severity}/5)'
+            : 'Hazard ahead (Severity: ${report.severity}/5)';
+            
+        _notificationService.showLocalNotification(
+          title: title,
+          body: body,
+          payload: 'hazard_${report.reportId}',
+        );
+        
         break; // Only show one alert at a time
       }
     }

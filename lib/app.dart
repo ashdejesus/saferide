@@ -96,7 +96,7 @@ class _SafeRideAppState extends State<SafeRideApp> {
         ChangeNotifierProvider.value(value: widget.sync),
         ChangeNotifierProvider(
           key: ValueKey(_controllerScopeKey),
-          create: (context) => TripController(database: widget.database),
+          create: (context) => TripController(database: widget.database, syncService: widget.sync),
         ),
       ],
       child: WifiSyncListener(

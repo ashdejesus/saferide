@@ -403,6 +403,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       return;
     }
 
+    if (!force && _isMapInteracting) {
+      return;
+    }
+
     _animatedMapMove(center, _mapController.camera.zoom);
   }
 
@@ -916,7 +920,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     // Auto-pan if the location changed significantly
     if (points.last.latitude != oldWidget.routePoints.lastOrNull?.latitude ||
         points.last.longitude != oldWidget.routePoints.lastOrNull?.longitude) {
-      _animatedMapMove(points.last, _mapController.camera.zoom);
+      if (_followUser && !_isMapInteracting) {
+        _animatedMapMove(points.last, _mapController.camera.zoom);
+      }
     }
 
     if (widget.isTracking) {
@@ -1502,6 +1508,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
 
       markers.add(
         Marker(
+          key: ValueKey<int>(r.reportId),
           point: LatLng(r.latitude!, r.longitude!),
           width: markerSize,
           height: markerSize,
@@ -1687,12 +1694,15 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          Listener(
-            onPointerDown: _handleMapInteractionStart,
-            onPointerUp: _handleMapInteractionEnd,
-            onPointerCancel: _handleMapInteractionEnd,
-            child: FlutterMap(
-              mapController: _mapController,
+          MouseRegion(
+            onEnter: _handleMapInteractionStart,
+            onExit: _handleMapInteractionEnd,
+            child: Listener(
+              onPointerDown: _handleMapInteractionStart,
+              onPointerUp: _handleMapInteractionEnd,
+              onPointerCancel: _handleMapInteractionEnd,
+              child: FlutterMap(
+                mapController: _mapController,
               options: MapOptions(
                 initialCenter: mapCenter,
                 initialZoom: hasRealTripRoute || hasCompletedTrips ? 15 : 2,
@@ -1777,6 +1787,15 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                       maxClusterRadius: 40,
                       size: const Size(40, 40),
                       markers: incidentMarkers,
+                      onMarkerTap: (Marker marker) {
+                        if (marker.key is ValueKey<int>) {
+                          final reportId = (marker.key as ValueKey<int>).value;
+                          final report = widget.controller.remoteReports.firstWhere(
+                            (r) => r.reportId == reportId,
+                          );
+                          _showIncidentDetailsBottomSheet(context, report);
+                        }
+                      },
                       builder: (context, markers) {
                         return Container(
                           decoration: BoxDecoration(
@@ -1817,6 +1836,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     ],
                   ),
               ],
+            ),
             ),
           ),
 
@@ -2165,19 +2185,6 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               showCommunitySafety: widget.showCommunitySafety,
             ),
           ),
-          // Crowd Alert Banner (Placed at end of Stack so it stays on top of other HUDs)
-          if (widget.controller.currentAlert != null)
-            Positioned(
-              top: 120,
-              left: 12,
-              right: 60,
-              child: _CrowdAlertBanner(
-                alert: widget.controller.currentAlert!,
-                onDismiss: () {
-                  // Clears automatically in controller after 8s
-                },
-              ),
-            ),
         ],
       ),
     );
@@ -2405,116 +2412,6 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _CrowdAlertBanner extends StatefulWidget {
-  final ReportWithTrust alert;
-  final VoidCallback onDismiss;
-
-  const _CrowdAlertBanner({required this.alert, required this.onDismiss});
-
-  @override
-  State<_CrowdAlertBanner> createState() => _CrowdAlertBannerState();
-}
-
-class _CrowdAlertBannerState extends State<_CrowdAlertBanner>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: MotionScheme.spatialDefault,
-    ));
-    
-    _animController.forward();
-  }
-
-  @override
-  void didUpdateWidget(_CrowdAlertBanner oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.alert.reportId != widget.alert.reportId) {
-      _animController.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SlideTransition(
-      position: _slideAnimation,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(16),
-        color: colorScheme.errorContainer,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: widget.onDismiss,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: colorScheme.error,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${widget.alert.category} Reported',
-                        style: TextStyle(
-                          color: colorScheme.error,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        widget.alert.description?.isNotEmpty == true
-                            ? '"${widget.alert.description}"'
-                            : 'Hazard ahead',
-                        style: TextStyle(
-                          color: colorScheme.onErrorContainer,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        'Confidence: ${(widget.alert.passengerTrust * 100).toInt()}% • Severity: ${widget.alert.severity}/5',
-                        style: TextStyle(
-                          color: colorScheme.onErrorContainer.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _SummaryStat extends StatelessWidget {
   const _SummaryStat({

@@ -40,6 +40,7 @@ class _TripsScreenState extends State<TripsScreen>
   int _routeViewIndex = 0;
   String _selectedFilter = 'All';
   String _selectedRouteFilter = 'All';
+  DateTimeRange? _selectedDateRange;
   static const int _limit = 20;
   DateTime? _lastKnownRestoreAt;
 
@@ -121,7 +122,13 @@ class _TripsScreenState extends State<TripsScreen>
 
     final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
     final filteredTrips = _trips.where((t) {
-      if (t.startTime.isBefore(ninetyDaysAgo)) return false;
+      if (_selectedDateRange != null) {
+        if (t.startTime.isBefore(_selectedDateRange!.start) || t.startTime.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
+          return false;
+        }
+      } else {
+        if (t.startTime.isBefore(ninetyDaysAgo)) return false;
+      }
       if (_selectedFilter == 'Safe' && t.riskScore >= 20) return false;
       if (_selectedFilter == 'Moderate' && (t.riskScore < 20 || t.riskScore >= 40)) return false;
       if (_selectedFilter == 'Risky' && t.riskScore < 40) return false;
@@ -146,7 +153,6 @@ class _TripsScreenState extends State<TripsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(child: SectionHeader(title: 'Trip Summary')),
-              SyncButton(),
             ],
           ),
           PendingSyncBanner(),
@@ -180,8 +186,64 @@ class _TripsScreenState extends State<TripsScreen>
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', 'Safe', 'Moderate', 'Risky'].map((filter) {
-                return Padding(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InputChip(
+                    avatar: const Icon(Icons.calendar_month, size: 18),
+                    label: Text(_selectedDateRange != null 
+                        ? '${_selectedDateRange!.start.month}/${_selectedDateRange!.start.day} - ${_selectedDateRange!.end.month}/${_selectedDateRange!.end.day}' 
+                        : 'Date'),
+                    selected: _selectedDateRange != null,
+                    showCheckmark: false,
+                    onDeleted: _selectedDateRange != null 
+                        ? () => setState(() => _selectedDateRange = null) 
+                        : null,
+                    onPressed: () async {
+                      final range = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                        initialDateRange: _selectedDateRange,
+                        builder: (context, child) {
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 600),
+                            curve: MotionScheme.spatialDefault,
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: 0.9 + (0.1 * value),
+                                child: Opacity(
+                                  opacity: value.clamp(0.0, 1.0),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                inputDecorationTheme: InputDecorationTheme(
+                                  filled: true,
+                                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                              ),
+                              child: child!,
+                            ),
+                          );
+                        },
+                      );
+                      if (range != null) {
+                        setState(() => _selectedDateRange = range);
+                      }
+                    },
+                  ),
+                ),
+                ...['All', 'Safe', 'Moderate', 'Risky'].map((filter) {
+                  return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(filter),
@@ -202,6 +264,7 @@ class _TripsScreenState extends State<TripsScreen>
                   ),
                 );
               }).toList(),
+              ],
             ),
           ),
         ),

@@ -16,6 +16,8 @@ import '../widgets/m3_button_group.dart';
 import '../data/app_database.dart';
 import '../widgets/m3_progress_indicators.dart';
 
+import '../theme/motion_scheme.dart';
+
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
 
@@ -34,6 +36,7 @@ class _ReportScreenState extends State<ReportScreen>
   late final PassengerReportingService _reportingService;
   PassengerTrustMetrics? _userTrustMetrics;
   String _selectedFilter = 'All';
+  DateTimeRange? _selectedDateRange;
 
   static const List<String> _categories = [
     'Speeding',
@@ -107,6 +110,7 @@ class _ReportScreenState extends State<ReportScreen>
       if (_selectedFilter == 'Verified' && !r.isVerified) return false;
       if (_selectedFilter == 'Flagged' && !r.isFlagged) return false;
       if (_selectedFilter == 'High Severity' && r.severity < 4) return false;
+      if (_selectedDateRange != null && (r.timestamp.isBefore(_selectedDateRange!.start) || r.timestamp.isAfter(_selectedDateRange!.end.add(const Duration(days: 1))))) return false;
       return true;
     }).toList();
 
@@ -589,7 +593,63 @@ class _ReportScreenState extends State<ReportScreen>
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: ['All', 'Verified', 'High Severity', 'Flagged'].map((filter) {
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: InputChip(
+                            avatar: const Icon(Icons.calendar_month, size: 18),
+                            label: Text(_selectedDateRange != null 
+                                ? '${_selectedDateRange!.start.month}/${_selectedDateRange!.start.day} - ${_selectedDateRange!.end.month}/${_selectedDateRange!.end.day}' 
+                                : 'Date'),
+                            selected: _selectedDateRange != null,
+                            showCheckmark: false,
+                            onDeleted: _selectedDateRange != null 
+                                ? () => setState(() => _selectedDateRange = null) 
+                                : null,
+                            onPressed: () async {
+                              final range = await showDateRangePicker(
+                                context: context,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                initialDateRange: _selectedDateRange,
+                                builder: (context, child) {
+                                  return TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0.0, end: 1.0),
+                                    duration: const Duration(milliseconds: 600),
+                                    curve: MotionScheme.spatialDefault,
+                                    builder: (context, value, child) {
+                                      return Transform.scale(
+                                        scale: 0.9 + (0.1 * value),
+                                        child: Opacity(
+                                          opacity: value.clamp(0.0, 1.0),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        inputDecorationTheme: InputDecorationTheme(
+                                          filled: true,
+                                          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                      ),
+                                      child: child!,
+                                    ),
+                                  );
+                                },
+                              );
+                              if (range != null) {
+                                setState(() => _selectedDateRange = range);
+                              }
+                            },
+                          ),
+                        ),
+                        ...['All', 'Verified', 'High Severity', 'Flagged'].map((filter) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
@@ -611,6 +671,7 @@ class _ReportScreenState extends State<ReportScreen>
                           ),
                         );
                       }).toList(),
+                      ],
                     ),
                   ),
                 ],

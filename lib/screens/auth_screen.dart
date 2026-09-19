@@ -49,9 +49,16 @@ class _AuthScreenState extends State<AuthScreen> {
           return 'An account already exists for that email. Try logging in!';
         case 'weak-password':
           return 'That password is a bit too weak. Try adding some numbers or symbols.';
+        case 'unverified-email':
+          return e.message ?? 'Please verify your email address to continue.';
+        case 'verification-required':
+          return e.message ?? 'Account created! Please check your email to verify your account.';
         default:
           return 'Oops! Something went wrong (${e.code}). Please try again later.';
       }
+    }
+    if (e is Exception) {
+      return e.toString().replaceAll('Exception: ', '');
     }
     return 'Oops! An unexpected error occurred. Please try again.';
   }
@@ -103,10 +110,27 @@ class _AuthScreenState extends State<AuthScreen> {
     final auth = Provider.of<AuthService>(context, listen: false);
     try {
       if (_isLogin) {
-        await auth.signInWithEmail(
+        final cred = await auth.signInWithEmail(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
+
+        // Check if email verification is required
+        final user = cred.user;
+        if (user != null && !user.emailVerified) {
+          // Exempt accounts created before Sept 19, 2026
+          final cutoffDate = DateTime(2026, 9, 19);
+          final creationTime = user.metadata.creationTime;
+          
+          if (creationTime == null || creationTime.isAfter(cutoffDate)) {
+            await auth.signOut();
+            throw FirebaseAuthException(
+              code: 'unverified-email', 
+              message: 'Please verify your email address to continue. Check your inbox.'
+            );
+          }
+        }
+
         // Fire and forget restore trips from cloud
         if (mounted) {
           context.read<SyncService>().restoreTripsFromCloud().then((_) {
@@ -116,10 +140,22 @@ class _AuthScreenState extends State<AuthScreen> {
           });
         }
       } else {
-        await auth.registerWithEmail(
+        final cred = await auth.registerWithEmail(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           name: _nameController.text.trim(),
+        );
+        
+        await cred.user?.sendEmailVerification();
+        await auth.signOut();
+        
+        setState(() {
+          _isLogin = true;
+        });
+        
+        throw FirebaseAuthException(
+          code: 'verification-required',
+          message: 'Account created! Please check your email inbox to verify your account.'
         );
       }
     } catch (e) {
@@ -272,9 +308,26 @@ class _AuthScreenState extends State<AuthScreen> {
                                   ),
                                 ),
                                 obscureText: _obscurePassword,
-                                validator: (v) => (v == null || v.length < 6)
-                                    ? 'Password must be at least 6 characters'
-                                    : null,
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) {
+                                    return 'Password is required';
+                                  }
+                                  if (!_isLogin) {
+                                    if (v.length < 6 || v.length > 12) {
+                                      return 'Password must be 6 to 12 characters';
+                                    }
+                                    if (!v.contains(RegExp(r'[a-zA-Z]'))) {
+                                      return 'Password must contain at least one letter';
+                                    }
+                                    if (!v.contains(RegExp(r'[0-9]'))) {
+                                      return 'Password must contain at least one number';
+                                    }
+                                    if (!v.contains(RegExp(r'[!@#\$%\^&\*(),.?":{}|<>]'))) {
+                                      return 'Password must contain at least one special character';
+                                    }
+                                  }
+                                  return null;
+                                },
                               ),
                               
                               if (_isLogin)

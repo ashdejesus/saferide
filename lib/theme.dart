@@ -142,5 +142,19 @@ ThemeData buildSafeRideTheme() {
       thickness: 1,
       space: 24,
     ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      headerBackgroundColor: colorScheme.surfaceContainerHighest,
+      headerForegroundColor: colorScheme.onSurface,
+      headerHeadlineStyle: expressiveTextTheme.headlineLarge,
+      headerHelpStyle: expressiveTextTheme.labelMedium,
+      dayStyle: expressiveTextTheme.bodyMedium,
+      yearStyle: expressiveTextTheme.bodyLarge,
+      rangePickerBackgroundColor: colorScheme.surfaceContainerHigh,
+      rangePickerElevation: 0,
+      rangePickerShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    ),
   );
 }
