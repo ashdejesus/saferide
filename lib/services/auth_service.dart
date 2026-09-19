@@ -11,6 +11,7 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   Stream<User?> authStateChanges() => _auth.authStateChanges();
+  Stream<User?> userChanges() => _auth.userChanges();
 
   Future<UserCredential> registerWithEmail(
     String email,

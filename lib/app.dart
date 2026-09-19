@@ -14,6 +14,7 @@ import 'services/passenger_reporting_service.dart';
 import 'theme.dart';
 import 'theme/motion_scheme.dart';
 import 'screens/auth_screen.dart';
+import 'screens/verification_screen.dart';
 import 'widgets/sync_widgets.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
@@ -106,13 +107,20 @@ class _SafeRideAppState extends State<SafeRideApp> {
           home: _AgreementCheckWrapper(
           preferences: widget.preferences,
           child: StreamBuilder<User?>(
-            stream: widget.auth.authStateChanges(),
+            stream: widget.auth.userChanges(),
             initialData: widget.auth.currentUser,
             builder: (context, snapshot) {
               final user = snapshot.data;
               if (user == null) {
                 return const AuthScreen();
               }
+              
+              // Smart Email Verification flow
+              final isOldAccount = user.metadata.creationTime?.isBefore(DateTime(2026, 9, 19)) ?? true;
+              if (!user.emailVerified && !isOldAccount) {
+                return const VerificationScreen();
+              }
+              
               return Consumer<TripController>(
                 builder: (context, controller, _) {
                   return Stack(

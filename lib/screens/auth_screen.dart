@@ -115,22 +115,6 @@ class _AuthScreenState extends State<AuthScreen> {
           _passwordController.text.trim(),
         );
 
-        // Check if email verification is required
-        final user = cred.user;
-        if (user != null && !user.emailVerified) {
-          // Exempt accounts created before Sept 19, 2026
-          final cutoffDate = DateTime(2026, 9, 19);
-          final creationTime = user.metadata.creationTime;
-          
-          if (creationTime == null || creationTime.isAfter(cutoffDate)) {
-            await auth.signOut();
-            throw FirebaseAuthException(
-              code: 'unverified-email', 
-              message: 'Please verify your email address to continue. Check your inbox.'
-            );
-          }
-        }
-
         // Fire and forget restore trips from cloud
         if (mounted) {
           context.read<SyncService>().restoreTripsFromCloud().then((_) {
@@ -147,16 +131,10 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         
         await cred.user?.sendEmailVerification();
-        await auth.signOut();
         
         setState(() {
           _isLogin = true;
         });
-        
-        throw FirebaseAuthException(
-          code: 'verification-required',
-          message: 'Account created! Please check your email inbox to verify your account.'
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -313,8 +291,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                     return 'Password is required';
                                   }
                                   if (!_isLogin) {
-                                    if (v.length < 6 || v.length > 12) {
-                                      return 'Password must be 6 to 12 characters';
+                                    if (v.length < 6) {
+                                      return 'Password must be at least 6 characters';
                                     }
                                     if (!v.contains(RegExp(r'[a-zA-Z]'))) {
                                       return 'Password must contain at least one letter';
