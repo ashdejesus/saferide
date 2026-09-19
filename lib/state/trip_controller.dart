@@ -33,7 +33,9 @@ class TripController extends ChangeNotifier {
        _locationService = locationService ?? LocationService(),
        _sensorService = sensorService ?? SensorService(),
        _firestoreService = firestoreService ?? FirestoreService(),
-       _passengerReportingService = passengerReportingService ?? PassengerReportingService();
+       _passengerReportingService = passengerReportingService ?? PassengerReportingService() {
+    _database.cleanupOrphanedTrips();
+  }
   final FirestoreService _firestoreService;
   final PassengerReportingService _passengerReportingService;
   final SyncService? syncService;

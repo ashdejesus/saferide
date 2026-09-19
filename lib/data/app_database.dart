@@ -282,6 +282,18 @@ class AppDatabase {
     );
   }
 
+  Future<void> cleanupOrphanedTrips() async {
+    if (kIsWeb) {
+      _webTrips.removeWhere((t) => t.endTime == null);
+      return;
+    }
+    final db = await database;
+    await db.delete(
+      'trips',
+      where: 'end_time IS NULL',
+    );
+  }
+
   Future<List<Trip>> getTrips({int? limit, int? offset}) async {
     if (kIsWeb) {
       var trips = _webTrips.toList().reversed.toList();

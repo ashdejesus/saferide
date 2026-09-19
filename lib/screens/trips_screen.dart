@@ -43,6 +43,7 @@ class _TripsScreenState extends State<TripsScreen>
   DateTimeRange? _selectedDateRange;
   static const int _limit = 20;
   DateTime? _lastKnownRestoreAt;
+  bool _showAllTrips = false;
 
   @override
   void initState() {
@@ -121,19 +122,25 @@ class _TripsScreenState extends State<TripsScreen>
     }
 
     final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
-    final filteredTrips = _trips.where((t) {
+    var filteredTrips = _trips.where((t) {
       if (_selectedDateRange != null) {
         if (t.startTime.isBefore(_selectedDateRange!.start) || t.startTime.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
           return false;
         }
       } else {
-        if (t.startTime.isBefore(ninetyDaysAgo)) return false;
+        if (!_showAllTrips && t.startTime.isBefore(ninetyDaysAgo)) return false;
       }
       if (_selectedFilter == 'Safe' && t.riskScore >= 20) return false;
       if (_selectedFilter == 'Moderate' && (t.riskScore < 20 || t.riskScore >= 40)) return false;
       if (_selectedFilter == 'Risky' && t.riskScore < 40) return false;
       return true;
     }).toList();
+
+    final bool isLimitedView = _selectedDateRange == null && !_showAllTrips;
+    final bool hasMoreToView = isLimitedView && filteredTrips.length > 5;
+    if (isLimitedView && filteredTrips.length > 5) {
+      filteredTrips = filteredTrips.take(5).toList();
+    }
 
     final groupedTrips = <String, List<Trip>>{};
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -298,7 +305,19 @@ class _TripsScreenState extends State<TripsScreen>
             children.add(_TripCard(trip: trip));
           }
         }
-        if (_hasMoreTrips) {
+        if (isLimitedView && (hasMoreToView || _hasMoreTrips)) {
+          children.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: FilledButton.tonal(
+                  onPressed: () => setState(() => _showAllTrips = true),
+                  child: const Text('View All Trips'),
+                ),
+              ),
+            ),
+          );
+        } else if (_hasMoreTrips) {
           children.add(const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())));
         }
       }

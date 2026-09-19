@@ -54,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext context,
     AuthService auth,
     SyncService sync,
+    TripController tripController,
   ) async {
     final user = auth.currentUser;
     if (user == null) {
@@ -80,6 +81,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm != true) {
       return;
+    }
+
+    if (tripController.isTracking) {
+      await tripController.stopTrip();
     }
 
     await sync.syncPending();
@@ -404,7 +409,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           if (user != null)
             ElevatedButton.icon(
-              onPressed: () => _handleSignOut(context, auth!, sync),
+              onPressed: () => _handleSignOut(context, auth!, sync, tripController),
               icon: const Icon(Icons.logout),
               label: const Text('Sign out'),
               style: ElevatedButton.styleFrom(

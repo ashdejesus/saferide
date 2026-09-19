@@ -37,6 +37,7 @@ class _ReportScreenState extends State<ReportScreen>
   PassengerTrustMetrics? _userTrustMetrics;
   String _selectedFilter = 'All';
   DateTimeRange? _selectedDateRange;
+  bool _showAllReports = false;
 
   static const List<String> _categories = [
     'Speeding',
@@ -105,14 +106,24 @@ class _ReportScreenState extends State<ReportScreen>
     final colorScheme = theme.colorScheme;
 
     final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
-    final filteredReports = _reports?.where((r) {
-      if (r.timestamp.isBefore(ninetyDaysAgo)) return false;
+    var filteredReports = _reports?.where((r) {
+      if (_selectedDateRange != null) {
+        if (r.timestamp.isBefore(_selectedDateRange!.start) || r.timestamp.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) return false;
+      } else {
+        if (!_showAllReports && r.timestamp.isBefore(ninetyDaysAgo)) return false;
+      }
       if (_selectedFilter == 'Verified' && !r.isVerified) return false;
       if (_selectedFilter == 'Flagged' && !r.isFlagged) return false;
       if (_selectedFilter == 'High Severity' && r.severity < 4) return false;
-      if (_selectedDateRange != null && (r.timestamp.isBefore(_selectedDateRange!.start) || r.timestamp.isAfter(_selectedDateRange!.end.add(const Duration(days: 1))))) return false;
       return true;
     }).toList();
+
+    final bool isLimitedView = _selectedDateRange == null && !_showAllReports;
+    final bool hasMoreToView = isLimitedView && filteredReports != null && filteredReports.length > 5;
+    
+    if (isLimitedView && filteredReports != null && filteredReports.length > 5) {
+      filteredReports = filteredReports.take(5).toList();
+    }
 
     final groupedReports = <String, List<ReportWithTrust>>{};
     if (filteredReports != null) {
@@ -711,6 +722,16 @@ class _ReportScreenState extends State<ReportScreen>
                     ),
                   ),
               ],
+            if (hasMoreToView)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: FilledButton.tonal(
+                    onPressed: () => setState(() => _showAllReports = true),
+                    child: const Text('View All Reports'),
+                  ),
+                ),
+              ),
           ],
         ],
         const SizedBox(height: 80),

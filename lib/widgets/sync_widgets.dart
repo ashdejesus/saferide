@@ -269,9 +269,18 @@ class _PendingSyncBannerState extends State<PendingSyncBanner> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'You have pending items to sync.',
+                    'You have ${counts.total} pending items. They will automatically sync when connected to Wi-Fi.',
                     style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
                   ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    context.read<SyncService>().syncPending();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                  ),
+                  child: const Text('Sync Now'),
                 ),
               ],
             ),

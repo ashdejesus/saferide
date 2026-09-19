@@ -67,11 +67,11 @@ class _SafeRideAppState extends State<SafeRideApp> {
   void _handleAuthChanged(User? user) {
     widget.database.configureForUser(
       uid: user?.uid,
-      isAnonymous: false,
+      isAnonymous: user?.isAnonymous ?? false,
     );
     final nextScope = user == null
         ? 'signed_out'
-        : 'user_${user.uid}';
+        : (user.isAnonymous ? 'anon_${user.uid}' : 'user_${user.uid}');
     if (_controllerScopeKey != nextScope && mounted) {
       setState(() {
         _controllerScopeKey = nextScope;
