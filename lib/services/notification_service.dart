@@ -337,6 +337,7 @@ class NotificationService {
     required int speedingCount,
     required int brakingCount,
     required int turningCount,
+    required int potholeCount,
     String? routeName,
     required Duration tripDuration,
   }) async {
@@ -356,7 +357,7 @@ class NotificationService {
         emoji = '🚨';
       }
 
-      final totalEvents = speedingCount + brakingCount + turningCount;
+      final totalEvents = speedingCount + brakingCount + turningCount + potholeCount;
       final title = '$emoji Trip Complete · Safety Score: $safetyScore';
       final tripName = (routeName != null && routeName.isNotEmpty)
           ? routeName
@@ -366,6 +367,7 @@ class NotificationService {
       if (speedingCount > 0) parts.add('$speedingCount speeding');
       if (brakingCount > 0) parts.add('$brakingCount braking');
       if (turningCount > 0) parts.add('$turningCount turning');
+      if (potholeCount > 0) parts.add('$potholeCount potholes');
 
       final String body = totalEvents == 0
           ? '$tripName · $riskLabel · No unsafe events — great ride!'

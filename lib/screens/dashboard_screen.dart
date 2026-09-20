@@ -1480,9 +1480,17 @@ class _TripStatusPillState extends State<_TripStatusPill>
 }
 
 String _formatTime(DateTime timestamp) {
-  final hour = timestamp.hour.toString().padLeft(2, '0');
+  int hour = timestamp.hour;
   final minute = timestamp.minute.toString().padLeft(2, '0');
-  return '$hour:$minute';
+  final amPm = hour >= 12 ? 'PM' : 'AM';
+  
+  if (hour == 0) {
+    hour = 12;
+  } else if (hour > 12) {
+    hour -= 12;
+  }
+  
+  return '$hour:$minute $amPm';
 }
 
 class _PulsingRiskBanner extends StatefulWidget {

@@ -551,10 +551,11 @@ class TripController extends ChangeNotifier {
       );
 
       _notificationService.showTripSummaryNotification(
-        safetyScore: riskScore.toInt(),
+        safetyScore: (100.0 - riskScore).toInt(),
         speedingCount: _speedingCount,
         brakingCount: _brakingCount,
         turningCount: _turningCount,
+        potholeCount: _potholeCount,
         routeName: finalRouteName,
         tripDuration: DateTime.now().difference(_activeTrip!.startTime),
       );
@@ -685,6 +686,12 @@ class TripController extends ChangeNotifier {
   }
 
   void _onPosition(Position position) {
+    // Filter out wildly inaccurate points to prevent erratic GPS jumping/zig-zagging
+    // (Common when losing internet and falling back to cell tower triangulation)
+    if (position.accuracy > 50.0 && !_testMode) {
+      return; 
+    }
+
     _hasLivePosition = true;
     _currentPosition = position;
     _currentSpeed = max(position.speed, 0);
@@ -859,7 +866,7 @@ class TripController extends ChangeNotifier {
 
     // In test mode, allow simulating speeding and braking via forward/backward phone thrusts
     if (_testMode) {
-      if (event.y > 3.0) {
+      if (event.y > 7.0) {
         // Feed mock speed into the sliding window to trigger the real algorithm's average
         final mockSpeedMs = (_adaptiveThresholds.getAdaptiveThreshold(_adaptiveThresholds.thetaSpeedingBase, applyVehicleMultiplier: false) + 15.0) / 3.6;
         for (int i = 0; i < _speedWindow.size; i++) {
@@ -873,7 +880,7 @@ class TripController extends ChangeNotifier {
           _recordEvent(risk_scoring.UnsafeEventType.speeding);
         }
       }
-      if (event.y < -3.0) {
+      if (event.y < -7.0) {
         // Feed mock deceleration into the sliding window to trigger the real algorithm's delta
         final mockDecelMs = _adaptiveThresholds.getAdaptiveThreshold(_adaptiveThresholds.thetaBrakingBase) - 2.0;
         

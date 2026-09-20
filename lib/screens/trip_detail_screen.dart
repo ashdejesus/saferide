@@ -255,6 +255,31 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                                           size: 36,
                                         ),
                                       ),
+                                    if (animatedPoints.isNotEmpty && animatedPoints.length < routePoints.length)
+                                      Marker(
+                                        point: animatedPoints.last,
+                                        width: 32,
+                                        height: 32,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 2),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                                blurRadius: 6,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Icon(
+                                            _getVehicleIcon(widget.trip.vehicleType),
+                                            color: Theme.of(context).colorScheme.onPrimary,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
                                     if (animatedPoints.length == routePoints.length && routePoints.length > 1)
                                       Marker(
                                         point: routePoints.last,
@@ -384,6 +409,17 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     }
     
     return '$hour:$minute $amPm';
+  }
+
+  IconData _getVehicleIcon(String? vehicleType) {
+    if (vehicleType == null) return Icons.directions_car;
+    switch (vehicleType.toLowerCase()) {
+      case 'motorcycle': return Icons.two_wheeler;
+      case 'tricycle': return Icons.electric_rickshaw;
+      case 'jeepney': return Icons.directions_bus;
+      case 'bus': return Icons.directions_bus;
+      default: return Icons.directions_car;
+    }
   }
 
   String _formatDuration(Duration duration) {

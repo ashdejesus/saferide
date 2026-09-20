@@ -21,6 +21,8 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../services/risk_scoring.dart' as risk_scoring;
 
+enum TimeFilter { last7Days, last30Days, allTime }
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -35,6 +37,7 @@ class _MapScreenState extends State<MapScreen>
   bool _showSaferRoutes = true;
   bool _showReportedIncidents = true;
   bool _showCommunitySafety = true;
+  TimeFilter _timeFilter = TimeFilter.allTime;
 
   @override
   void initState() {
@@ -100,6 +103,7 @@ class _MapScreenState extends State<MapScreen>
                 showSaferRoutes: _showSaferRoutes,
                 showReportedIncidents: _showReportedIncidents,
                 showCommunitySafety: _showCommunitySafety,
+                timeFilter: _timeFilter,
                 onHighRiskAreasChanged: (value) {
                   setState(() => _showHighRiskAreas = value);
                 },
@@ -111,6 +115,9 @@ class _MapScreenState extends State<MapScreen>
                 },
                 onCommunitySafetyChanged: (value) {
                   setState(() => _showCommunitySafety = value);
+                },
+                onTimeFilterChanged: (value) {
+                  setState(() => _timeFilter = value);
                 },
               ),
             ),
@@ -130,20 +137,26 @@ class _MapLayerControls extends StatelessWidget {
     required this.showSaferRoutes,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
+    required this.timeFilter,
     required this.onHighRiskAreasChanged,
     required this.onSaferRoutesChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
+    required this.onTimeFilterChanged,
+    required this.isZoomedOut,
   });
 
   final bool showHighRiskAreas;
   final bool showSaferRoutes;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
+  final TimeFilter timeFilter;
   final ValueChanged<bool> onHighRiskAreasChanged;
   final ValueChanged<bool> onSaferRoutesChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
+  final ValueChanged<TimeFilter> onTimeFilterChanged;
+  final bool isZoomedOut;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +169,7 @@ class _MapLayerControls extends StatelessWidget {
       onPressed: () {
         showModalBottomSheet(
           context: context,
+          isScrollControlled: true,
           showDragHandle: true,
           builder: (context) {
             return _LayerBottomSheet(
@@ -163,10 +177,13 @@ class _MapLayerControls extends StatelessWidget {
               showSaferRoutes: showSaferRoutes,
               showReportedIncidents: showReportedIncidents,
               showCommunitySafety: showCommunitySafety,
+              timeFilter: timeFilter,
               onHighRiskAreasChanged: onHighRiskAreasChanged,
               onSaferRoutesChanged: onSaferRoutesChanged,
               onReportedIncidentsChanged: onReportedIncidentsChanged,
               onCommunitySafetyChanged: onCommunitySafetyChanged,
+              onTimeFilterChanged: onTimeFilterChanged,
+              isZoomedOut: isZoomedOut,
             );
           },
         );
@@ -181,20 +198,26 @@ class _LayerBottomSheet extends StatefulWidget {
   final bool showSaferRoutes;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
+  final TimeFilter timeFilter;
   final ValueChanged<bool> onHighRiskAreasChanged;
   final ValueChanged<bool> onSaferRoutesChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
+  final ValueChanged<TimeFilter> onTimeFilterChanged;
+  final bool isZoomedOut;
 
   const _LayerBottomSheet({
     required this.showHighRiskAreas,
     required this.showSaferRoutes,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
+    required this.timeFilter,
     required this.onHighRiskAreasChanged,
     required this.onSaferRoutesChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
+    required this.onTimeFilterChanged,
+    required this.isZoomedOut,
   });
 
   @override
@@ -206,6 +229,7 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
   late bool _showSaferRoutes;
   late bool _showReportedIncidents;
   late bool _showCommunitySafety;
+  late TimeFilter _timeFilter;
 
   @override
   void initState() {
@@ -214,6 +238,7 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
     _showSaferRoutes = widget.showSaferRoutes;
     _showReportedIncidents = widget.showReportedIncidents;
     _showCommunitySafety = widget.showCommunitySafety;
+    _timeFilter = widget.timeFilter;
   }
 
   @override
@@ -231,20 +256,50 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
     if (oldWidget.showCommunitySafety != widget.showCommunitySafety) {
       _showCommunitySafety = widget.showCommunitySafety;
     }
+    if (oldWidget.timeFilter != widget.timeFilter) {
+      _timeFilter = widget.timeFilter;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Padding(
             padding: const EdgeInsets.only(left: 16, bottom: 8),
             child: Text('Map Layers', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           ),
+          if (widget.isZoomedOut)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.zoom_in, color: Theme.of(context).colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Zoom in to see detailed map layers.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           SwitchListTile(
             title: const Text('High-Risk Areas'),
             secondary: const Icon(Icons.warning_rounded, color: Colors.red),
@@ -281,7 +336,55 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
               widget.onCommunitySafetyChanged(val);
             },
           ),
+          const Divider(height: 32),
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 8),
+            child: Text('Time Filter', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Select a time range to filter map data and declutter old trips.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _TimeFilterChip(
+                  label: 'Last 7 Days',
+                  isSelected: _timeFilter == TimeFilter.last7Days,
+                  onSelected: () {
+                    setState(() => _timeFilter = TimeFilter.last7Days);
+                    widget.onTimeFilterChanged(TimeFilter.last7Days);
+                  },
+                ),
+                _TimeFilterChip(
+                  label: 'Last 30 Days',
+                  isSelected: _timeFilter == TimeFilter.last30Days,
+                  onSelected: () {
+                    setState(() => _timeFilter = TimeFilter.last30Days);
+                    widget.onTimeFilterChanged(TimeFilter.last30Days);
+                  },
+                ),
+                _TimeFilterChip(
+                  label: 'All Time',
+                  isSelected: _timeFilter == TimeFilter.allTime,
+                  onSelected: () {
+                    setState(() => _timeFilter = TimeFilter.allTime);
+                    widget.onTimeFilterChanged(TimeFilter.allTime);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24), // Add some bottom padding
         ],
+      ),
       ),
     );
   }
@@ -296,10 +399,12 @@ class _FullScreenMapCard extends StatefulWidget {
     required this.showSaferRoutes,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
+    required this.timeFilter,
     required this.onHighRiskAreasChanged,
     required this.onSaferRoutesChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
+    required this.onTimeFilterChanged,
     this.isFullScreen = false,
   });
 
@@ -310,10 +415,12 @@ class _FullScreenMapCard extends StatefulWidget {
   final bool showSaferRoutes;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
+  final TimeFilter timeFilter;
   final ValueChanged<bool> onHighRiskAreasChanged;
   final ValueChanged<bool> onSaferRoutesChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
+  final ValueChanged<TimeFilter> onTimeFilterChanged;
   final bool isFullScreen;
 
   @override
@@ -333,6 +440,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   late bool _showSaferRoutes;
   late bool _showReportedIncidents;
   late bool _showCommunitySafety;
+  late TimeFilter _timeFilter;
   bool _isPinpointing = false;
   bool _isMapInteracting = false;
 
@@ -364,6 +472,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     _showSaferRoutes = widget.showSaferRoutes;
     _showReportedIncidents = widget.showReportedIncidents;
     _showCommunitySafety = widget.showCommunitySafety;
+    _timeFilter = widget.timeFilter;
 
     _compassSubscription = FlutterCompass.events?.listen((event) {
       if (mounted) {
@@ -899,6 +1008,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     if (oldWidget.showCommunitySafety != widget.showCommunitySafety) {
       _showCommunitySafety = widget.showCommunitySafety;
     }
+    if (oldWidget.timeFilter != widget.timeFilter) {
+      _timeFilter = widget.timeFilter;
+    }
 
 
     _syncMapCenter(force: false);
@@ -989,6 +1101,22 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     return Colors.red;
   }
 
+  bool _isTripInTimeFilter(Trip trip) {
+    if (_timeFilter == TimeFilter.allTime) return true;
+    final threshold = _timeFilter == TimeFilter.last7Days 
+        ? DateTime.now().subtract(const Duration(days: 7))
+        : DateTime.now().subtract(const Duration(days: 30));
+    return trip.startTime.isAfter(threshold);
+  }
+
+  bool _isReportInTimeFilter(ReportWithTrust report) {
+    if (_timeFilter == TimeFilter.allTime) return true;
+    final threshold = _timeFilter == TimeFilter.last7Days 
+        ? DateTime.now().subtract(const Duration(days: 7))
+        : DateTime.now().subtract(const Duration(days: 30));
+    return report.timestamp.isAfter(threshold);
+  }
+
   /// Applies a simple moving average filter to smooth raw GPS points.
   List<LatLng> _smoothRoute(List<LatLng> rawPoints, {int windowSize = 3}) {
     if (rawPoints.length < windowSize) return rawPoints;
@@ -1016,6 +1144,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     final polylines = <Polyline<Object>>[];
 
     for (final trip in completedTrips) {
+      if (!_isTripInTimeFilter(trip)) continue;
       if (trip.routePoints.isEmpty) continue;
       
       // If zoomed out, only show high-risk trips to declutter
@@ -1061,11 +1190,26 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
 
     if (isZoomedOut) return markers; // Hide when zoomed out
 
-    for (final trip in completedTrips) {
+    final processedRoutes = <String>{};
+    // Sort trips descending by time so we only render markers for the most recent trip per route
+    final sortedTrips = List.of(completedTrips)..sort((a, b) => b.startTime.compareTo(a.startTime));
+
+    for (final trip in sortedTrips) {
+      if (!_isTripInTimeFilter(trip)) continue;
       if (trip.routePoints.length < 2) continue;
 
-      final safetyScore = 100.0 - trip.riskScore;
       final points = trip.routePoints;
+      final startLat = points.first['lat']!.toStringAsFixed(3);
+      final startLng = points.first['lng']!.toStringAsFixed(3);
+      final endLat = points.last['lat']!.toStringAsFixed(3);
+      final endLng = points.last['lng']!.toStringAsFixed(3);
+      
+      // Deduplicate: if a trip starts and ends in roughly the same 110m area, skip rendering redundant markers
+      final routeKey = '$startLat,$startLng-$endLat,$endLng';
+      if (processedRoutes.contains(routeKey)) continue;
+      processedRoutes.add(routeKey);
+
+      final safetyScore = 100.0 - trip.riskScore;
       final start = LatLng(points[0]['lat']!, points[0]['lng']!);
       final end = LatLng(points.last['lat']!, points.last['lng']!);
       
@@ -1328,6 +1472,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     final markers = <Marker>[];
 
     for (final trip in completedTrips) {
+      if (!_isTripInTimeFilter(trip)) continue;
       final safetyScore = 100.0 - trip.riskScore;
       if (safetyScore >= 50) continue; // Only show high-risk trips
 
@@ -1407,6 +1552,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     final polylines = <Polyline<Object>>[];
 
     for (final trip in completedTrips) {
+      if (!_isTripInTimeFilter(trip)) continue;
       final safetyScore = 100.0 - trip.riskScore;
       if (safetyScore < 80) continue; // Only safe trips
 
@@ -1436,6 +1582,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     final polylines = <Polyline<Object>>[];
 
     for (final trip in communityTrips) {
+      if (!_isTripInTimeFilter(trip)) continue;
       if (trip.routePoints.isEmpty) continue;
 
       final color = _tripRouteColor(trip);
@@ -1462,6 +1609,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
 
     for (final r in controller.remoteReports) {
       if (r.latitude == null || r.longitude == null) continue;
+      if (!_isReportInTimeFilter(r)) continue;
       
       // Time Fading: Remove hazards older than 4 hours
       if (DateTime.now().difference(r.timestamp).inHours >= 4) continue;
@@ -1543,7 +1691,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   }
 
   Widget _buildCommunitySafetyCard(ColorScheme colorScheme) {
-    final trips = widget.controller.communityTrips;
+    final trips = widget.controller.communityTrips.where((t) => _isTripInTimeFilter(t)).toList();
     if (trips.isEmpty) return const SizedBox.shrink();
 
     final avgSafety =
@@ -1649,13 +1797,13 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     final List<Marker> highRiskMarkers = _showHighRiskAreas
         ? _buildHighRiskAreaMarkers(colorScheme)
         : <Marker>[];
-    final List<Polyline<Object>> saferRoutesPolylines = _showSaferRoutes
+    final List<Polyline<Object>> saferRoutesPolylines = _showSaferRoutes && !isZoomedOut
         ? _buildSaferRoutesPolylines(colorScheme)
         : <Polyline<Object>>[];
-    final List<Marker> incidentMarkers = _showReportedIncidents
+    final List<Marker> incidentMarkers = _showReportedIncidents && !isZoomedOut
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
-    final List<Polyline<Object>> communityPolylines = _showCommunitySafety
+    final List<Polyline<Object>> communityPolylines = _showCommunitySafety && !isZoomedOut
         ? _buildCommunityPolylines(colorScheme)
         : <Polyline<Object>>[];
 
@@ -1881,7 +2029,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 ),
               ),
             ),
-
+            
           // Map Controls
           Positioned(
             top: 12,
@@ -1894,6 +2042,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   showSaferRoutes: _showSaferRoutes,
                   showReportedIncidents: _showReportedIncidents,
                   showCommunitySafety: _showCommunitySafety,
+                  timeFilter: _timeFilter,
+                  isZoomedOut: isZoomedOut,
                   onHighRiskAreasChanged: (v) {
                     setState(() => _showHighRiskAreas = v);
                     widget.onHighRiskAreasChanged(v);
@@ -1909,6 +2059,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   onCommunitySafetyChanged: (v) {
                     setState(() => _showCommunitySafety = v);
                     widget.onCommunitySafetyChanged(v);
+                  },
+                  onTimeFilterChanged: (v) {
+                    setState(() => _timeFilter = v);
+                    widget.onTimeFilterChanged(v);
                   },
                 ),
                 const SizedBox(height: 8),
@@ -1973,10 +2127,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                                   showSaferRoutes: _showSaferRoutes,
                                   showReportedIncidents: _showReportedIncidents,
                                   showCommunitySafety: _showCommunitySafety,
+                                  timeFilter: _timeFilter,
                                   onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
                                   onSaferRoutesChanged: widget.onSaferRoutesChanged,
                                   onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
                                   onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
+                                  onTimeFilterChanged: widget.onTimeFilterChanged,
                                   isFullScreen: true,
                                 ),
                               ),
@@ -2380,6 +2536,36 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
           if (!showRouteColors && !widget.showReportedIncidents)
             const Text('No layers selected', style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
         ],
+      ),
+    );
+  }
+}
+
+class _TimeFilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onSelected;
+
+  const _TimeFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return FilterChip(
+      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      selected: isSelected,
+      onSelected: (_) => onSelected(),
+      backgroundColor: colorScheme.surface,
+      selectedColor: colorScheme.primaryContainer,
+      elevation: isSelected ? 0 : 2,
+      shadowColor: Colors.black.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      side: BorderSide(
+        color: isSelected ? colorScheme.primary : colorScheme.outline.withOpacity(0.2),
       ),
     );
   }
