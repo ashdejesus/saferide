@@ -35,6 +35,9 @@ class TripController extends ChangeNotifier {
        _firestoreService = firestoreService ?? FirestoreService(),
        _passengerReportingService = passengerReportingService ?? PassengerReportingService() {
     _database.cleanupOrphanedTrips();
+    
+    // Listen for cloud restores (like when logging into the web app) so we can refresh the map
+    syncService?.addListener(_onSyncServiceUpdated);
   }
   final FirestoreService _firestoreService;
   final PassengerReportingService _passengerReportingService;
@@ -44,6 +47,16 @@ class TripController extends ChangeNotifier {
   final LocationService _locationService;
   final SensorService _sensorService;
   final NotificationService _notificationService = NotificationService();
+
+  DateTime? _lastHandledRestoreAt;
+
+  void _onSyncServiceUpdated() {
+    if (syncService?.lastRestoreAt != _lastHandledRestoreAt) {
+      _lastHandledRestoreAt = syncService?.lastRestoreAt;
+      // Cloud trips have been restored to local DB; reload them into memory for the Map
+      loadCompletedTrips().catchError((_) {});
+    }
+  }
 
   Trip? _activeTrip;
   bool _isTracking = false;
@@ -98,6 +111,7 @@ class TripController extends ChangeNotifier {
     _currentAlert = null;
     notifyListeners();
   }
+
 
   // Slope calculation state: S(t) = (h(t) - h(t-1)) / d(t)
   double _lastAltitude = 0;
@@ -1174,11 +1188,13 @@ class TripController extends ChangeNotifier {
 
   @override
   void dispose() {
+    syncService?.removeListener(_onSyncServiceUpdated);
     _stopBuffering();
     _positionSub?.cancel();
     _accelSub?.cancel();
     _gyroSub?.cancel();
     _remoteReportsSub?.cancel();
+    _areaReportsSub?.cancel();
     super.dispose();
   }
 }

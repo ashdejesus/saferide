@@ -34,7 +34,7 @@ class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _animationController;
   bool _showHighRiskAreas = true;
-  bool _showSaferRoutes = true;
+  bool _showPersonalTrips = false;
   bool _showReportedIncidents = true;
   bool _showCommunitySafety = true;
   TimeFilter _timeFilter = TimeFilter.allTime;
@@ -100,15 +100,15 @@ class _MapScreenState extends State<MapScreen>
                 routePoints: routePoints,
                 controller: controller,
                 showHighRiskAreas: _showHighRiskAreas,
-                showSaferRoutes: _showSaferRoutes,
+                showPersonalTrips: _showPersonalTrips,
                 showReportedIncidents: _showReportedIncidents,
                 showCommunitySafety: _showCommunitySafety,
                 timeFilter: _timeFilter,
                 onHighRiskAreasChanged: (value) {
                   setState(() => _showHighRiskAreas = value);
                 },
-                onSaferRoutesChanged: (value) {
-                  setState(() => _showSaferRoutes = value);
+                onPersonalTripsChanged: (value) {
+                  setState(() => _showPersonalTrips = value);
                 },
                 onReportedIncidentsChanged: (value) {
                   setState(() => _showReportedIncidents = value);
@@ -134,12 +134,12 @@ class _MapScreenState extends State<MapScreen>
 class _MapLayerControls extends StatelessWidget {
   const _MapLayerControls({
     required this.showHighRiskAreas,
-    required this.showSaferRoutes,
+    required this.showPersonalTrips,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
     required this.timeFilter,
     required this.onHighRiskAreasChanged,
-    required this.onSaferRoutesChanged,
+    required this.onPersonalTripsChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
     required this.onTimeFilterChanged,
@@ -147,12 +147,12 @@ class _MapLayerControls extends StatelessWidget {
   });
 
   final bool showHighRiskAreas;
-  final bool showSaferRoutes;
+  final bool showPersonalTrips;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
   final TimeFilter timeFilter;
   final ValueChanged<bool> onHighRiskAreasChanged;
-  final ValueChanged<bool> onSaferRoutesChanged;
+  final ValueChanged<bool> onPersonalTripsChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
   final ValueChanged<TimeFilter> onTimeFilterChanged;
@@ -174,12 +174,12 @@ class _MapLayerControls extends StatelessWidget {
           builder: (context) {
             return _LayerBottomSheet(
               showHighRiskAreas: showHighRiskAreas,
-              showSaferRoutes: showSaferRoutes,
+              showPersonalTrips: showPersonalTrips,
               showReportedIncidents: showReportedIncidents,
               showCommunitySafety: showCommunitySafety,
               timeFilter: timeFilter,
               onHighRiskAreasChanged: onHighRiskAreasChanged,
-              onSaferRoutesChanged: onSaferRoutesChanged,
+              onPersonalTripsChanged: onPersonalTripsChanged,
               onReportedIncidentsChanged: onReportedIncidentsChanged,
               onCommunitySafetyChanged: onCommunitySafetyChanged,
               onTimeFilterChanged: onTimeFilterChanged,
@@ -195,12 +195,12 @@ class _MapLayerControls extends StatelessWidget {
 
 class _LayerBottomSheet extends StatefulWidget {
   final bool showHighRiskAreas;
-  final bool showSaferRoutes;
+  final bool showPersonalTrips;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
   final TimeFilter timeFilter;
   final ValueChanged<bool> onHighRiskAreasChanged;
-  final ValueChanged<bool> onSaferRoutesChanged;
+  final ValueChanged<bool> onPersonalTripsChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
   final ValueChanged<TimeFilter> onTimeFilterChanged;
@@ -208,12 +208,12 @@ class _LayerBottomSheet extends StatefulWidget {
 
   const _LayerBottomSheet({
     required this.showHighRiskAreas,
-    required this.showSaferRoutes,
+    required this.showPersonalTrips,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
     required this.timeFilter,
     required this.onHighRiskAreasChanged,
-    required this.onSaferRoutesChanged,
+    required this.onPersonalTripsChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
     required this.onTimeFilterChanged,
@@ -226,7 +226,7 @@ class _LayerBottomSheet extends StatefulWidget {
 
 class _LayerBottomSheetState extends State<_LayerBottomSheet> {
   late bool _showHighRiskAreas;
-  late bool _showSaferRoutes;
+  late bool _showPersonalTrips;
   late bool _showReportedIncidents;
   late bool _showCommunitySafety;
   late TimeFilter _timeFilter;
@@ -235,7 +235,7 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
   void initState() {
     super.initState();
     _showHighRiskAreas = widget.showHighRiskAreas;
-    _showSaferRoutes = widget.showSaferRoutes;
+    _showPersonalTrips = widget.showPersonalTrips;
     _showReportedIncidents = widget.showReportedIncidents;
     _showCommunitySafety = widget.showCommunitySafety;
     _timeFilter = widget.timeFilter;
@@ -247,8 +247,8 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
     if (oldWidget.showHighRiskAreas != widget.showHighRiskAreas) {
       _showHighRiskAreas = widget.showHighRiskAreas;
     }
-    if (oldWidget.showSaferRoutes != widget.showSaferRoutes) {
-      _showSaferRoutes = widget.showSaferRoutes;
+    if (oldWidget.showPersonalTrips != widget.showPersonalTrips) {
+      _showPersonalTrips = widget.showPersonalTrips;
     }
     if (oldWidget.showReportedIncidents != widget.showReportedIncidents) {
       _showReportedIncidents = widget.showReportedIncidents;
@@ -302,6 +302,7 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
             ),
           SwitchListTile(
             title: const Text('High-Risk Areas'),
+            subtitle: const Text('Highlights dangerous intersections and zones based on community data.', style: TextStyle(fontSize: 12)),
             secondary: const Icon(Icons.warning_rounded, color: Colors.red),
             value: _showHighRiskAreas,
             onChanged: (val) {
@@ -310,16 +311,18 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
             },
           ),
           SwitchListTile(
-            title: const Text('Safer Routes'),
-            secondary: const Icon(Icons.check_circle_rounded, color: Colors.green),
-            value: _showSaferRoutes,
+            title: const Text('Highlight My Trips'),
+            subtitle: const Text('Adds a bright border to your personal trip history so it stands out.', style: TextStyle(fontSize: 12)),
+            secondary: const Icon(Icons.route_rounded, color: Colors.blue),
+            value: _showPersonalTrips,
             onChanged: (val) {
-              setState(() => _showSaferRoutes = val);
-              widget.onSaferRoutesChanged(val);
+              setState(() => _showPersonalTrips = val);
+              widget.onPersonalTripsChanged(val);
             },
           ),
           SwitchListTile(
             title: const Text('Incidents'),
+            subtitle: const Text('Shows real-time user reports like potholes, hazards, and accidents.', style: TextStyle(fontSize: 12)),
             secondary: const Icon(Icons.flag_rounded, color: Colors.orange),
             value: _showReportedIncidents,
             onChanged: (val) {
@@ -329,6 +332,7 @@ class _LayerBottomSheetState extends State<_LayerBottomSheet> {
           ),
           SwitchListTile(
             title: const Text('Community Safety'),
+            subtitle: const Text('Displays a heatmap of safe (green) vs unsafe (red) routes taken by others.', style: TextStyle(fontSize: 12)),
             secondary: Icon(Icons.public_rounded, color: Theme.of(context).colorScheme.primary),
             value: _showCommunitySafety,
             onChanged: (val) {
@@ -396,12 +400,12 @@ class _FullScreenMapCard extends StatefulWidget {
     required this.routePoints,
     required this.controller,
     required this.showHighRiskAreas,
-    required this.showSaferRoutes,
+    required this.showPersonalTrips,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
     required this.timeFilter,
     required this.onHighRiskAreasChanged,
-    required this.onSaferRoutesChanged,
+    required this.onPersonalTripsChanged,
     required this.onReportedIncidentsChanged,
     required this.onCommunitySafetyChanged,
     required this.onTimeFilterChanged,
@@ -412,12 +416,12 @@ class _FullScreenMapCard extends StatefulWidget {
   final List<LatLng> routePoints;
   final TripController controller;
   final bool showHighRiskAreas;
-  final bool showSaferRoutes;
+  final bool showPersonalTrips;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
   final TimeFilter timeFilter;
   final ValueChanged<bool> onHighRiskAreasChanged;
-  final ValueChanged<bool> onSaferRoutesChanged;
+  final ValueChanged<bool> onPersonalTripsChanged;
   final ValueChanged<bool> onReportedIncidentsChanged;
   final ValueChanged<bool> onCommunitySafetyChanged;
   final ValueChanged<TimeFilter> onTimeFilterChanged;
@@ -437,7 +441,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   bool _followUser = true;
 
   late bool _showHighRiskAreas;
-  late bool _showSaferRoutes;
+  late bool _showPersonalTrips;
   late bool _showReportedIncidents;
   late bool _showCommunitySafety;
   late TimeFilter _timeFilter;
@@ -469,7 +473,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     super.initState();
     _mapController = MapController();
     _showHighRiskAreas = widget.showHighRiskAreas;
-    _showSaferRoutes = widget.showSaferRoutes;
+    _showPersonalTrips = widget.showPersonalTrips;
     _showReportedIncidents = widget.showReportedIncidents;
     _showCommunitySafety = widget.showCommunitySafety;
     _timeFilter = widget.timeFilter;
@@ -999,8 +1003,8 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     if (oldWidget.showHighRiskAreas != widget.showHighRiskAreas) {
       _showHighRiskAreas = widget.showHighRiskAreas;
     }
-    if (oldWidget.showSaferRoutes != widget.showSaferRoutes) {
-      _showSaferRoutes = widget.showSaferRoutes;
+    if (oldWidget.showPersonalTrips != widget.showPersonalTrips) {
+      _showPersonalTrips = widget.showPersonalTrips;
     }
     if (oldWidget.showReportedIncidents != widget.showReportedIncidents) {
       _showReportedIncidents = widget.showReportedIncidents;
@@ -1139,7 +1143,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   }
 
   /// Build polylines for completed trips, color-coded by safety score.
-  List<Polyline<Object>> _buildHistoricalTripPolylines(ColorScheme colorScheme, bool isZoomedOut) {
+  List<Polyline<Object>> _buildHistoricalTripPolylines(ColorScheme colorScheme, bool isZoomedOut, bool highlight) {
     final completedTrips = widget.controller.completedTrips;
     final polylines = <Polyline<Object>>[];
 
@@ -1147,9 +1151,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       if (!_isTripInTimeFilter(trip)) continue;
       if (trip.routePoints.isEmpty) continue;
       
-      // If zoomed out, only show high-risk trips to declutter
       final safetyScore = 100.0 - trip.riskScore;
-      if (isZoomedOut && safetyScore >= 50) continue;
 
       final color = _tripRouteColor(trip);
       final rawPoints = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
@@ -1159,20 +1161,20 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
       List<Color>? gradient;
       if (safetyScore < 50 && points.length >= 3) {
         gradient = [
-          Colors.green.withOpacity(0.8),
-          color.withOpacity(0.8),
-          color.withOpacity(0.8),
-          Colors.green.withOpacity(0.8),
+          Colors.green.withOpacity(isZoomedOut ? 0.25 : 0.8),
+          color.withOpacity(isZoomedOut ? 0.3 : 0.8),
+          color.withOpacity(isZoomedOut ? 0.3 : 0.8),
+          Colors.green.withOpacity(isZoomedOut ? 0.25 : 0.8),
         ];
       }
 
       polylines.add(
         Polyline<Object>(
           points: points,
-          color: color.withOpacity(0.8),
-          strokeWidth: isZoomedOut ? 3.0 : 6.0,
-          borderStrokeWidth: isZoomedOut ? 1.0 : 2.5,
-          borderColor: color,
+          color: color.withOpacity(highlight ? 0.8 : 0.25),
+          strokeWidth: highlight ? 6.0 : 5.0,
+          borderStrokeWidth: highlight ? 1.5 : 0.0,
+          borderColor: highlight ? Colors.white : Colors.transparent,
           gradientColors: gradient,
           strokeCap: StrokeCap.round,
           strokeJoin: StrokeJoin.round,
@@ -1185,10 +1187,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
 
   /// Build interactive markers (info and directional arrows) for routes
   List<Marker> _buildRouteInteractiveMarkers(ColorScheme colorScheme, bool isZoomedOut) {
+    // Hide individual route markers (arrows, info buttons) when zoomed out to prevent giant cluster numbers.
+    // The colored polylines (the actual routes) will still remain visible as a heatmap.
+    if (isZoomedOut) return [];
+
     final completedTrips = widget.controller.completedTrips;
     final markers = <Marker>[];
-
-    if (isZoomedOut) return markers; // Hide when zoomed out
 
     final processedRoutes = <String>{};
     // Sort trips descending by time so we only render markers for the most recent trip per route
@@ -1235,29 +1239,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
         ),
       );
 
-      // Directional arrows along the route (every 20 points, plus one at the end)
-      final step = max(20, points.length ~/ 10);
-      for (int i = step; i < points.length; i += step) {
-        final p1 = LatLng(points[i - 2]['lat']!, points[i - 2]['lng']!);
-        final p2 = LatLng(points[i]['lat']!, points[i]['lng']!);
-        
-        // Bearing calculation
-        final dy = p2.latitude - p1.latitude;
-        final dx = p2.longitude - p1.longitude;
-        final angle = atan2(dx, dy);
-        
-        markers.add(
-          Marker(
-            point: p2,
-            width: 16,
-            height: 16,
-            child: Transform.rotate(
-              angle: angle,
-              child: Icon(Icons.navigation, size: 14, color: _tripRouteColor(trip)),
-            ),
-          ),
-        );
-      }
+      // Removed intermediate arrows to reduce visual clutter.
       
       // Always add an arrow at the very end
       final preEnd = LatLng(points[points.length - 2]['lat']!, points[points.length - 2]['lng']!);
@@ -1515,14 +1497,14 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
   }) {
     return Marker(
       point: point,
-      width: 60,
-      height: 60,
+      width: 150,
+      height: 150,
       child: GestureDetector(
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'High-risk area — Safety: ${safetyScore.toStringAsFixed(0)}% '
+                'Hazard Radar Zone — Safety: ${safetyScore.toStringAsFixed(0)}% '
                 '(${trip.speedingCount} speeding, '
                 '${trip.brakingCount} braking, '
                 '${trip.turningCount} turning)',
@@ -1532,48 +1514,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
             ),
           );
         },
-        child: CustomPaint(
-          painter: _HighRiskAreaPainter(
-            color: colorScheme.error.withOpacity(0.3),
-          ),
-          child: Icon(
-            Icons.warning_rounded,
-            color: colorScheme.error,
-            size: 24,
-          ),
-        ),
+        child: _HazardRadarZoneMarker(color: colorScheme.error),
       ),
     );
-  }
-
-  /// Build safer route polylines — completed trips with safety score >= 80.
-  List<Polyline<Object>> _buildSaferRoutesPolylines(ColorScheme colorScheme) {
-    final completedTrips = widget.controller.completedTrips;
-    final polylines = <Polyline<Object>>[];
-
-    for (final trip in completedTrips) {
-      if (!_isTripInTimeFilter(trip)) continue;
-      final safetyScore = 100.0 - trip.riskScore;
-      if (safetyScore < 80) continue; // Only safe trips
-
-      if (trip.routePoints.isEmpty) continue;
-
-      final points = trip.routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
-
-      polylines.add(
-        Polyline<Object>(
-          points: points,
-          color: colorScheme.tertiary.withOpacity(0.8),
-          strokeWidth: 6.0,
-          borderStrokeWidth: 2.5,
-          borderColor: colorScheme.tertiary,
-          strokeCap: StrokeCap.round,
-          strokeJoin: StrokeJoin.round,
-        ),
-      );
-    }
-
-    return polylines;
   }
 
   /// Build community routes as a polyline-based heatmap
@@ -1790,20 +1733,21 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
     // Build layers from real data
     final List<Polyline<Object>> historicalPolylines = _buildHistoricalTripPolylines(
       colorScheme,
-      isZoomedOut
+      isZoomedOut,
+      _showPersonalTrips,
     );
-    final List<Marker> routeInteractiveMarkers = _buildRouteInteractiveMarkers(colorScheme, isZoomedOut);
+    final List<Marker> routeInteractiveMarkers = _showPersonalTrips
+        ? _buildRouteInteractiveMarkers(colorScheme, isZoomedOut)
+        : <Marker>[];
 
     final List<Marker> highRiskMarkers = _showHighRiskAreas
         ? _buildHighRiskAreaMarkers(colorScheme)
         : <Marker>[];
-    final List<Polyline<Object>> saferRoutesPolylines = _showSaferRoutes && !isZoomedOut
-        ? _buildSaferRoutesPolylines(colorScheme)
-        : <Polyline<Object>>[];
-    final List<Marker> incidentMarkers = _showReportedIncidents && !isZoomedOut
+
+    final List<Marker> incidentMarkers = _showReportedIncidents
         ? _buildReportedIncidentMarkers(colorScheme)
         : <Marker>[];
-    final List<Polyline<Object>> communityPolylines = _showCommunitySafety && !isZoomedOut
+    final List<Polyline<Object>> communityPolylines = _showCommunitySafety
         ? _buildCommunityPolylines(colorScheme)
         : <Polyline<Object>>[];
 
@@ -1873,37 +1817,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.saferide.app',
                 ),
-                // Historical trip routes (color-coded by safety score)
-                PolylineLayer<Object>(polylines: historicalPolylines),
                 // Community heatmap polylines
                 PolylineLayer<Object>(polylines: communityPolylines),
-                // Safer routes layer (green, score >= 80)
-                PolylineLayer<Object>(polylines: saferRoutesPolylines),
+                // Historical trip routes (color-coded by safety score)
+                PolylineLayer<Object>(polylines: historicalPolylines),
+
                 // High-risk area markers
                 if (highRiskMarkers.isNotEmpty)
-                  MarkerClusterLayerWidget(
-                    options: MarkerClusterLayerOptions(
-                      maxClusterRadius: 40,
-                      size: const Size(40, 40),
-                      markers: highRiskMarkers,
-                      builder: (context, markers) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.9),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              markers.length.toString(),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  MarkerLayer(markers: highRiskMarkers),
                 // Route interactive markers (info + arrows)
-                MarkerLayer(markers: routeInteractiveMarkers),
+                if (routeInteractiveMarkers.isNotEmpty)
+                  MarkerLayer(
+                    markers: routeInteractiveMarkers,
+                  ),
                 // Active trip polyline (on top)
                 if (hasRealTripRoute)
                   PolylineLayer<Object>(
@@ -2039,7 +1965,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
               children: [
                 _MapLayerControls(
                   showHighRiskAreas: _showHighRiskAreas,
-                  showSaferRoutes: _showSaferRoutes,
+                  showPersonalTrips: _showPersonalTrips,
                   showReportedIncidents: _showReportedIncidents,
                   showCommunitySafety: _showCommunitySafety,
                   timeFilter: _timeFilter,
@@ -2048,9 +1974,9 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                     setState(() => _showHighRiskAreas = v);
                     widget.onHighRiskAreasChanged(v);
                   },
-                  onSaferRoutesChanged: (v) {
-                    setState(() => _showSaferRoutes = v);
-                    widget.onSaferRoutesChanged(v);
+                  onPersonalTripsChanged: (v) {
+                    setState(() => _showPersonalTrips = v);
+                    widget.onPersonalTripsChanged(v);
                   },
                   onReportedIncidentsChanged: (v) {
                     setState(() => _showReportedIncidents = v);
@@ -2124,12 +2050,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                                   routePoints: points,
                                   controller: ctrl,
                                   showHighRiskAreas: _showHighRiskAreas,
-                                  showSaferRoutes: _showSaferRoutes,
+                                  showPersonalTrips: _showPersonalTrips,
                                   showReportedIncidents: _showReportedIncidents,
                                   showCommunitySafety: _showCommunitySafety,
                                   timeFilter: _timeFilter,
                                   onHighRiskAreasChanged: widget.onHighRiskAreasChanged,
-                                  onSaferRoutesChanged: widget.onSaferRoutesChanged,
+                                  onPersonalTripsChanged: widget.onPersonalTripsChanged,
                                   onReportedIncidentsChanged: widget.onReportedIncidentsChanged,
                                   onCommunitySafetyChanged: widget.onCommunitySafetyChanged,
                                   onTimeFilterChanged: widget.onTimeFilterChanged,
@@ -2336,7 +2262,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
             right: 16,
             child: _CollapsibleLegend(
               showHighRiskAreas: widget.showHighRiskAreas,
-              showSaferRoutes: widget.showSaferRoutes,
+              showPersonalTrips: widget.showPersonalTrips,
               showReportedIncidents: widget.showReportedIncidents,
               showCommunitySafety: widget.showCommunitySafety,
             ),
@@ -2419,13 +2345,13 @@ class _StaggeredItem extends StatelessWidget {
 
 class _CollapsibleLegend extends StatefulWidget {
   final bool showHighRiskAreas;
-  final bool showSaferRoutes;
+  final bool showPersonalTrips;
   final bool showReportedIncidents;
   final bool showCommunitySafety;
 
   const _CollapsibleLegend({
     required this.showHighRiskAreas,
-    required this.showSaferRoutes,
+    required this.showPersonalTrips,
     required this.showReportedIncidents,
     required this.showCommunitySafety,
   });
@@ -2452,7 +2378,7 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
       );
     }
 
-    final showRouteColors = widget.showHighRiskAreas || widget.showSaferRoutes || widget.showCommunitySafety;
+    final showRouteColors = widget.showHighRiskAreas || widget.showCommunitySafety;
 
     return Container(
       decoration: BoxDecoration(
@@ -2524,11 +2450,38 @@ class _CollapsibleLegendState extends State<_CollapsibleLegend> {
               ),
             ),
           ],
+          if (widget.showHighRiskAreas)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(width: 16, height: 16, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.red.withOpacity(0.3), border: Border.all(color: Colors.red.withOpacity(0.5)))),
+                      const Icon(Icons.warning_amber_rounded, size: 10, color: Colors.red),
+                    ],
+                  ),
+                  const SizedBox(width: 4),
+                  const Text('Hazard Radar Zone', style: TextStyle(fontSize: 11)),
+                ],
+              ),
+            ),
           if (widget.showReportedIncidents)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.flag_rounded, size: 14, color: colorScheme.error),
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colorScheme.surface, width: 1),
+                  ),
+                  child: Icon(Icons.warning_amber, size: 8, color: colorScheme.surface),
+                ),
                 const SizedBox(width: 4),
                 const Text('Incidents', style: TextStyle(fontSize: 11)),
               ],
@@ -2862,6 +2815,68 @@ class _PulsingLocationMarkerState extends State<_PulsingLocationMarker> with Sin
                 angle: widget.heading * (3.1415926535897932 / 180),
                 child: const Icon(Icons.navigation, size: 14, color: Colors.white),
               ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HazardRadarZoneMarker extends StatefulWidget {
+  final Color color;
+
+  const _HazardRadarZoneMarker({super.key, required this.color});
+
+  @override
+  State<_HazardRadarZoneMarker> createState() => _HazardRadarZoneMarkerState();
+}
+
+class _HazardRadarZoneMarkerState extends State<_HazardRadarZoneMarker> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Outer pulsing radar wave
+            Container(
+              width: 150 * _controller.value,
+              height: 150 * _controller.value,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withOpacity((1.0 - _controller.value) * 0.3),
+                border: Border.all(
+                  color: widget.color.withOpacity((1.0 - _controller.value) * 0.5),
+                  width: 2,
+                ),
+              ),
+            ),
+            // Inner glowing core
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withOpacity(0.2),
+              ),
+              child: Icon(Icons.warning_amber_rounded, size: 20, color: widget.color),
             ),
           ],
         );
