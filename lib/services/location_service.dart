@@ -57,6 +57,24 @@ class LocationService {
   }
 
   Stream<Position> positionStream() {
+    if (kIsWeb) {
+      // Provide a mock moving position stream for web testing
+      return Stream.periodic(const Duration(seconds: 2), (count) {
+        return Position(
+          longitude: -122.084 + (count * 0.0001),
+          latitude: 37.422 + (count * 0.0001),
+          timestamp: DateTime.now(),
+          accuracy: 10,
+          altitude: 0,
+          heading: 45.0,
+          speed: 15.0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+      });
+    }
+
     LocationSettings locationSettings = const LocationSettings(
       accuracy: LocationAccuracy.best,
       distanceFilter: 0,

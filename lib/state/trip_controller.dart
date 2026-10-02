@@ -341,6 +341,7 @@ class TripController extends ChangeNotifier {
     String? routeName,
     double vehicleMultiplier = 1.0,
     String? vehicleType,
+    String? plateNumber,
   }) async {
     // Initialize notifications at trip start (network-optional, errors ignored)
     // Run asynchronously without awaiting to prevent blocking if offline
@@ -389,6 +390,7 @@ class TripController extends ChangeNotifier {
             startLng: position?.longitude,
             routeName: routeName,
             vehicleType: vehicleType,
+            plateNumber: plateNumber,
           ),
         );
       }
@@ -400,6 +402,7 @@ class TripController extends ChangeNotifier {
         startLng: position?.longitude,
         routeName: routeName,
         vehicleType: vehicleType,
+        plateNumber: plateNumber,
         routePoints: List.of(_routePoints),
         syncStatus: SyncStatus.pending,
       );
@@ -463,8 +466,11 @@ class TripController extends ChangeNotifier {
 
     try {
       await _positionSub?.cancel();
+      _positionSub = null;
       await _accelSub?.cancel();
+      _accelSub = null;
       await _gyroSub?.cancel();
+      _gyroSub = null;
       _stopBuffering();
 
       // Reset notification tracking
@@ -798,6 +804,9 @@ class TripController extends ChangeNotifier {
     
     _checkForProximityAlerts(position);
     
+    // Continuously auto-calibrate context factors based on telemetry
+    _updateContextFactorsAutomatically();
+    
     notifyListeners();
   }
   void _checkForProximityAlerts(Position position) {
@@ -1111,6 +1120,34 @@ class TripController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Automatically updates context factors based on real-time sensor data
+  void _updateContextFactorsAutomatically() {
+    if (!_isTracking || _testMode) return;
+
+    double avgSpeedKmh = _speedWindow.average * 3.6;
+    double zJitter = _zAxisWindow.average;
+
+    // Traffic Density: T_d(t) ∈ [0, 1]
+    // Inversely proportional to speed. Slower speeds = heavier traffic.
+    // e.g., 0 km/h -> 1.0 (Heavy), >= 60 km/h -> 0.0 (Light)
+    double autoTraffic = max(0.0, min(1.0, 1.0 - (avgSpeedKmh / 60.0)));
+
+    // Road Condition: R_c(t) ∈ [0, 1]
+    // 1.0 is smooth, 0.0 is extremely bumpy.
+    // Scales based on vertical acceleration (z-axis) jitter.
+    double autoRoad = max(0.0, min(1.0, 1.0 - (zJitter / 5.0)));
+
+    // Environmental Noise: E_n(t) ∈ [0, 1]
+    // Proxied by vehicle speed (wind/engine noise increases with speed).
+    double autoNoise = max(0.0, min(1.0, avgSpeedKmh / 80.0));
+
+    updateContextFactors(
+      roadCondition: autoRoad,
+      envNoise: autoNoise,
+      trafficDensity: autoTraffic,
+    );
+  }
+
   /// Reset adaptive context factors to their defaults
   void resetContextFactors() {
     _adaptiveThresholds.updateContextFactors(
@@ -1154,6 +1191,9 @@ class TripController extends ChangeNotifier {
           routeName: _activeTrip?.routeName,
           lastEventLabel: _recentEvents.isNotEmpty ? getNotificationTitle(_getIncidentTypeString()).replaceAll(RegExp(r'[^\w\s]'), '').trim() : null,
         );
+      }
+      if (_isTracking) {
+        _updateContextFactorsAutomatically();
       }
       notifyListeners();
     });

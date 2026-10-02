@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../models/trip.dart';
@@ -730,6 +731,7 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                               longitude: lng,
                               passengerTrust: 1.0,
                               timestamp: DateTime.now(),
+                              plateNumber: widget.controller.activeTrip?.plateNumber,
                             ),
                           );
 
@@ -889,6 +891,16 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                             ],
                           ),
                         ],
+                        if (report.plateNumber != null && report.plateNumber!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(Icons.pin, size: 14, color: colorScheme.onSurfaceVariant),
+                              const SizedBox(width: 4),
+                              Text(report.plateNumber!, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -905,7 +917,34 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Trust Verification', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                    Row(
+                      children: [
+                        Text('Trust Verification', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                        const Spacer(),
+                        InkWell(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Severity Metrics'),
+                                content: const Text(
+                                  'Raw Severity is the exact rating initially submitted by the passenger (1-5).\n\n'
+                                  'Weighted Severity is dynamically recalculated based on the passenger\'s community trust score. '
+                                  'This mechanism prevents untrusted users from triggering extreme false alarms while ensuring trusted users are heard.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Got it'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Icon(Icons.info_outline, size: 16, color: colorScheme.primary),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -915,7 +954,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                       ],
                     ),
                     const SizedBox(height: 12),
-                    if (isSensorValidated)
+                    if (report.isVerified)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.verified, color: Colors.green, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text('Community Verified: Confirmed by ${report.verificationCount} passenger${report.verificationCount == 1 ? '' : 's'}.', style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold))),
+                          ],
+                        ),
+                      )
+                    else if (isSensorValidated)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
@@ -946,42 +997,44 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 const SizedBox(height: 16),
                 Text('"${report.description}"', style: const TextStyle(fontStyle: FontStyle.italic)),
               ],
-              const SizedBox(height: 24),
-              const Text('Is this hazard still present?', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        if (report.firestoreId != null) {
-                          await widget.controller.passengerReportingService.flagReport(report.firestoreId!, 'Inaccurate');
-                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged. Impacting user trust score.')));
-                        }
-                      },
-                      icon: const Icon(Icons.thumb_down_outlined, size: 18),
-                      label: const Text('No (Flag)'),
-                      style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error, padding: const EdgeInsets.symmetric(vertical: 12)),
+              if (FirebaseAuth.instance.currentUser?.uid != report.passengerId) ...[
+                const SizedBox(height: 24),
+                const Text('Is this hazard still present?', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (report.firestoreId != null) {
+                            await widget.controller.passengerReportingService.flagReport(report.firestoreId!, 'Inaccurate');
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged. Impacting user trust score.')));
+                          }
+                        },
+                        icon: const Icon(Icons.thumb_down_outlined, size: 18),
+                        label: const Text('No (Flag)'),
+                        style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error, padding: const EdgeInsets.symmetric(vertical: 12)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        if (report.firestoreId != null) {
-                          await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
-                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
-                        }
-                      },
-                      icon: const Icon(Icons.thumb_up_outlined, size: 18),
-                      label: const Text('Yes (Verify)'),
-                      style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (report.firestoreId != null) {
+                            await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
+                          }
+                        },
+                        icon: const Icon(Icons.thumb_up_outlined, size: 18),
+                        label: const Text('Yes (Verify)'),
+                        style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         );
@@ -1321,6 +1374,19 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                             ),
                           ],
                         ),
+                        if (trip.plateNumber != null && trip.plateNumber!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.pin, size: 16, color: colorScheme.primary),
+                              const SizedBox(width: 4),
+                              Text(
+                                trip.plateNumber!,
+                                style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1609,20 +1675,42 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
             },
             child: Opacity(
               opacity: markerOpacity,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.surface,
-                    width: 2,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.surface,
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      categoryIcon,
+                      color: Theme.of(context).colorScheme.surface,
+                      size: markerSize * 0.55,
+                    ),
                   ),
-                ),
-                child: Icon(
-                  categoryIcon,
-                  color: Theme.of(context).colorScheme.surface,
-                  size: markerSize * 0.55,
-                ),
+                  if (r.isVerified)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

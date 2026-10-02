@@ -43,8 +43,10 @@ class NotificationService {
       debugPrint('[NotifService] Notification permission: $notifStatus');
 
       // Request battery optimization exemption — critical for Samsung One UI
-      final batteryStatus = await Permission.ignoreBatteryOptimizations.request();
-      debugPrint('[NotifService] Battery optimization exemption: $batteryStatus');
+      if (!kIsWeb) {
+        final batteryStatus = await Permission.ignoreBatteryOptimizations.request();
+        debugPrint('[NotifService] Battery optimization exemption: $batteryStatus');
+      }
 
       // Initialize local notifications plugin
       const initializationSettingsAndroid = AndroidInitializationSettings('ic_notification');

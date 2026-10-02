@@ -105,6 +105,8 @@ class ReportWithTrust {
     required this.passengerTrust,
     this.isVerified = false,
     this.isFlagged = false,
+    this.verificationCount = 0,
+    this.plateNumber,
   });
 
   final int reportId;
@@ -119,6 +121,8 @@ class ReportWithTrust {
   final double passengerTrust;
   final bool isVerified;
   final bool isFlagged;
+  final int verificationCount;
+  final String? plateNumber;
 
   /// Trust-weighted severity: actual severity * passenger trust
   int get weightedSeverity => (severity * passengerTrust).round().clamp(1, 5);
@@ -136,6 +140,8 @@ class ReportWithTrust {
       'passenger_trust': passengerTrust,
       'is_verified': isVerified ? 1 : 0,
       'is_flagged': isFlagged ? 1 : 0,
+      'verification_count': verificationCount,
+      'plate_number': plateNumber,
     };
   }
 
@@ -152,6 +158,8 @@ class ReportWithTrust {
       passengerTrust: (map['passenger_trust'] as num).toDouble(),
       isVerified: (map['is_verified'] as int) == 1,
       isFlagged: (map['is_flagged'] as int) == 1,
+      verificationCount: map['verification_count'] as int? ?? 0,
+      plateNumber: map['plate_number'] as String?,
     );
   }
 }

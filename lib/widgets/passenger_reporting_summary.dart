@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/passenger_trust_metrics.dart';
 import '../services/passenger_reporting_service.dart';
@@ -172,11 +173,38 @@ class _ReportCardState extends State<_ReportCard> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        'Weighted severity: ${widget.report.weightedSeverity}/5',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.6),
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'Weighted severity: ${widget.report.weightedSeverity}/5',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Severity Metrics'),
+                                  content: const Text(
+                                    'Raw Severity is the exact rating initially submitted by the passenger (1-5).\n\n'
+                                    'Weighted Severity is dynamically recalculated based on the passenger\'s community trust score. '
+                                    'This mechanism prevents untrusted users from triggering extreme false alarms while ensuring trusted users are heard.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Got it'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Icon(Icons.info_outline, size: 14, color: colorScheme.onSurface.withOpacity(0.6)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -220,58 +248,59 @@ class _ReportCardState extends State<_ReportCard> {
                   ),
                 ),
               // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: !_isVerified && !_isLoading
-                          ? () async {
-                              final scaffoldMessenger = ScaffoldMessenger.of(
-                                context,
-                              );
-                              try {
-                                setState(() => _isLoading = true);
-                                final reportId = widget.report.firestoreId;
-                                if (reportId == null) throw Exception('Cannot update a local report');
-                                await _reportingService.verifyReport(reportId);
-                                if (!mounted) return;
-                                setState(() => _isVerified = true);
-                                scaffoldMessenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Report verified and trust updated!',
+              if (FirebaseAuth.instance.currentUser?.uid != widget.report.passengerId)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: !_isVerified && !_isLoading
+                            ? () async {
+                                final scaffoldMessenger = ScaffoldMessenger.of(
+                                  context,
+                                );
+                                try {
+                                  setState(() => _isLoading = true);
+                                  final reportId = widget.report.firestoreId;
+                                  if (reportId == null) throw Exception('Cannot update a local report');
+                                  await _reportingService.verifyReport(reportId);
+                                  if (!mounted) return;
+                                  setState(() => _isVerified = true);
+                                  scaffoldMessenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Report verified and trust updated!',
+                                      ),
                                     ),
-                                  ),
-                                );
-                              } catch (e) {
-                                if (!mounted) return;
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(content: Text('Error: $e')),
-                                );
-                              } finally {
-                                if (mounted) {
-                                  setState(() => _isLoading = false);
+                                  );
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                } finally {
+                                  if (mounted) {
+                                    setState(() => _isLoading = false);
+                                  }
                                 }
                               }
-                            }
-                          : null,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Verify'),
+                            : null,
+                        icon: const Icon(Icons.check),
+                        label: const Text('Verify'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: !_isFlagged && !_isLoading
-                          ? () async {
-                              final scaffoldMessenger = ScaffoldMessenger.of(
-                                context,
-                              );
-                              try {
-                                setState(() => _isLoading = true);
-                                final reportId = widget.report.firestoreId;
-                                if (reportId == null) throw Exception('Cannot update a local report');
-                                await _reportingService.flagReport(
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: !_isFlagged && !_isLoading
+                            ? () async {
+                                final scaffoldMessenger = ScaffoldMessenger.of(
+                                  context,
+                                );
+                                try {
+                                  setState(() => _isLoading = true);
+                                  final reportId = widget.report.firestoreId;
+                                  if (reportId == null) throw Exception('Cannot update a local report');
+                                  await _reportingService.flagReport(
                                   reportId,
                                   'Flagged by community member',
                                 );

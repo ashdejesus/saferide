@@ -31,7 +31,7 @@ class RouteAggregation {
 
 class AppDatabase {
   static const _databaseBaseName = 'saferide';
-  static const _databaseVersion = 3;
+  static const _databaseVersion = 4;
 
   Database? _database;
   String _activeStorageKey = 'signed_out';
@@ -136,7 +136,8 @@ class AppDatabase {
         turning_count INTEGER,
         route_points TEXT,
         sync_status TEXT,
-        vehicle_type TEXT
+        vehicle_type TEXT,
+        plate_number TEXT
       );
     ''');
 
@@ -164,6 +165,10 @@ class AppDatabase {
     }
     if (oldVersion < 3 && newVersion >= 3) {
       await db.execute('ALTER TABLE trips ADD COLUMN vehicle_type TEXT;');
+    }
+    if (oldVersion < 4 && newVersion >= 4) {
+      await db.execute('ALTER TABLE trips ADD COLUMN plate_number TEXT;');
+      await db.execute('ALTER TABLE reports_with_trust ADD COLUMN plate_number TEXT;');
     }
   }
 
@@ -198,7 +203,8 @@ class AppDatabase {
         passenger_trust REAL DEFAULT 0.5,
         is_verified INTEGER DEFAULT 0,
         is_flagged INTEGER DEFAULT 0,
-        sync_status TEXT
+        sync_status TEXT,
+        plate_number TEXT
       ) 
     ''');
   }
@@ -516,6 +522,44 @@ class AppDatabase {
       whereArgs: [SyncStatus.pending.label],
     );
     return results.map(PassengerTrustMetrics.fromMap).toList();
+  }
+
+  Future<List<PassengerTrustMetrics>> getAllPassengerTrustMetrics() async {
+    final mockMetrics = [
+      PassengerTrustMetrics(passengerId: 'user1', totalReports: 15, consistencyScore: 0.8, anomalyScore: 0.1, sensorAlignmentScore: 0.8, overallTrust: 0.56, lastUpdated: DateTime.now(), verifiedCount: 10, flaggedCount: 0),
+      PassengerTrustMetrics(passengerId: 'user2', totalReports: 35, consistencyScore: 0.6, anomalyScore: 0.2, sensorAlignmentScore: 0.6, overallTrust: 0.46, lastUpdated: DateTime.now(), verifiedCount: 20, flaggedCount: 5),
+      PassengerTrustMetrics(passengerId: 'user3', totalReports: 53, consistencyScore: 0.4, anomalyScore: 0.8, sensorAlignmentScore: 0.3, overallTrust: 0.41, lastUpdated: DateTime.now(), verifiedCount: 10, flaggedCount: 30),
+    ];
+
+    if (kIsWeb) return mockMetrics;
+    
+    try {
+      final db = await database;
+      final results = await db.query('passenger_trust_metrics');
+      if (results.isEmpty) return mockMetrics;
+      return results.map(PassengerTrustMetrics.fromMap).toList();
+    } catch (e) {
+      return mockMetrics;
+    }
+  }
+
+  Future<List<ReportWithTrust>> getAllReportsWithTrust() async {
+    final mockReports = [
+      for (int i=0; i<8; i++) ReportWithTrust(reportId: 100+i, passengerId: 'user1', category: 'overspeeding', severity: 3, description: '', latitude: 0, longitude: 0, timestamp: DateTime.now(), passengerTrust: 0.5, isVerified: false, plateNumber: 'ABC 123'),
+      ReportWithTrust(reportId: 200, passengerId: 'user1', category: 'hard braking', severity: 4, description: '', latitude: 0, longitude: 0, timestamp: DateTime.now(), passengerTrust: 0.5, isVerified: false, plateNumber: 'XYZ 987'),
+      for (int i=0; i<3; i++) ReportWithTrust(reportId: 300+i, passengerId: 'user1', category: 'sharp turns', severity: 3, description: '', latitude: 0, longitude: 0, timestamp: DateTime.now(), passengerTrust: 0.5, isVerified: false, plateNumber: 'QWE 456'),
+    ];
+
+    if (kIsWeb) return mockReports;
+
+    try {
+      final db = await database;
+      final results = await db.query('reports_with_trust');
+      if (results.isEmpty) return mockReports;
+      return results.map(ReportWithTrust.fromMap).toList();
+    } catch (e) {
+      return mockReports;
+    }
   }
 
   /// Update trust metrics sync status

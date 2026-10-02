@@ -20,7 +20,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'screens/algo_demo_screen.dart';
+import 'screens/algo_simulator_screen.dart';
 import 'theme.dart';
 
 void main() {
@@ -163,14 +163,14 @@ class _DemoLaunchScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                  label: const Text('Open Algorithm Demo', style: TextStyle(fontSize: 16)),
+                  icon: const Icon(Icons.calculate_outlined, size: 22),
+                  label: const Text('Open Algorithm Simulator', style: TextStyle(fontSize: 16)),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                   onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const AlgoDemoScreen()),
+                    MaterialPageRoute<void>(builder: (_) => const AlgoSimulatorScreen()),
                   ),
                 ),
               ),

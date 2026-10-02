@@ -37,6 +37,9 @@ class TripActionSheet {
     final routeController = TextEditingController(
       text: controller.activeTrip?.routeName ?? '',
     );
+    final plateController = TextEditingController(
+      text: controller.activeTrip?.plateNumber ?? '',
+    );
     
     risk_scoring.VehicleType selectedVehicle = vehicle;
 
@@ -105,14 +108,15 @@ class TripActionSheet {
                         if (value != null) {
                           routeController.text = value;
                           
-                          // Instantly start trip
                           final routeName = value.trim();
+                          final plate = plateController.text.trim();
                           Navigator.of(sheetContext).pop();
                           
                           final started = await controller.startTrip(
                             routeName: routeName.isEmpty ? null : routeName,
                             vehicleMultiplier: selectedVehicle.multiplier,
                             vehicleType: selectedVehicle.name,
+                            plateNumber: plate.isEmpty ? null : plate,
                           );
                           
                           if (!context.mounted) return;
@@ -135,6 +139,16 @@ class TripActionSheet {
                           }
                         }
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: plateController,
+                      decoration: const InputDecoration(
+                        labelText: 'Plate Number (optional)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.pin),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
                     ),
                   ],
                   if (!controller.isTracking && suggestedRoutes.isNotEmpty) ...[
@@ -223,10 +237,12 @@ class TripActionSheet {
                             ),
                           );
                         } else {
+                          final plate = plateController.text.trim();
                           final started = await controller.startTrip(
                             routeName: routeName.isEmpty ? null : routeName,
                             vehicleMultiplier: selectedVehicle.multiplier,
                             vehicleType: selectedVehicle.name,
+                            plateNumber: plate.isEmpty ? null : plate,
                           );
                           if (!context.mounted) return;
                           if (!started) {
@@ -263,6 +279,7 @@ class TripActionSheet {
     );
 
     routeController.dispose();
+    plateController.dispose();
   }
 }
 

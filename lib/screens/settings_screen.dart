@@ -10,7 +10,7 @@ import '../services/permission_service.dart';
 import '../services/preferences_service.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
-import 'algo_demo_screen.dart';
+import 'algo_simulator_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -94,86 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _getRoadLabel(double value) {
-    if (value < 0.4) return 'Poor (Bumpy)';
-    if (value < 0.7) return 'Fair (Normal)';
-    return 'Good (Smooth)';
-  }
 
-  String _getNoiseLabel(double value) {
-    if (value < 0.4) return 'Quiet';
-    if (value < 0.7) return 'Moderate';
-    return 'Loud';
-  }
-
-  Color _getRoadColor(double value) {
-    if (value < 0.4) return const Color(0xFFE74C3C);
-    if (value < 0.7) return const Color(0xFFF39C12);
-    return const Color(0xFF2ECC71);
-  }
-
-  Color _getTrafficColor(double value) {
-    if (value < 0.4) return const Color(0xFF2ECC71);
-    if (value < 0.7) return const Color(0xFFF39C12);
-    return const Color(0xFFE74C3C);
-  }
-
-  Color _getNoiseColor(double value) {
-    if (value < 0.4) return const Color(0xFF2ECC71);
-    if (value < 0.7) return const Color(0xFFF39C12);
-    return const Color(0xFFE74C3C);
-  }
-
-  String _getTrafficLabel(double value) {
-    if (value < 0.4) return 'Light';
-    if (value < 0.7) return 'Moderate';
-    return 'Heavy';
-  }
-
-  Widget _buildContextSlider({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required double value,
-    required String valueLabel,
-    required Color color,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(icon, color: color),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              valueLabel,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        Slider(
-          activeColor: color,
-          value: value,
-          min: 0.0,
-          max: 1.0,
-          divisions: 2, // 3 easy steps: 0.0, 0.5, 1.0
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,84 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(child: SectionHeader(title: 'Adaptive Context Factors')),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: TextButton(
-                  onPressed: () => tripController.resetContextFactors(),
-                  child: const Text('Reset to Default', style: TextStyle(fontSize: 12)),
-                ),
-              ),
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-            child: Text(
-              'Tell SafeRide about your typical route to help adjust the sensitivity of reckless driving alerts.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-          ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildContextSlider(
-                    title: 'Road Condition',
-                    subtitle: 'Bumpy roads might trigger false braking alerts',
-                    icon: Icons.add_road,
-                    color: _getRoadColor(tripController.contextRoad),
-                    value: tripController.contextRoad,
-                    valueLabel: _getRoadLabel(tripController.contextRoad),
-                    onChanged: (val) {
-                      tripController.updateContextFactors(
-                        roadCondition: val,
-                        envNoise: tripController.contextEnvNoise,
-                        trafficDensity: tripController.contextTraffic,
-                      );
-                    },
-                  ),
-                  const Divider(height: 24),
-                  _buildContextSlider(
-                    title: 'Traffic Density',
-                    subtitle: 'Heavy traffic naturally requires sudden stops',
-                    icon: Icons.traffic,
-                    color: _getTrafficColor(tripController.contextTraffic),
-                    value: tripController.contextTraffic,
-                    valueLabel: _getTrafficLabel(tripController.contextTraffic),
-                    onChanged: (val) {
-                      tripController.updateContextFactors(
-                        roadCondition: tripController.contextRoad,
-                        envNoise: tripController.contextEnvNoise,
-                        trafficDensity: val,
-                      );
-                    },
-                  ),
-                  const Divider(height: 24),
-                  _buildContextSlider(
-                    title: 'Environmental Noise',
-                    subtitle: 'Loud vehicles or wind affect the microphone',
-                    icon: Icons.volume_up,
-                    color: _getNoiseColor(tripController.contextEnvNoise),
-                    value: tripController.contextEnvNoise,
-                    valueLabel: _getNoiseLabel(tripController.contextEnvNoise),
-                    onChanged: (val) {
-                      tripController.updateContextFactors(
-                        roadCondition: tripController.contextRoad,
-                        envNoise: val,
-                        trafficDensity: tripController.contextTraffic,
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
+
 
           if (_isDevModeEnabled) ...[
             const SectionHeader(title: 'Developer & Testing'),
@@ -310,13 +154,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(),
                     ListTile(
-                      leading: const Icon(Icons.science_outlined),
-                      title: const Text('Live Algorithm Demo'),
-                      subtitle: const Text('Real-time visualisation of all risk & trust scoring formulas.'),
+                      leading: const Icon(Icons.calculate_outlined),
+                      title: const Text('Algorithm Simulator (Manual)'),
+                      subtitle: const Text('Interactive input-output simulator.'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const AlgoDemoScreen(),
+                          builder: (_) => const AlgoSimulatorScreen(),
                         ),
                       ),
                     ),

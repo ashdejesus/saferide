@@ -756,65 +756,62 @@ class _DashboardScreenState extends State<DashboardScreen>
           elevation: 1,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  _ContextBar(
-                    label: 'Road Condition',
-                    value: controller.contextRoad,
-                    color: _getRoadColor(controller.contextRoad),
-                  ),
-                  const SizedBox(height: 8),
-                  _ContextBar(
-                    label: 'Traffic Density',
-                    value: controller.contextTraffic,
-                    color: _getTrafficColor(controller.contextTraffic),
-                  ),
-                  const SizedBox(height: 8),
-                  _ContextBar(
-                    label: 'Environmental Noise',
-                    value: controller.contextEnvNoise,
-                    color: _getNoiseColor(controller.contextEnvNoise),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildLegendPill('Good', const Color(0xFF2ECC71)),
-                      const SizedBox(width: 8),
-                      _buildLegendPill('Fair', const Color(0xFFF39C12)),
-                      const SizedBox(width: 8),
-                      _buildLegendPill('Poor', const Color(0xFFE74C3C)),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.settings_suggest,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Tap here to configure these factors in Settings to improve algorithm accuracy based on your route.',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            fontWeight: FontWeight.bold,
-                          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                _ContextBar(
+                  label: 'Road Condition',
+                  value: controller.contextRoad,
+                  color: _getRoadColor(controller.contextRoad),
+                ),
+                const SizedBox(height: 8),
+                _ContextBar(
+                  label: 'Traffic Density',
+                  value: controller.contextTraffic,
+                  color: _getTrafficColor(controller.contextTraffic),
+                ),
+                const SizedBox(height: 8),
+                _ContextBar(
+                  label: 'Environmental Noise',
+                  value: controller.contextEnvNoise,
+                  color: _getNoiseColor(controller.contextEnvNoise),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildLegendPill('Good', const Color(0xFF2ECC71)),
+                    const SizedBox(width: 8),
+                    _buildLegendPill('Fair', const Color(0xFFF39C12)),
+                    const SizedBox(width: 8),
+                    _buildLegendPill('Poor', const Color(0xFFE74C3C)),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.sensors,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        controller.isTracking 
+                          ? 'Live Auto-Calibration Active. Analyzing telemetry data continuously to adjust context factors.' 
+                          : 'Sensors ready. Factors will auto-calibrate in real-time once the trip begins.',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

@@ -19,6 +19,7 @@ class Trip {
     this.routePoints = const [],
     this.syncStatus = SyncStatus.pending,
     this.vehicleType,
+    this.plateNumber,
   });
 
   final int? id;
@@ -36,6 +37,7 @@ class Trip {
   final List<Map<String, double>> routePoints;
   final SyncStatus syncStatus;
   final String? vehicleType;
+  final String? plateNumber;
 
   Trip copyWith({
     int? id,
@@ -53,6 +55,7 @@ class Trip {
     List<Map<String, double>>? routePoints,
     SyncStatus? syncStatus,
     String? vehicleType,
+    String? plateNumber,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -70,6 +73,7 @@ class Trip {
       routePoints: routePoints ?? this.routePoints,
       syncStatus: syncStatus ?? this.syncStatus,
       vehicleType: vehicleType ?? this.vehicleType,
+      plateNumber: plateNumber ?? this.plateNumber,
     );
   }
 
@@ -90,6 +94,7 @@ class Trip {
       'route_points': jsonEncode(routePoints),
       'sync_status': syncStatus.label,
       'vehicle_type': vehicleType,
+      'plate_number': plateNumber,
     };
   }
 
@@ -124,6 +129,7 @@ class Trip {
       routePoints: points,
       syncStatus: SyncStatus.fromString(map['sync_status'] as String?),
       vehicleType: map['vehicle_type'] as String?,
+      plateNumber: map['plate_number'] as String?,
     );
   }
 }

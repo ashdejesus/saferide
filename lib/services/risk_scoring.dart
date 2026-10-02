@@ -147,11 +147,6 @@ class WindowMetrics {
     required this.readings,
   });
 
-  bool get hasOverspeeding =>
-      averageSpeed > 40.0; // km/h default overspeeding threshold
-  bool get hasHarshBraking =>
-      maxLinearAcceleration > 2.5 && maxSpeedDeceleration < -0.5; // Hybrid braking threshold
-  bool get hasSharpTurning => maxAngularVelocity > 1.5; // Sharp turn threshold
 }
 
 /// Sensor magnitude computation
@@ -222,10 +217,14 @@ WindowMetrics extractWindowMetrics(
     maxAngularVelocity = max(maxAngularVelocity, reading.gyroZ.abs());
   }
 
-  // Δv(k): speed variations
+  // Δv(k) / Δt: acceleration/deceleration (m/s²)
   final speedVariations = <double>[];
   for (int i = 1; i < windowReadings.length; i++) {
-    speedVariations.add(windowReadings[i].speed - windowReadings[i - 1].speed);
+    final deltaV = windowReadings[i].speed - windowReadings[i - 1].speed;
+    final deltaT = windowReadings[i].timestamp.difference(windowReadings[i - 1].timestamp).inMilliseconds / 1000.0;
+    if (deltaT > 0) {
+      speedVariations.add(deltaV / deltaT);
+    }
   }
 
   final maxSpeedDeceleration = speedVariations.isEmpty
@@ -253,10 +252,12 @@ WindowMetrics extractWindowMetrics(
 /// Event detection: E_v(w) = 1 if v_w > θ_v
 bool detectOverspeeding(double windowSpeed, AdaptiveThresholds thresholds) {
   return windowSpeed >
-      thresholds.getAdaptiveThreshold(thresholds.thetaSpeedingBase, applyVehicleMultiplier: false);
+      thresholds.getAdaptiveThreshold(thresholds.thetaSpeedingBase, applyVehicleMultiplier: true);
 }
 
-/// Event detection: E_b(w) = 1 if Δv(k) < -θ_b
+/// Event detection:
+/// E_b(w) = 1 if a_min(w) < θ_b, 0 otherwise
+/// where a_min(w) is the most negative longitudinal acceleration within the window.
 bool detectHarshBraking(double maxDeceleration, AdaptiveThresholds thresholds) {
   return maxDeceleration <
       thresholds.getAdaptiveThreshold(thresholds.thetaBrakingBase);
@@ -273,7 +274,7 @@ bool detectSharpTurning(
 
 /// Compute sensor-based risk score
 /// R_sens(t) = (w1*C_v + w2*C_b + w3*C_g + w4*P(t) + w5*|S(t)|) / W_total × A(t)
-/// where A(t) = 1 + α·R_c(t) + β·T_d(t) + γ·E_n(t)
+/// where A(t) = 1 + α·(1 - R_c(t)) + β·T_d(t) + γ·E_n(t)
 double computeSensorRiskScore({
   required int overspeedingCount, // C_v
   required int harshBrakingCount, // C_b
@@ -286,12 +287,15 @@ double computeSensorRiskScore({
 }) {
   if (totalWindows == 0) return 0.0;
 
+  // Normalize slope deviation so it behaves like an event count and doesn't exceed totalWindows
+  final normalizedSlope = min(totalSlopeDeviation, totalWindows.toDouble());
+
   final riskScore =
       (weights.w1 * overspeedingCount +
           weights.w2 * harshBrakingCount +
           weights.w3 * sharpTurningCount +
           weights.w4 * potholeCount +
-          weights.w5 * totalSlopeDeviation) /
+          weights.w5 * normalizedSlope) /
       totalWindows *
       contextualAdjustment;
 
@@ -318,7 +322,7 @@ double computeReportRiskScore(List<PassengerReport> reports) {
 }
 
 /// Adaptive weight for sensor vs report data
-/// λ(t) = N_sensor_events(t) / (N_sensor_events(t) + N_report(t))
+/// λ(t) = (N_sensor_events(t) + 20) / (N_sensor_events(t) + 20 + N_report(t))
 double computeAdaptiveWeight(int sensorEventCount, int reportCount) {
   if (reportCount == 0) return 1.0;
   // Use a baseline of 20 sensor events to prevent a single report from drastically

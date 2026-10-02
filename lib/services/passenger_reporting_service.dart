@@ -191,6 +191,7 @@ class PassengerReportingService {
               passengerTrust: passengerTrust,
               isVerified: data['isVerified'] as bool? ?? false,
               isFlagged: data['isFlagged'] as bool? ?? false,
+              verificationCount: (data['verificationCount'] as num?)?.toInt() ?? 0,
             );
           }).toList();
           
@@ -245,6 +246,7 @@ class PassengerReportingService {
               passengerTrust: passengerTrust,
               isVerified: data['isVerified'] as bool? ?? false,
               isFlagged: data['isFlagged'] as bool? ?? false,
+              verificationCount: (data['verificationCount'] as num?)?.toInt() ?? 0,
             );
           }).toList();
           
@@ -323,6 +325,7 @@ class PassengerReportingService {
                 passengerTrust: passengerTrust,
                 isVerified: data['isVerified'] as bool? ?? false,
                 isFlagged: data['isFlagged'] as bool? ?? false,
+                verificationCount: (data['verificationCount'] as num?)?.toInt() ?? 0,
               ),
             );
           }
@@ -335,16 +338,30 @@ class PassengerReportingService {
   Future<void> verifyReport(String reportId) async {
     try {
       final docRef = _firestore.collection('passenger_reports').doc(reportId);
-      await docRef.update({'verificationCount': FieldValue.increment(1)});
-
-      // Refresh trust metrics; re-read sensor context stored on the document
       final doc = await docRef.get();
       final data = doc.data() as Map<String, dynamic>;
-      final passengerId = data['passengerId'] as String;
+      
+      final verifiedBy = List<String>.from(data['verifiedBy'] ?? []);
+      final currentUserId = _auth.currentUser?.uid ?? 'guest_user';
+      
+      if (verifiedBy.contains(currentUserId)) {
+        throw Exception('You have already verified this report.');
+      }
+
+      await docRef.update({
+        'verificationCount': FieldValue.increment(1),
+        'isVerified': true,
+        'verifiedBy': FieldValue.arrayUnion([currentUserId]),
+      });
+
+      // Refresh trust metrics; re-read sensor context stored on the document
+      final updatedDoc = await docRef.get();
+      final updatedData = updatedDoc.data() as Map<String, dynamic>;
+      final passengerId = updatedData['passengerId'] as String;
       final sensorRisk =
-          (data['sensorRiskAtSubmission'] as num?)?.toDouble() ?? 0.5;
+          (updatedData['sensorRiskAtSubmission'] as num?)?.toDouble() ?? 0.5;
       final eventCount =
-          (data['sensorEventCountAtSubmission'] as num?)?.toInt() ?? 0;
+          (updatedData['sensorEventCountAtSubmission'] as num?)?.toInt() ?? 0;
       await _updatePassengerTrustMetrics(
         passengerId,
         latestSensorRisk: sensorRisk,

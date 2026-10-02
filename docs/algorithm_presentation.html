@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeRide Hybrid Transportation Safety Algorithm</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --secondary: #10b981;
+            --accent: #f59e0b;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.15), transparent 25%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(to right, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            font-size: 1.2rem;
+            color: #94a3b8;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+
+        .panel-1::before { background: linear-gradient(to right, #3b82f6, #60a5fa); }
+        .panel-2::before { background: linear-gradient(to right, #10b981, #34d399); }
+        .panel-3::before { background: linear-gradient(to right, #f59e0b, #fbbf24); }
+
+        h2 {
+            font-size: 2rem;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .diagram-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .node {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            min-width: 150px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            border-color: var(--primary);
+            background: rgba(30, 41, 59, 0.9);
+            transform: scale(1.05);
+        }
+
+        .node-title {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #e2e8f0;
+        }
+
+        .node-desc {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .arrow {
+            color: #64748b;
+            font-size: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        .formula {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #34d399;
+            font-size: 1.1rem;
+            overflow-x: auto;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .interactive-tooltip {
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            width: max-content;
+            max-width: 250px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        .node:hover .interactive-tooltip {
+            opacity: 1;
+            visibility: visible;
+            bottom: 120%;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { transform: translateX(0); opacity: 0.5; }
+            50% { transform: translateX(10px); opacity: 1; }
+            100% { transform: translateX(0); opacity: 0.5; }
+        }
+        
+        .nav-controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid #3b82f6;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+        }
+        
+        .nav-btn:hover {
+            background: #3b82f6;
+            transform: scale(1.1);
+        }
+
+        /* Presentation Mode Styles */
+        .section-hidden {
+            opacity: 0.3;
+            filter: grayscale(80%) blur(2px);
+            transition: all 0.5s ease;
+        }
+        
+        .section-active {
+            opacity: 1;
+            filter: grayscale(0%) blur(0px);
+            transform: scale(1.02);
+            z-index: 5;
+            transition: all 0.5s ease;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="presentation-container">
+        <header>
+            <h1>SafeRide Core Algorithms</h1>
+            <p class="subtitle">Sensor Detection, Trust Weighting, and Data Fusion</p>
+        </header>
+
+        <!-- Component 1: Sensor-Based Detection Model -->
+        <div class="glass-panel panel-1 section-item section-active" id="section-1">
+            <h2><span style="color: #60a5fa;">1.</span> Sensor-Based Detection Model <span class="badge" style="color:#60a5fa; border: 1px solid #60a5fa;">Objective Data</span></h2>
+            <p>Collects raw telemetry and dynamically adapts to contextual conditions to detect unsafe events while filtering noise.</p>
+            
+            <div class="diagram-container">
+                <div class="node">
+                    <div class="node-title">Raw Data</div>
+                    <div class="node-desc">Accel, Gyro, GPS</div>
+                    <div class="interactive-tooltip">Collected continuously via sliding window processing.</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node" style="border-color: #60a5fa;">
+                    <div class="node-title">Adaptive Thresholds <em>θ(t)</em></div>
+                    <div class="node-desc">Contextual Tuning</div>
+                    <div class="interactive-tooltip">Adjusts base thresholds based on Vehicle Type, Road Condition (α), Traffic (β), and Noise (γ).</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                    <div class="node-title">Event Detection</div>
+                    <div class="node-desc">Speeding, Braking, Turning, Potholes</div>
+                    <div class="interactive-tooltip">Detects discrete unsafe events when adaptive thresholds are exceeded within a time window.</div>
+                </div>
+            </div>
+            
+            <div class="grid-3">
+                <div class="node" style="background: rgba(0,0,0,0.2);">
+                    <div class="node-title">Context Adjustment A(t)</div>
+                    <div class="node-desc" style="font-family: monospace;">1 + α(1-R_c) + β(T_d) + γ(E_n)</div>
+                </div>
+                <div class="node" style="background: rgba(0,0,0,0.2);">
+                    <div class="node-title">Dynamic Threshold θ(t)</div>
+                    <div class="node-desc" style="font-family: monospace;">θ_base × Mult × A(t)</div>
+                </div>
+                <div class="node" style="background: rgba(0,0,0,0.2);">
+                    <div class="node-title">Risk Scoring weights</div>
+                    <div class="node-desc">Speed (w1), Brake (w2), Turn (w3), Pothole (w4), Slope (w5)</div>
+                </div>
+            </div>
+
+            <div class="formula">
+                R_sens(t) = [ (w1·C_v + w2·C_b + w3·C_g + w4·P(t) + w5·|S(t)|) / W_total ] × A(t)
+            </div>
+        </div>
+
+        <!-- Component 2: Trust-Weighted Crowdsourcing Model -->
+        <div class="glass-panel panel-2 section-item" id="section-2">
+            <h2><span style="color: #34d399;">2.</span> Trust-Weighted Crowdsourcing Model <span class="badge" style="color:#34d399; border: 1px solid #34d399;">Subjective Data</span></h2>
+            <p>Evaluates passenger credibility to prioritize reliable reports and penalize inconsistent ones.</p>
+            
+            <div class="diagram-container">
+                <div class="node">
+                    <div class="node-title">Passenger Report</div>
+                    <div class="node-desc">Manual Hazard Rating</div>
+                    <div class="interactive-tooltip">User submits a safety rating (1-5 scale) mapped to a 0-1 risk value.</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node" style="border-color: #34d399;">
+                    <div class="node-title">Trust Weight <em>T_i(t)</em></div>
+                    <div class="node-desc">Credibility Scoring</div>
+                    <div class="interactive-tooltip">Evaluated using Consistency Score, Anomaly Score, and Sensor Alignment Score.</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                    <div class="node-title">Weighted Aggregation</div>
+                    <div class="node-desc">Normalized Report Risk</div>
+                    <div class="interactive-tooltip">Combines all active reports in the current context, weighted by their respective trust scores.</div>
+                </div>
+            </div>
+            
+            <div class="grid-3">
+                <div class="node" style="background: rgba(0,0,0,0.2);">
+                    <div class="node-title">Consistency Score</div>
+                    <div class="node-desc">Historical reliability</div>
+                </div>
+                <div class="node" style="background: rgba(0,0,0,0.2);">
+                    <div class="node-title">Sensor Alignment</div>
+                    <div class="node-desc">Conformity with sensor ops</div>
+                </div>
+                <div class="node" style="background: rgba(0,0,0,0.2);">
+                    <div class="node-title">Anomaly Penalty</div>
+                    <div class="node-desc">Deviation from norm</div>
+                </div>
+            </div>
+
+            <div class="formula" style="color: #34d399;">
+                R_rep(t) = Σ [ T_i(t) × r_i(t) ] / Σ T_i(t)
+            </div>
+        </div>
+
+        <!-- Component 3: Non-linear Data Fusion Model -->
+        <div class="glass-panel panel-3 section-item" id="section-3">
+            <h2><span style="color: #fbbf24;">3.</span> Non-linear Data Fusion Model <span class="badge" style="color:#fbbf24; border: 1px solid #fbbf24;">Composite Algorithm</span></h2>
+            <p>Seamlessly merges objective sensor risk and subjective passenger reports into a standardized 0-100 score.</p>
+            
+            <div class="diagram-container">
+                <div class="node" style="border-color: #60a5fa;">
+                    <div class="node-title">R_sens(t)</div>
+                    <div class="node-desc">Sensor Risk</div>
+                </div>
+                <div class="node" style="border-color: #34d399;">
+                    <div class="node-title">R_rep(t)</div>
+                    <div class="node-desc">Report Risk</div>
+                </div>
+                <div class="arrow">↘ ↙</div>
+                <div class="node" style="border-color: #fbbf24; transform: scale(1.1); margin-top: 1rem;">
+                    <div class="node-title">Data Fusion Engine</div>
+                    <div class="node-desc">Adaptive Weighting λ(t)</div>
+                    <div class="interactive-tooltip">Dynamically balances reliance on sensors vs. reports based on data volume. Applies disagreement penalty (φ).</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node" style="background: linear-gradient(135deg, #3b82f622, #10b98122); border-color: white;">
+                    <div class="node-title" style="font-size: 1.5rem; color: white;">Safety Score</div>
+                    <div class="node-desc">0 - 100 Scale</div>
+                </div>
+            </div>
+
+            <div class="formula" style="color: #fbbf24; margin-bottom: 1rem;">
+                R_trip(t) = λ(t)·R_sens(t) + (1-λ(t))·R_rep(t) + φ·|R_sens(t) - R_rep(t)|
+            </div>
+            
+            <div class="formula" style="color: white; background: rgba(255,255,255,0.1);">
+                S_trip(t) = 100 × (1 - R_trip(t))
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-controls">
+        <button class="nav-btn" id="prev-btn" onclick="prevSection()" disabled>↑</button>
+        <button class="nav-btn" id="next-btn" onclick="nextSection()">↓</button>
+    </div>
+
+    <script>
+        let currentSectionIndex = 0;
+        const sections = document.querySelectorAll('.section-item');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        function updateSections() {
+            sections.forEach((section, index) => {
+                if (index === currentSectionIndex) {
+                    section.classList.add('section-active');
+                    section.classList.remove('section-hidden');
+                    // Scroll to active section with a slight offset
+                    const y = section.getBoundingClientRect().top + window.scrollY - 100;
+                    window.scrollTo({top: y, behavior: 'smooth'});
+                } else {
+                    section.classList.remove('section-active');
+                    section.classList.add('section-hidden');
+                }
+            });
+            
+            prevBtn.disabled = currentSectionIndex === 0;
+            nextBtn.disabled = currentSectionIndex === sections.length - 1;
+            
+            prevBtn.style.opacity = currentSectionIndex === 0 ? "0.5" : "1";
+            nextBtn.style.opacity = currentSectionIndex === sections.length - 1 ? "0.5" : "1";
+        }
+
+        function nextSection() {
+            if (currentSectionIndex < sections.length - 1) {
+                currentSectionIndex++;
+                updateSections();
+            }
+        }
+
+        function prevSection() {
+            if (currentSectionIndex > 0) {
+                currentSectionIndex--;
+                updateSections();
+            }
+        }
+
+        // Initialize view
+        updateSections();
+        
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSection();
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                e.preventDefault();
+                prevSection();
+            }
+        });
+    </script>
+</body>
+</html>
