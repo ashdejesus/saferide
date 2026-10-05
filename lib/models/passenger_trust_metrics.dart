@@ -107,6 +107,8 @@ class ReportWithTrust {
     this.isFlagged = false,
     this.verificationCount = 0,
     this.plateNumber,
+    this.verifiedBy = const [],
+    this.flaggedBy = const [],
   });
 
   final int reportId;
@@ -123,6 +125,8 @@ class ReportWithTrust {
   final bool isFlagged;
   final int verificationCount;
   final String? plateNumber;
+  final List<String> verifiedBy;
+  final List<String> flaggedBy;
 
   /// Trust-weighted severity: actual severity * passenger trust
   int get weightedSeverity => (severity * passengerTrust).round().clamp(1, 5);
@@ -142,6 +146,8 @@ class ReportWithTrust {
       'is_flagged': isFlagged ? 1 : 0,
       'verification_count': verificationCount,
       'plate_number': plateNumber,
+      'verified_by': verifiedBy,
+      'flagged_by': flaggedBy,
     };
   }
 
@@ -160,6 +166,8 @@ class ReportWithTrust {
       isFlagged: (map['is_flagged'] as int) == 1,
       verificationCount: map['verification_count'] as int? ?? 0,
       plateNumber: map['plate_number'] as String?,
+      verifiedBy: (map['verified_by'] as List<dynamic>?)?.cast<String>() ?? const [],
+      flaggedBy: (map['flagged_by'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   }
 }

@@ -976,15 +976,23 @@ class TripController extends ChangeNotifier {
     }
   }
   void _recordEvent(risk_scoring.UnsafeEventType type) {
-    _recentEvents.insert(
-      0,
-      risk_scoring.UnsafeEvent(
-        type: type, 
-        timestamp: DateTime.now(),
-        lat: _currentPosition?.latitude,
-        lng: _currentPosition?.longitude,
-      ),
+    final event = risk_scoring.UnsafeEvent(
+      type: type, 
+      timestamp: DateTime.now(),
+      lat: _currentPosition?.latitude,
+      lng: _currentPosition?.longitude,
     );
+    _recentEvents.insert(0, event);
+
+    if (_activeTrip?.id != null) {
+      _database.insertTripEvent(
+        _activeTrip!.id!,
+        type.name,
+        _currentPosition?.latitude ?? 0.0,
+        _currentPosition?.longitude ?? 0.0,
+      );
+    }
+
     if (_recentEvents.length > 5) {
       _recentEvents.removeLast();
     }

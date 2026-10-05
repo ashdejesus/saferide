@@ -1,0 +1,4 @@
+Trip ID,Event ID,Event Type,Ground Truth,SafeRide Detection,Report ID,Conforming?,Credibility,Final Score
+T01,E01,Speeding,Yes,Yes,R01,Yes,,
+T01,E02,Hard braking,Yes,No,R02,No,,
+T02,E01,Sharp turn,No,Yes,R03,No,,

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/passenger_trust_metrics.dart';
 import 'risk_scoring.dart';
@@ -192,6 +194,8 @@ class PassengerReportingService {
               isVerified: data['isVerified'] as bool? ?? false,
               isFlagged: data['isFlagged'] as bool? ?? false,
               verificationCount: (data['verificationCount'] as num?)?.toInt() ?? 0,
+              verifiedBy: List<String>.from(data['verifiedBy'] ?? []),
+              flaggedBy: List<String>.from(data['flaggedBy'] ?? []),
             );
           }).toList();
           
@@ -247,6 +251,8 @@ class PassengerReportingService {
               isVerified: data['isVerified'] as bool? ?? false,
               isFlagged: data['isFlagged'] as bool? ?? false,
               verificationCount: (data['verificationCount'] as num?)?.toInt() ?? 0,
+              verifiedBy: List<String>.from(data['verifiedBy'] ?? []),
+              flaggedBy: List<String>.from(data['flaggedBy'] ?? []),
             );
           }).toList();
           
@@ -269,7 +275,7 @@ class PassengerReportingService {
         .where(
           'timestamp',
           isGreaterThan: Timestamp.fromDate(
-            DateTime.now().subtract(Duration(hours: 24)),
+            DateTime.now().subtract(const Duration(hours: 24)),
           ),
         )
         .snapshots()
@@ -326,6 +332,8 @@ class PassengerReportingService {
                 isVerified: data['isVerified'] as bool? ?? false,
                 isFlagged: data['isFlagged'] as bool? ?? false,
                 verificationCount: (data['verificationCount'] as num?)?.toInt() ?? 0,
+                verifiedBy: List<String>.from(data['verifiedBy'] ?? []),
+                flaggedBy: List<String>.from(data['flaggedBy'] ?? []),
               ),
             );
           }
@@ -376,21 +384,32 @@ class PassengerReportingService {
   Future<void> flagReport(String reportId, String reason) async {
     try {
       final docRef = _firestore.collection('passenger_reports').doc(reportId);
+      final doc = await docRef.get();
+      final data = doc.data() as Map<String, dynamic>;
+      
+      final flaggedBy = List<String>.from(data['flaggedBy'] ?? []);
+      final currentUserId = _auth.currentUser?.uid ?? 'guest_user';
+      
+      if (flaggedBy.contains(currentUserId)) {
+        throw Exception('You have already flagged this report.');
+      }
+
       await docRef.update({
         'flagCount': FieldValue.increment(1),
         'isFlagged': true,
         'flagReason': reason,
         'flaggedAt': FieldValue.serverTimestamp(),
+        'flaggedBy': FieldValue.arrayUnion([currentUserId]),
       });
 
       // Refresh trust metrics; re-read sensor context stored on the document
-      final doc = await docRef.get();
-      final data = doc.data() as Map<String, dynamic>;
-      final passengerId = data['passengerId'] as String;
+      final refreshedDoc = await docRef.get();
+      final refreshedData = refreshedDoc.data() as Map<String, dynamic>;
+      final passengerId = refreshedData['passengerId'] as String;
       final sensorRisk =
-          (data['sensorRiskAtSubmission'] as num?)?.toDouble() ?? 0.5;
+          (refreshedData['sensorRiskAtSubmission'] as num?)?.toDouble() ?? 0.5;
       final eventCount =
-          (data['sensorEventCountAtSubmission'] as num?)?.toInt() ?? 0;
+          (refreshedData['sensorEventCountAtSubmission'] as num?)?.toInt() ?? 0;
       await _updatePassengerTrustMetrics(
         passengerId,
         latestSensorRisk: sensorRisk,
@@ -634,6 +653,29 @@ class PassengerReportingService {
 
       if (hasMatchingEvent) {
         currentAlignment = min(1.0, currentAlignment + 0.1);
+        
+        // Also Auto-Verify the report since a sensor confirmed it!
+        // We find the report(s) around this time from this passenger and verify them.
+        final reportSnap = await _firestore.collection('passenger_reports')
+            .where('passengerId', isEqualTo: passengerId)
+            .get();
+        for (var doc in reportSnap.docs) {
+          final data = doc.data();
+          final ts = data['timestamp'] != null
+              ? (data['timestamp'] as Timestamp).toDate()
+              : DateTime.parse(data['createdAt'] as String);
+          
+          if (ts.isAfter(windowStart) && ts.isBefore(windowEnd)) {
+            final verifiedBy = List<String>.from(data['verifiedBy'] ?? []);
+            if (!verifiedBy.contains('sensor')) {
+              await doc.reference.update({
+                'verificationCount': FieldValue.increment(1),
+                'isVerified': true,
+                'verifiedBy': FieldValue.arrayUnion(['sensor']),
+              });
+            }
+          }
+        }
       } else {
         currentAlignment = max(0.0, currentAlignment - 0.05);
       }
@@ -650,6 +692,55 @@ class PassengerReportingService {
       // We will leave the overall trust recalculation to _updatePassengerTrustMetrics.
     } catch (e) {
       throw Exception('Failed to validate report with sensors: $e');
+    }
+  }
+
+  Future<String> exportReportsToCsv({int? tripId}) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      
+      // 1. Export Reports (Supports SOP 2.2 - Report Conformity)
+      Query query = _firestore.collection('passenger_reports');
+      if (tripId != null) {
+        query = query.where('tripId', isEqualTo: tripId);
+      }
+      
+      final snapshot = await query.get();
+      final buffer = StringBuffer();
+      buffer.writeln('Report ID,Passenger ID,Trip ID,Category,Severity,Latitude,Longitude,Timestamp,Verified,Flagged,Verification Count,Verified By,Sensor Risk At Submission,Sensor Event Count At Submission');
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final ts = data['timestamp'] != null
+            ? (data['timestamp'] as Timestamp).toDate().toIso8601String()
+            : data['createdAt'] as String;
+            
+        final verifiedBy = (data['verifiedBy'] as List<dynamic>?)?.join('|') ?? '';
+        final sensorRisk = data['sensorRiskAtSubmission'] ?? 0.5;
+        final sensorEvents = data['sensorEventCountAtSubmission'] ?? 0;
+            
+        buffer.writeln('${doc.id},${data['passengerId']},${data['tripId'] ?? ''},${data['category']},${data['severity']},${data['latitude']},${data['longitude']},$ts,${data['isVerified']},${data['isFlagged']},${data['verificationCount']},$verifiedBy,$sensorRisk,$sensorEvents');
+      }
+
+      final file = File('${directory.path}/extracted_firebase_reports${tripId != null ? '_trip_$tripId' : ''}.csv');
+      await file.writeAsString(buffer.toString());
+      
+      // 2. Export Trust Metrics (Supports SOP 2.1 - Reporting Frequency and Credibility)
+      final trustSnapshot = await _firestore.collection('passenger_trust_metrics').get();
+      final trustBuffer = StringBuffer();
+      trustBuffer.writeln('Passenger ID,Total Reports (Frequency),Overall Trust (Credibility),Consistency Score,Anomaly Score,Sensor Alignment Score');
+      
+      for (var doc in trustSnapshot.docs) {
+        final data = doc.data();
+        trustBuffer.writeln('${data['passengerId']},${data['totalReports']},${data['overallTrust']},${data['consistencyScore']},${data['anomalyScore']},${data['sensorAlignmentScore']}');
+      }
+      
+      final trustFile = File('${directory.path}/extracted_trust_metrics.csv');
+      await trustFile.writeAsString(trustBuffer.toString());
+      
+      return '${file.path} (and extracted_trust_metrics.csv)';
+    } catch (e) {
+      throw Exception('Failed to export reports: $e');
     }
   }
 }

@@ -10,6 +10,11 @@ import '../services/permission_service.dart';
 import '../services/preferences_service.dart';
 import '../state/trip_controller.dart';
 import '../widgets/section_header.dart';
+import 'dart:io';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart' as p;
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'algo_simulator_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -163,6 +168,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           builder: (_) => const AlgoSimulatorScreen(),
                         ),
                       ),
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.share),
+                      title: const Text('Export Database (Share)'),
+                      subtitle: const Text('Share SQLite db to Email or Drive'),
+                      trailing: const Icon(Icons.save),
+                      onTap: () async {
+                        try {
+                          final docsDir = await getApplicationDocumentsDirectory();
+                          if (docsDir.existsSync()) {
+                            final files = docsDir.listSync();
+                            List<String> dbFiles = [];
+                            for (var file in files) {
+                              if (file is File && file.path.endsWith('.db')) {
+                                dbFiles.add(file.path);
+                              }
+                            }
+                            if (dbFiles.isNotEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Preparing to share databases...')),
+                              );
+                              final xFiles = dbFiles.map((path) => XFile(path)).toList();
+                              await Share.shareXFiles(xFiles, text: 'SafeRide Trip Database Export');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('No database files found to export.')),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Export failed: $e')),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),

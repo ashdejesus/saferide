@@ -87,16 +87,29 @@ class _ReportCard extends StatefulWidget {
 class _ReportCardState extends State<_ReportCard> {
   late final PassengerReportingService _reportingService;
   bool _isExpanded = false;
-  bool _isVerified = false;
-  bool _isFlagged = false;
+  bool _hasVerifiedLocally = false;
+  bool _hasFlaggedLocally = false;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _reportingService = PassengerReportingService();
-    _isVerified = widget.report.isVerified;
-    _isFlagged = widget.report.isFlagged;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReportCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Local state is overridden by fresh data if it updates.
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId != null) {
+      if (widget.report.verifiedBy.contains(currentUserId)) {
+        _hasVerifiedLocally = false;
+      }
+      if (widget.report.flaggedBy.contains(currentUserId)) {
+        _hasFlaggedLocally = false;
+      }
+    }
   }
 
   Color _getSeverityColor(int severity) {
@@ -133,6 +146,9 @@ class _ReportCardState extends State<_ReportCard> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final severityColor = _getSeverityColor(widget.report.severity);
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final hasVerified = _hasVerifiedLocally || (currentUserId != null && widget.report.verifiedBy.contains(currentUserId));
+    final hasFlagged = _hasFlaggedLocally || (currentUserId != null && widget.report.flaggedBy.contains(currentUserId));
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -253,7 +269,7 @@ class _ReportCardState extends State<_ReportCard> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: !_isVerified && !_isLoading
+                        onPressed: !hasVerified && !_isLoading
                             ? () async {
                                 final scaffoldMessenger = ScaffoldMessenger.of(
                                   context,
@@ -264,7 +280,7 @@ class _ReportCardState extends State<_ReportCard> {
                                   if (reportId == null) throw Exception('Cannot update a local report');
                                   await _reportingService.verifyReport(reportId);
                                   if (!mounted) return;
-                                  setState(() => _isVerified = true);
+                                  setState(() => _hasVerifiedLocally = true);
                                   scaffoldMessenger.showSnackBar(
                                     const SnackBar(
                                       content: Text(
@@ -291,7 +307,7 @@ class _ReportCardState extends State<_ReportCard> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: !_isFlagged && !_isLoading
+                        onPressed: !hasFlagged && !_isLoading
                             ? () async {
                                 final scaffoldMessenger = ScaffoldMessenger.of(
                                   context,
@@ -305,7 +321,7 @@ class _ReportCardState extends State<_ReportCard> {
                                   'Flagged by community member',
                                 );
                                 if (!mounted) return;
-                                setState(() => _isFlagged = true);
+                                setState(() => _hasFlaggedLocally = true);
                                 scaffoldMessenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('Report flagged for review.'),

@@ -110,6 +110,22 @@ class LocationService {
   }
 
   Future<Position> currentPosition() async {
+    // --- Speed Optimization: Check Last Known Position First ---
+    // If we're offline, getting a fresh lock takes a long time.
+    // We can use the OS cached location if it's recent (e.g., within 15 seconds).
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        // Geolocation timestamp can sometimes be null on certain platforms, but we assume it's valid
+        if (lastKnown.timestamp != null && DateTime.now().difference(lastKnown.timestamp!) < const Duration(seconds: 15)) {
+          debugPrint('LocationService: Using recent last known position (fast path).');
+          return lastKnown;
+        }
+      }
+    } catch (e) {
+      debugPrint('LocationService: Failed to get last known position: $e');
+    }
+
     // Use bestForNavigation on mobile, best elsewhere
     LocationAccuracy preferredAccuracy = LocationAccuracy.best;
     if (!kIsWeb && Platform.isAndroid) {

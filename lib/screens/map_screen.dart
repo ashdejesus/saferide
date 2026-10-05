@@ -962,7 +962,12 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                           children: [
                             const Icon(Icons.verified, color: Colors.green, size: 16),
                             const SizedBox(width: 8),
-                            Expanded(child: Text('Community Verified: Confirmed by ${report.verificationCount} passenger${report.verificationCount == 1 ? '' : 's'}.', style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold))),
+                            Expanded(child: Text(
+                              report.verifiedBy.contains('sensor') 
+                                ? 'Auto-Verified by Vehicle Sensor.' 
+                                : 'Community Verified: Confirmed by ${report.verificationCount} passenger${report.verificationCount == 1 ? '' : 's'}.', 
+                              style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)
+                            )),
                           ],
                         ),
                       )
@@ -998,41 +1003,72 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                 Text('"${report.description}"', style: const TextStyle(fontStyle: FontStyle.italic)),
               ],
               if (FirebaseAuth.instance.currentUser?.uid != report.passengerId) ...[
-                const SizedBox(height: 24),
-                const Text('Is this hazard still present?', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          if (report.firestoreId != null) {
-                            await widget.controller.passengerReportingService.flagReport(report.firestoreId!, 'Inaccurate');
-                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged. Impacting user trust score.')));
-                          }
-                        },
-                        icon: const Icon(Icons.thumb_down_outlined, size: 18),
-                        label: const Text('No (Flag)'),
-                        style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error, padding: const EdgeInsets.symmetric(vertical: 12)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          if (report.firestoreId != null) {
-                            await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
-                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
-                          }
-                        },
-                        icon: const Icon(Icons.thumb_up_outlined, size: 18),
-                        label: const Text('Yes (Verify)'),
-                        style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
-                      ),
-                    ),
-                  ],
+                Builder(
+                  builder: (context) {
+                    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? 'guest_user';
+                    final hasVerified = report.verifiedBy.contains(currentUserId) || report.verifiedBy.contains('sensor');
+                    final hasFlagged = report.flaggedBy.contains(currentUserId);
+                    
+                    if (hasVerified || hasFlagged) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 16.0),
+                        child: Text(
+                          'You have already reviewed this hazard.',
+                          style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                        ),
+                      );
+                    }
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 24),
+                        const Text('Is this hazard still present?', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  if (report.firestoreId != null) {
+                                    try {
+                                      await widget.controller.passengerReportingService.flagReport(report.firestoreId!, 'Inaccurate');
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report flagged. Impacting user trust score.')));
+                                    } catch (e) {
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.thumb_down_outlined, size: 18),
+                                label: const Text('No (Flag)'),
+                                style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error, padding: const EdgeInsets.symmetric(vertical: 12)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  if (report.firestoreId != null) {
+                                    try {
+                                      await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
+                                    } catch (e) {
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.thumb_up_outlined, size: 18),
+                                label: const Text('Yes (Verify)'),
+                                style: FilledButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 12)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
                 ),
               ],
             ],

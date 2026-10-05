@@ -31,7 +31,7 @@ class RouteAggregation {
 
 class AppDatabase {
   static const _databaseBaseName = 'saferide';
-  static const _databaseVersion = 4;
+  static const _databaseVersion = 5;
 
   Database? _database;
   String _activeStorageKey = 'signed_out';
@@ -142,6 +142,18 @@ class AppDatabase {
     ''');
 
     await db.execute('''
+      CREATE TABLE trip_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trip_id INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        timestamp TEXT NOT NULL,
+        FOREIGN KEY(trip_id) REFERENCES trips(id) ON DELETE CASCADE
+      );
+    ''');
+
+    await db.execute('''
       CREATE TABLE reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         trip_id INTEGER NOT NULL,
@@ -169,6 +181,19 @@ class AppDatabase {
     if (oldVersion < 4 && newVersion >= 4) {
       await db.execute('ALTER TABLE trips ADD COLUMN plate_number TEXT;');
       await db.execute('ALTER TABLE reports_with_trust ADD COLUMN plate_number TEXT;');
+    }
+    if (oldVersion < 5 && newVersion >= 5) {
+      await db.execute('''
+        CREATE TABLE trip_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          trip_id INTEGER NOT NULL,
+          event_type TEXT NOT NULL,
+          latitude REAL,
+          longitude REAL,
+          timestamp TEXT NOT NULL,
+          FOREIGN KEY(trip_id) REFERENCES trips(id) ON DELETE CASCADE
+        );
+      ''');
     }
   }
 
@@ -254,6 +279,18 @@ class AppDatabase {
     }
     final db = await database;
     return db.insert('trips', trip.toMap());
+  }
+
+  Future<int> insertTripEvent(int tripId, String eventType, double lat, double lng) async {
+    if (kIsWeb) return 0; // Not implemented for web stub
+    final db = await database;
+    return await db.insert('trip_events', {
+      'trip_id': tripId,
+      'event_type': eventType,
+      'latitude': lat,
+      'longitude': lng,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
   }
 
   Future<void> updateTrip(Trip trip) async {
