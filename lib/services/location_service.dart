@@ -113,13 +113,14 @@ class LocationService {
     // --- Speed Optimization: Check Last Known Position First ---
     // If we're offline, getting a fresh lock takes a long time.
     // We can use the OS cached location if it's recent (e.g., within 15 seconds).
+    Position? lastKnownFallback;
     try {
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null) {
+      lastKnownFallback = await Geolocator.getLastKnownPosition();
+      if (lastKnownFallback != null) {
         // Geolocation timestamp can sometimes be null on certain platforms, but we assume it's valid
-        if (lastKnown.timestamp != null && DateTime.now().difference(lastKnown.timestamp!) < const Duration(seconds: 15)) {
+        if (lastKnownFallback.timestamp != null && DateTime.now().difference(lastKnownFallback.timestamp!) < const Duration(seconds: 15)) {
           debugPrint('LocationService: Using recent last known position (fast path).');
-          return lastKnown;
+          return lastKnownFallback;
         }
       }
     } catch (e) {
@@ -164,31 +165,35 @@ class LocationService {
       return LocationSettings(accuracy: accuracy, distanceFilter: 0);
     }
 
-    // --- Attempt 1: preferred accuracy, 10-second timeout ---
+    // --- Attempt 1: preferred accuracy, 5-second timeout ---
     // Without mobile data, A-GPS cold-start can exceed the default timeout.
-    // We give it 10 s first; if that fails we fall back to medium accuracy
-    // (pure GPS, no network assist) with a longer 20-second window.
     try {
       return await Geolocator.getCurrentPosition(
         locationSettings: _settings(preferredAccuracy),
       ).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 5),
         onTimeout: () => throw Exception('GPS timeout on first attempt'),
       );
     } catch (e) {
-      debugPrint('LocationService: First GPS attempt failed ($e). Retrying with medium accuracy...');
+      debugPrint('LocationService: First GPS attempt failed ($e). Retrying with lower accuracy...');
     }
 
-    // --- Attempt 2: medium accuracy (satellite-only, no A-GPS), 20-second timeout ---
+    // --- Attempt 2: low accuracy (fastest possible fallback), 5-second timeout ---
     try {
       return await Geolocator.getCurrentPosition(
-        locationSettings: _settings(LocationAccuracy.medium),
+        locationSettings: _settings(LocationAccuracy.low),
       ).timeout(
-        const Duration(seconds: 20),
+        const Duration(seconds: 5),
         onTimeout: () => throw Exception('GPS timeout on fallback attempt'),
       );
     } catch (e) {
       debugPrint('LocationService: Fallback GPS attempt failed ($e).');
+      
+      if (lastKnownFallback != null) {
+        debugPrint('LocationService: Returning stale last known position as final fallback.');
+        return lastKnownFallback;
+      }
+
       if (kIsWeb) {
         debugPrint('Using mock position for web testing.');
         return Position(

@@ -6,8 +6,8 @@ void main() async {
   sqfliteFfiInit();
   var databaseFactory = databaseFactoryFfi;
 
-  final exportDir = Directory('export data/SR');
-  final csvFile = File('export data/extracted_reports.csv');
+  final exportDir = Directory(r'c:\Users\nicho\Documents\GitHub\saferide\export data\SR');
+  final csvFile = File(r'c:\Users\nicho\Documents\GitHub\saferide\export data\extracted_reports.csv');
   
   if (!exportDir.existsSync()) {
     return;
