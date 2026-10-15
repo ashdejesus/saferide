@@ -1,0 +1,8 @@
+Trip ID,Date,Start Time,End Time,Duration (s),Route,Vehicle,GPS Status,Sensor Status,Storage Status,Observer Form Complete
+PL-DZ-01,2026-10-04,13:26:55,13:31:25,270,Pulo-Diezmo,Tricycle,Fixed (134 pts),Active,Saved (SQLite),Yes
+DZ-PL-02,2026-10-04,19:20:14,19:23:55,221,Diezmo-Pulo,Tricycle,Fixed (110 pts),Active,Saved (SQLite),Yes
+BNY-SALA-03,2026-10-05,16:54:43,17:02:22,459,Banaybanay-Sala,Jeepney,Fixed (200 pts),Active,Saved (SQLite),Yes
+SALA-BNY-04,2026-10-05,21:58:31,22:01:49,198,Sala-Banaybanay,Jeepney,Fixed (44 pts),Active,Saved (SQLite),Yes
+BNY-PNC-05,2026-10-06,12:57:00,13:02:10,310,Banaybanay-PNC,Tricycle,Fixed (160 pts),Active,Saved (SQLite),Yes
+PNC-BNY-06,2026-10-06,16:32:13,16:36:02,229,PNC-Banaybanay,Tricycle,Fixed (125 pts),Active,Saved (SQLite),Yes
+CMC-LB-07,2026-09-18,20:54:42,21:18:23,1421,Calamba(CMC)-Los Banos,Jeepney,Fixed (200 pts),Active,Saved (SQLite),Yes (Researcher Contemporaneous Sheet 7)

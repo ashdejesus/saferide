@@ -1,0 +1,13 @@
+Report ID,Trip ID,Category,Reported Severity,Trip Total Events,Rank(Severity),Rank(Events),d_i,d_i^2,Admin Status,Direct Sensor Agreement
+1,1,Speeding,3,0,4.0,3.0,1.0,1.00,Accepted (Non-Flagged),No Match (0 km/h over)
+2,13,Reckless Driving,2,4,1.0,10.0,-9.0,81.00,Accepted (Non-Flagged),No Match
+3,16,Pothole,4,2,9.0,7.5,1.5,2.25,Accepted (Non-Flagged),No Match
+4,18,Pothole,4,4,9.0,10.0,-1.0,1.00,Accepted (Non-Flagged),No Match
+5,18,Pothole,4,4,9.0,10.0,-1.0,1.00,Accepted (Non-Flagged),No Match
+6,20,Sudden Braking,3,0,4.0,3.0,1.0,1.00,Accepted (Non-Flagged),No Match (Decel within limit)
+7,22,Pothole,4,1,9.0,6.0,3.0,9.00,Accepted (Non-Flagged),No Match
+8,25,Pothole,5,8,12.0,12.0,0.0,0.00,Accepted (Non-Flagged),No Match
+9,26,Pothole,4,2,9.0,7.5,1.5,2.25,Accepted (Non-Flagged),No Match
+10,2,Speeding,3,0,4.0,3.0,1.0,1.00,Accepted (Non-Flagged),No Match (0 km/h over)
+11,2,Speeding,3,0,4.0,3.0,1.0,1.00,Accepted (Non-Flagged),No Match (0 km/h over)
+12,2,Speeding,3,0,4.0,3.0,1.0,1.00,Accepted (Non-Flagged),No Match (0 km/h over)
