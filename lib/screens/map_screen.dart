@@ -755,10 +755,10 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                           );
 
                           // 3. Queue the actual submission
-                          Future.delayed(const Duration(seconds: 5), () {
+                          Future.delayed(const Duration(seconds: 5), () async {
                             if (isCancelled) return;
-                            unawaited(
-                              widget.controller.passengerReportingService
+                            try {
+                              final docId = await widget.controller.passengerReportingService
                                   .submitReport(
                                     tripId: widget.controller.activeTrip?.id ?? 0,
                                     category: selectedCategory,
@@ -766,11 +766,11 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                                     description: descriptionController.text,
                                     latitude: lat,
                                     longitude: lng,
-                                  )
-                                  .catchError((e) {
-                                    debugPrint('Failed to submit report: $e');
-                                  }),
-                            );
+                                  );
+                              widget.controller.updateReportFirestoreId(reportId, docId);
+                            } catch (e) {
+                              debugPrint('Failed to submit report: $e');
+                            }
                           });
                         },
                         child: const Text('Submit'),
@@ -1050,13 +1050,18 @@ class _FullScreenMapCardState extends State<_FullScreenMapCard> with TickerProvi
                               child: FilledButton.icon(
                                 onPressed: () async {
                                   Navigator.pop(context);
-                                  if (report.firestoreId != null) {
+                                  final docId = report.firestoreId;
+                                  final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? 'guest_user';
+                                  if (docId != null && docId.isNotEmpty) {
                                     try {
-                                      await widget.controller.passengerReportingService.verifyReport(report.firestoreId!);
-                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified.')));
+                                      widget.controller.markReportVerifiedLocally(docId, currentUserId);
+                                      await widget.controller.passengerReportingService.verifyReport(docId);
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report verified!')));
                                     } catch (e) {
                                       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
                                     }
+                                  } else {
+                                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report is still synchronizing with cloud. Please try again in a few seconds.')));
                                   }
                                 },
                                 icon: const Icon(Icons.thumb_up_outlined, size: 18),

@@ -16,6 +16,7 @@ import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'algo_simulator_screen.dart';
+import '../services/passenger_reporting_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -172,36 +173,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.share),
-                      title: const Text('Export Database (Share)'),
-                      subtitle: const Text('Share SQLite db to Email or Drive'),
+                      title: const Text('Export Database & Datasets (Share)'),
+                      subtitle: const Text('Share SQLite db and complete research CSVs to Email or Drive'),
                       trailing: const Icon(Icons.save),
                       onTap: () async {
                         try {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Preparing database & research datasets...')),
+                          );
                           final docsDir = await getApplicationDocumentsDirectory();
+                          final List<XFile> xFiles = [];
+
+                          // 1. Gather all SQLite databases
                           if (docsDir.existsSync()) {
                             final files = docsDir.listSync();
-                            List<String> dbFiles = [];
                             for (var file in files) {
                               if (file is File && file.path.endsWith('.db')) {
-                                dbFiles.add(file.path);
+                                xFiles.add(XFile(file.path));
                               }
                             }
-                            if (dbFiles.isNotEmpty) {
+                          }
+
+                          // 2. Generate comprehensive hazard validation CSVs
+                          try {
+                            final reportingService = PassengerReportingService();
+                            final csvFiles = await reportingService.exportComprehensiveDatasets();
+                            for (var f in csvFiles) {
+                              xFiles.add(XFile(f.path));
+                            }
+                          } catch (e) {
+                            debugPrint('CSV export error: $e');
+                          }
+
+                          if (xFiles.isNotEmpty) {
+                            await Share.shareXFiles(
+                              xFiles,
+                              text: 'SafeRide Trip Database & Hazard Validation Dataset Export',
+                            );
+                          } else {
+                            if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Preparing to share databases...')),
-                              );
-                              final xFiles = dbFiles.map((path) => XFile(path)).toList();
-                              await Share.shareXFiles(xFiles, text: 'SafeRide Trip Database Export');
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('No database files found to export.')),
+                                const SnackBar(content: Text('No database or report files found to export.')),
                               );
                             }
                           }
                         } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Export failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.table_chart_outlined),
+                      title: const Text('Export Hazard Validation Dataset (CSV)'),
+                      subtitle: const Text('Inter-rater consensus (Rater A/B), ground truth, and trust weights'),
+                      trailing: const Icon(Icons.download),
+                      onTap: () async {
+                        try {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Export failed: $e')),
+                            const SnackBar(content: Text('Generating panel validation dataset...')),
                           );
+                          final reportingService = PassengerReportingService();
+                          final csvFiles = await reportingService.exportComprehensiveDatasets();
+                          if (csvFiles.isNotEmpty) {
+                            final xFiles = csvFiles.map((f) => XFile(f.path)).toList();
+                            await Share.shareXFiles(
+                              xFiles,
+                              text: 'SafeRide Hazard Inter-Rater Reliability & Ground-Truth Dataset (CSV)',
+                            );
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('No report records found to export.')),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Export failed: $e')),
+                            );
+                          }
                         }
                       },
                     ),

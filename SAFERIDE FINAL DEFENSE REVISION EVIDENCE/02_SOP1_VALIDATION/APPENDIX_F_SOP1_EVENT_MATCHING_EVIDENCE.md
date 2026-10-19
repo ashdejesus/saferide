@@ -4,6 +4,17 @@ This appendix presents the complete event-matching traceability, window-level co
 
 ---
 
+### Critical Distinction: Event-Level Descriptions vs. Window-Level Statistics
+
+The entries below are **event-level descriptions** from contemporaneous field observation. They are **not** six independent statistical observations. The confusion matrix (Table F-2) and all derived metrics are computed at the **window level** across $N = 3,108$ contiguous one-second observation intervals:
+
+- Each second of transit is one observation unit.
+- A TP event (e.g., swerve at 22:01:44) contributes **1 TP window** to the matrix.
+- A FP event (e.g., road-curve trigger at 19:20:54) contributes **1 FP window**.
+- All remaining uneventful seconds contribute **TN windows**.
+
+The six confirmed target events produce **6 TP + 3 FP + 0 FN + 3,099 TN = 3,108 windows**. Cohen's kappa ($\kappa = 0.7995$) and all other metrics reflect window-level agreement, not event-count agreement.
+
 ### Part 1. Event-Level Ground-Truth Traceability (All Logged Events)
 
 Ground-truth matching was conducted by pairing physical observations recorded on contemporaneous field sheets (Appendix D) with system-logged sensor events stored in `saferide.db`. A temporal matching window of ±3 seconds (extended up to ±5 seconds where clock synchronization drift occurred) was applied to establish event concordance.

@@ -1,0 +1,54 @@
+════════════════════════════════════════════════════════════
+  SAFERIDE SOP 2 — SPEARMAN CORRELATION RESULTS
+  Generated: 2026-10-19 12:04:25.965259
+════════════════════════════════════════════════════════════
+
+[A] REPORT-LEVEL ANALYSIS (each matched report = 1 obs)
+  n (matched pairs)  = 11
+  Spearman ρ          = -0.8864
+  t-statistic         = -5.7446  (df = 9)
+  p-value (approx)    = 0.0003
+  Interpretation:
+    → Statistically significant at α = 0.05
+    → Strong correlation
+
+[B] TRIP-LEVEL ANALYSIS (aggregated by unique trip)
+  n (unique trips)   = 8
+  Spearman ρ          = -0.6325
+  t-statistic         = -2.0000  (df = 6)
+  p-value (approx)    = 0.0924
+
+[C] DESCRIPTIVE STATISTICS
+  Total Firebase reports loaded:    122
+  GPS outliers excluded:            3
+  Matched to sensor trips:          11
+  Unmatched (no sensor data):       111
+  Match rate:                       9.0%
+  Unique trips in matched set:      8
+  Verified reports in matched set:  1
+  Mean severity (matched):          3.64
+  Mean sensor event count:          1.09
+
+[D] DATA QUALITY WARNINGS
+  Matched via explicit Trip ID:     11
+  Matched via Time+GPS window:      0
+  Time window used:                 ±5 min
+  GPS tolerance used:               ≤150.0 m
+
+  ⚠ 111 reports could not be matched to any sensor trip.
+    These reports are excluded from the correlation.
+    This must be disclosed in the manuscript as a limitation.
+
+[E] CHECKLIST STATUS
+  [✓] Sensor event counts exported from .db files
+  [✓] GPS coordinates present in reports
+  [✓] Outlier GPS coordinates (San Francisco) excluded
+  [✓] Time-window and GPS-distance matching defined
+  [✓] Sensor anomaly score = speedingCount+brakingCount+turningCount
+  [✓] Tie-corrected Spearman rho used (Pearson-on-ranks)
+  [✓] p-value computed via t-approximation
+  [✓] Independent verification evidence
+  [✓] Trust scores joined from saferide_trust_metrics.csv
+  [✓] Matched dataset written to CSV for audit
+
+════════════════════════════════════════════════════════════

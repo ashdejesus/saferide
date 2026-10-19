@@ -160,6 +160,37 @@ class TripController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateReportFirestoreId(int localReportId, String firestoreId) {
+    final index = _remoteReports.indexWhere((r) => r.reportId == localReportId);
+    if (index != -1) {
+      final updated = _remoteReports[index].copyWith(firestoreId: firestoreId);
+      final list = List<ReportWithTrust>.from(_remoteReports);
+      list[index] = updated;
+      _remoteReports = list;
+      notifyListeners();
+    }
+  }
+
+  void markReportVerifiedLocally(String firestoreId, String verifierUserId) {
+    final index = _remoteReports.indexWhere((r) => r.firestoreId == firestoreId);
+    if (index != -1) {
+      final r = _remoteReports[index];
+      final newVerifiedBy = List<String>.from(r.verifiedBy);
+      if (!newVerifiedBy.contains(verifierUserId)) {
+        newVerifiedBy.add(verifierUserId);
+      }
+      final updated = r.copyWith(
+        isVerified: true,
+        verificationCount: r.verificationCount + 1,
+        verifiedBy: newVerifiedBy,
+      );
+      final list = List<ReportWithTrust>.from(_remoteReports);
+      list[index] = updated;
+      _remoteReports = list;
+      notifyListeners();
+    }
+  }
+
   void removeLocalReport(int reportId) {
     final index = _remoteReports.indexWhere((r) => r.reportId == reportId);
     if (index != -1) {

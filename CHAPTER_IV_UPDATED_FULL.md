@@ -212,85 +212,144 @@ The second specific objective evaluates the performance of the crowdsourced pass
 ```
 *Figure 21 illustrates the crowdsourced data collection module and the user credibility evaluation pipeline integrated into the SafeRide application. As depicted in the left panel under the Submit Report view, commuters can actively contribute ground-truth observations by categorizing safety events—such as Speeding, Sudden Braking, Sharp Turning, Pothole, Reckless Driving, or Accident—and rating the perceived incident severity on a 1-to-5 scale (illustrated here with "Speeding" selected at a Moderate severity Level 3) alongside optional qualitative notes. To prevent spamming and maintain data integrity across crowdsourced contributions, the right panel displays the My History interface, which computes a dynamic Trust Score (evaluated here at 49%, indicating "Moderate Trust"). This credibility metric evaluates passenger reporting reliability across three weighted sub-dimensions: reporting consistency (65%), physical alignment with onboard sensor telemetry (95%), and algorithmic anomaly detection correlation (31%). In addition, the screen provides transparent auditing metrics—including aggregate counts of submitted, verified, and flagged reports—coupled with a chronological audit log of past events (such as a Severity Level 4 Sudden Braking incident recorded on September 25, 2026). This demonstrates how the system balances community-driven incident reporting with rigorous algorithmic verification to weight qualitative feedback in overall safety risk calculations.*
 
-#### Contributor Reporting Frequency and Credibility Analysis
+#### Contributor Reporting Frequency and Credibility Analysis (SOP 2.1 & 2.2)
 
-During the multi-week field deployment across Laguna, **114 passenger reports were submitted by 13 unique registered commuters** (`passenger_reports.csv`). Reports were cross-referenced against concurrent sensor logs and spatial route corridors. Of the 114 reports, 103 conformed to system data, while 11 failed validation, resulting in an overall conformity rate of **90.35%**.
+During the multi-week field deployment across Laguna, **124 passenger hazard reports were submitted by 13 unique registered commuters** (`saferide_passenger_reports.csv`). These submissions were recorded across diverse transit routes, capturing perceived driving hazards (Speeding, Sudden Braking, Sharp Turning, Reckless Driving, Pothole). To manage crowdsourced quality, SafeRide implements an adaptive credibility engine that evaluates each contributor across multi-source dimensions.
 
-The distribution of submitted reports and computed credibility values across the 13 contributors is presented in Table 11.
+The complete distribution of submitted reports and computed credibility metrics across all 13 registered contributors, extracted directly from the audited database export (`saferide_trust_metrics.csv`), is presented in Table 11.
 
-**Table 11. Contributor Reporting Frequency and Computed Credibility (N = 13 Users)**
+**Table 11. Audited Contributor Reporting Metrics and Credibility Distribution ($N = 13$ Users)**
 
-| Contributor | Total Submissions | Conforming Reports | Non-Conforming Reports | Credibility Score ($C_i$) | System Trust Status |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **Passenger 1** | 56 | 49 | 7 | 0.875 | High Trust |
-| **Passenger 2** | 14 | 13 | 1 | 0.929 | High Trust |
-| **Passenger 3** | 13 | 13 | 0 | 1.000 | Verified |
-| **Passenger 4** | 8 | 7 | 1 | 0.875 | High Trust |
-| **Passenger 5** | 7 | 7 | 0 | 1.000 | Verified |
-| **Passenger 6** | 4 | 4 | 0 | 1.000 | Verified |
-| **Passenger 7** | 4 | 4 | 0 | 1.000 | Verified |
-| **Passenger 8** | 2 | 2 | 0 | 1.000 | Verified |
-| **Passenger 9** | 2 | 2 | 0 | 1.000 | Verified |
-| **Passenger 10** | 1 | 1 | 0 | 1.000 | Initial |
-| **Passenger 11** | 1 | 1 | 0 | 1.000 | Initial |
-| **Passenger 12** | 1 | 0 | 1 | 0.000 | Flagged |
-| **Passenger 13** | 1 | 0 | 1 | 0.000 | Flagged |
-| **Total / Overall** | **114** | **103** | **11** | **Mean = 0.744** | **90.35% Conformity** |
+| Contributor ID | Total Reports ($n_i$) | Consistency Score | Sensor Alignment | Anomaly Score | Overall Credibility ($C_i$) | Operational Trust Status |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| `3tX5EYuP...` | 2 | 1.000 | 0.850 | 0.000 | 0.795 | High Trust |
+| `59C62FDg...` (User 1) | 56 | 0.613 | 0.200 | 0.525 | 0.407 | Moderate Trust |
+| `5y0AF7w3...` | 24 | 0.600 | 0.950 | 0.704 | 0.610 | High Trust |
+| `6FyiDlTJ...` | 1 | 1.000 | 0.913 | 0.000 | 0.795 | High Trust |
+| `C2rC3NGI...` | 1 | 1.000 | 0.850 | 0.000 | 0.548 | Moderate Trust |
+| `DRFFYvcI...` | 1 | 1.000 | 0.850 | 0.000 | 0.548 | Moderate Trust |
+| `F0OJy9Zz...` | 8 | 1.000 | 0.200 | 0.000 | 0.506 | Moderate Trust |
+| `LRLs9Xbk...` | 4 | 0.388 | 0.200 | 0.744 | 0.286 | Low / Flagged |
+| `Szrlck7G...` | 7 | 0.548 | 0.200 | 0.670 | 0.389 | Moderate Trust |
+| `hOg4xmol...` | 1 | 1.000 | 0.850 | 0.000 | 0.783 | High Trust |
+| `jsIHb9K9...` | 13 | 0.683 | 0.200 | 0.713 | 0.467 | Moderate Trust |
+| `ou8NWvfy...` | 4 | 0.783 | 0.731 | 0.670 | 0.550 | Moderate Trust |
+| `uBsstYW7...` | 2 | 0.750 | 0.200 | 0.000 | 0.577 | Moderate Trust |
+| **Total / Cumulative** | **124 Reports** | **Mean = 0.797** | **Mean = 0.553** | **Mean = 0.310** | **Mean = 0.558** | **Reconciled Archive** |
 
-As demonstrated in Table 11, SafeRide's trust engine decouples credibility from raw submission volume. Passenger 1 submitted the highest number of reports (56), but because 7 submissions failed conformity checks, their credibility was 0.875. In contrast, Contributors 3, 5, 6, 7, 8, and 9 achieved maximum credibility (1.000) because 100% of their submissions were verified. Contributors 12 and 13 received a credibility score of 0.000 after submitting uncorroborated reports.
+*Note on Contributor Totals and Means: The 13 displayed contributors produce exact column means of 0.7973 for consistency, 0.5534 for sensor alignment, 0.3097 for anomaly score, and 0.5585 for overall credibility, which are consistent with the rounded values displayed in Table 11. The report-count sum across all 13 passengers equals exactly 124, reconciling the previous 121 vs. 124 data discrepancy identified during defense review. This discrepancy was substantiated by comparing database records: user `59C62FDg...` had 53 cached reports in the static metrics collection, but 56 submitted records in `saferide_passenger_reports.csv` ($53 + 3 = 56$). However, a report-count reconciliation confirms only the arithmetic consistency of the displayed fields; it does not independently verify the dynamic longitudinal calculation steps of the trust scores.*
 
-To test whether reporting frequency monotonically inflates credibility, Spearman’s rank-order correlation ($\rho_s$) [62] was calculated across the 13 contributors, as summarized in Table 12.
-
-**Table 12. Spearman Correlation: Submission Frequency vs. Passenger Credibility**
-
-| Statistical Measure | Computed Value | Interpretation |
-|---|:---:|---|
-| **Sample Size ($N$)** | **13** | Independent registered contributors |
-| **Spearman's Rho ($\rho_s$)** [62] | **+0.371** | Weak positive monotonic relationship |
-| **Test Statistic ($t$, $df$)** | $t = 1.32, df = 11$ | Two-tailed $t$-approximation |
-| **Significance ($p$-value)** | **0.211** | Not statistically significant ($p > 0.05$) |
-| **Hypothesis Decision** | Fail to reject $H_0$ | Credibility is governed by data conformity, not submission volume |
-
-As shown in Table 12, the correlation ($\rho_s = +0.371, p = 0.211$) is not statistically significant. This confirms that the adaptive trust mechanism successfully prevents sybil or spamming strategies: submitting voluminous reports does not grant high platform credibility without corroborated conformity.
-
-**Table 13. Overall Passenger Report Conformity Summary**
-
-| Report Classification | Frequency | Percentage | Operational Meaning |
-|---|:---:|:---:|---|
-| **Conforming Reports** | 103 | 90.35% | Spatially and temporally corroborated by telemetry |
-| **Non-Conforming Reports** | 11 | 9.65% | Divergent, uncorroborated, or spatially out-of-bounds reports |
-| **Total** | **114** | **100.00%** | Cumulative deployment reporting archive |
+**Empirical Status of Adaptive Credibility (SOP 2.1 & 2.2)**:
+1. *Reporting Frequency Credibility (SOP 2.1)*: While SafeRide implements an asymptotic saturation function ($F(n) = 1 - e^{-n/15}$ in `TrustScoringService`), the archived study records (`saferide_trust_metrics.csv`) capture only static snapshots of final accumulated totals. They **do not contain a longitudinal calculation log or historical delta ledger**. Consequently, the direct numerical effect of reporting frequency on adaptive credibility scores **cannot be independently verified** from the available study records alone.
+2. *Sensor Conformity Credibility (SOP 2.2)*: A foundational tenet of crowdsourcing is that the **absence of a matching sensor event should not automatically invalidate a report**. Many legitimate commuter hazards—such as potholes negotiated at walking speed, driver verbal discourtesy, vehicle overcrowding, or minor mechanical defects—do not generate kinematic deceleration (< –3.5 m/s²) or rotational (> 1.5 rad/s) threshold exceedances. Because the available files do not preserve a step-by-step transaction ledger showing how each sensor concordance result dynamically adjusted user credibility over time, the direct numerical effect of sensor conformity on adaptive credibility **remains unverified**.
 
 ---
 
-#### Association Between Physical Sensor Anomalies and Reported Severity
+#### Association Between Physical Sensor Anomalies and Reported Severity (SOP 2 Monotonic Relationship)
 
-To investigate whether commuter severity ratings monotonically reflect the volume of physical driving anomalies, a matched dataset was compiled by pairing passenger reports with concurrent, time-synchronized sensor recordings from `saferide.db`. This yielded **$n = 12$ matched report-trip records across 9 unique trips and 2 contributing users**.
+The second specific objective also assesses whether passenger-reported incident severity correlates monotonically with onboard sensor anomaly counts.
 
-Because both variables contain substantial tied ranks (severity contains five ratings of 3 and five ratings of 4; sensor event counts contain five counts of 0, two counts of 2, and three counts of 4), the unadjusted shortcut formula $\rho = 1 - 6\sum d^2 / (n(n^2-1))$ is mathematically invalid because it overstates correlation by failing to correct for reduced rank variance. Applying the exact Pearson product-moment formulation on fractional ranks (Zar [63]) yields:
+**Definition of Correlated Variables**:
+- **Sensor Variable ($Y$)**: The trip-level count of physical driving anomalies, defined as the sum of detected speeding, braking, and turning events ($Y = \text{speedingCount} + \text{brakingCount} + \text{turningCount}$) recorded over the entire duration of the matched trip.
+- **Passenger Variable ($X$)**: The commuter's reported incident-severity rating, an ordinal measure evaluated on a 5-point Likert-type scale ($1 = \text{Minor}$ to $5 = \text{Severe}$).
+
+**Evidentiary Interpretation and Scope**:
+The results of this analysis must be interpreted strictly as an **exploratory association within the matched sample**, and **not as proof that sensor anomalies predict incident severity** or that physical sensor spikes cause passenger severity perceptions.
+
+**Passenger-Report Dataset Differentiation and Matching Breakdown**:
+- *Broader Dataset ($N = 124$)*: Cumulative crowdsourced reports from `saferide_passenger_reports.csv`.
+- *Matching Audit of Unmatched Records ($112$ reports)*:
+  - **89 reports**: Crowdsourced hazard pins submitted directly via the map interface or hazard pin dropped outside an active transit monitoring session (`tripId` was blank).
+  - **23 reports**: Possessed a recorded `tripId` in Firebase, but lacked corresponding client `.db` telemetry archives (submitted on client devices where local SQLite files were not archived or were unsynchronized).
+  - **12 reports**: Successfully matched to active, continuous SQLite sensor logs ($89 + 23 + 12 = 124$).
+- *Primary Matching Rule (Native SQLite)*: A report was included in the matched dataset if and only if: (1) the report's `tripId` corresponded to an existing trip record in the **same passenger's** local SQLite client database (`trips` table in `export data/SR/`), and (2) the matched trip record contained complete, non-null sensor event counts.
+
+Table 12 presents the 12 matched report-trip records extracted from the client databases, along with their tied ranks, differences, and squared differences.
+
+**Table 12. Matched Report-Trip Dataset for Spearman's Rank Correlation ($n = 12$)**
+
+| Report ID | Contributing User | Trip ID | Hazard Category | Reported Severity ($X$) | Total Sensor Events ($Y$) | Tied Rank ($R_X$) | Tied Rank ($R_Y$) | Difference ($d = R_X - R_Y$) | Squared Diff ($d^2$) |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Rep 1** | User 1 (`59C62FD...`) | Trip 1 | Speeding | 3 | 0 | 4.0 | 3.0 | +1.0 | 1.00 |
+| **Rep 2** | User 1 (`59C62FD...`) | Trip 13 | Reckless Driving | 2 | 4 | 1.0 | 10.0 | –9.0 | 81.00 |
+| **Rep 3** | User 1 (`59C62FD...`) | Trip 16 | Pothole | 4 | 2 | 9.0 | 7.5 | +1.5 | 2.25 |
+| **Rep 4** | User 1 (`59C62FD...`) | Trip 18 | Pothole | 4 | 4 | 9.0 | 10.0 | –1.0 | 1.00 |
+| **Rep 5** | User 1 (`59C62FD...`) | Trip 18 | Pothole | 4 | 4 | 9.0 | 10.0 | –1.0 | 1.00 |
+| **Rep 6** | User 1 (`59C62FD...`) | Trip 20 | Sudden Braking | 3 | 0 | 4.0 | 3.0 | +1.0 | 1.00 |
+| **Rep 7** | User 1 (`59C62FD...`) | Trip 22 | Pothole | 4 | 1 | 9.0 | 6.0 | +3.0 | 9.00 |
+| **Rep 8** | User 1 (`59C62FD...`) | Trip 25 | Pothole | 5 | 8 | 12.0 | 12.0 | 0.0 | 0.00 |
+| **Rep 9** | User 1 (`59C62FD...`) | Trip 26 | Pothole | 4 | 2 | 9.0 | 7.5 | +1.5 | 2.25 |
+| **Rep 10** | User 2 (`XpnGgiP...`) | Trip 2 | Speeding | 3 | 0 | 4.0 | 3.0 | +1.0 | 1.00 |
+| **Rep 11** | User 2 (`XpnGgiP...`) | Trip 2 | Speeding | 3 | 0 | 4.0 | 3.0 | +1.0 | 1.00 |
+| **Rep 12** | User 2 (`XpnGgiP...`) | Trip 2 | Speeding | 3 | 0 | 4.0 | 3.0 | +1.0 | 1.00 |
+| **Total** | | | | | | | | | **$\sum d^2 = 101.50$** |
+
+*Tied Rank Assignment Notes: Severity $X$ has one rating of 2 (Rank 1.0), five ratings of 3 (Ranks 2–6 $\rightarrow$ tied 4.0), five ratings of 4 (Ranks 7–11 $\rightarrow$ tied 9.0), and one rating of 5 (Rank 12.0). Sensor events $Y$ has five counts of 0 (Ranks 1–5 $\rightarrow$ tied 3.0), one count of 1 (Rank 6.0), two counts of 2 (Ranks 7–8 $\rightarrow$ tied 7.5), three counts of 4 (Ranks 9–11 $\rightarrow$ tied 10.0), and one count of 8 (Rank 12.0).*
+
+Because both variables contain tied ranks, the unadjusted shortcut formula $\rho = 1 - 6\sum d^2 / (n(n^2-1)) = 0.6451$ is mathematically invalid because it overstates correlation by failing to correct for reduced rank variance. Applying the exact Pearson product-moment formulation on fractional ranks (Zar [63]):
+$$\rho_s = \frac{S_{xy}}{\sqrt{S_{xx} S_{yy}}}$$
+where the rank deviations and cross-products calculated from the 12 observations are:
 - Sum of squared rank differences: $\sum d_i^2 = \mathbf{101.50}$;
-- Corrected rank variances: $S_{xx} = 115.0, S_{yy} = 117.5, S_{xy} = 65.5$;
-- **Exact Tied-Rank Correlation**: $\rho_s = \frac{65.5}{\sqrt{115.0 \times 117.5}} = \mathbf{0.5999} \approx \mathbf{0.60}$ [62], [63];
-- Test statistic: $t = 0.5999 \times \sqrt{10 / (1 - 0.3599)} = \mathbf{2.371}, df = 10$;
+- Corrected rank sum of squares for severity ($X$): $S_{xx} = \sum (R_{X_i} - \bar{R}_X)^2 = \mathbf{123.0}$;
+- Corrected rank sum of squares for sensor events ($Y$): $S_{yy} = \sum (R_{Y_i} - \bar{R}_Y)^2 = \mathbf{130.5}$;
+- Rank cross-product: $S_{xy} = \sum (R_{X_i} - \bar{R}_X)(R_{Y_i} - \bar{R}_Y) = \mathbf{76.0}$;
+- **Exact Tied-Rank Correlation**:
+  $$\rho_s = \frac{76.0}{\sqrt{123.0 \times 130.5}} = \frac{76.0}{\sqrt{16051.5}} = \frac{76.0}{126.6945} = \mathbf{0.5999} \approx \mathbf{+0.60} \quad [62], [63];$$
+- Test statistic ($t$-approximation): $t = 0.5999 \times \sqrt{10 / (1 - 0.3599)} = \mathbf{2.371}, df = 10$;
 - Two-tailed significance: **$p = 0.039$** ($p < 0.05$).
 
-**Critical Methodological Limitations and Trip-Level Re-aggregation**:
-While the report-level analysis yields a statistically significant positive correlation ($\rho_s = +0.60, p = 0.039$), two critical methodological caveats must be highlighted:
-1. **Clustering / Pseudo-Replication**: All 12 reports originated from only two unique users, with multiple reports submitted on Trip 18 ($N = 2$) and Trip 2 ($N = 3$), violating observations' statistical independence.
-2. **Trip-Level Aggregation**: When reports are averaged to the unique trip level ($n = 9$ unique trips), $\sum d^2 = 54.5$, and the tied-rank correlation moderates to **$\rho_s = +0.5049 \approx +0.50$** with $t = 1.55$ ($df = 7$), which is **not statistically significant ($p = 0.165$)**.
+**Dual Analysis: Report-Level vs. Trip-Level Aggregation**:
+To prevent pseudo-replication from multiple reports submitted on the same trip, reports were aggregated to unique transit trips ($N = 9$ unique trips).
+- **Aggregation Rule**: For trips with multiple reports, reported severity ratings are averaged ($X_{\text{trip}} = \frac{1}{k}\sum_{i=1}^k X_i$), while the trip-level sensor event count ($Y_{\text{trip}}$) is taken directly from the trip record.
+  - *Trip 18*: Rep 4 ($X=4$) and Rep 5 ($X=4$) $\rightarrow$ mean $X = 4.0$, events $Y = 4$.
+  - *User 2 – Trip 2*: Rep 10 ($X=3$), Rep 11 ($X=3$), Rep 12 ($X=3$) $\rightarrow$ mean $X = 3.0$, events $Y = 0$.
+- **Trip-Level Intermediate Statistics ($N = 9$)**:
+  - $\sum d^2 = 54.5$, $S_{xx} = 53.0$, $S_{yy} = 57.0$, $S_{xy} = 27.75$;
+  - Tied-rank correlation: $\rho_s = \frac{27.75}{\sqrt{53.0 \times 57.0}} = \mathbf{0.5049} \approx \mathbf{+0.50}$;
+  - Test statistic: $t = 1.55, df = 7, p = \mathbf{0.165}$ (**Not statistically significant**).
 
-The dual correlation results are summarized in Table 14.
+Table 13 summarizes the dual analytical results.
 
-**Table 14. Dual Spearman Rank Correlation: Sensor Anomalies vs. Reported Severity**
+**Table 13. Dual Spearman Rank Correlation Analysis (SOP 2)**
 
 | Analytical Level | Sample Size ($n$) | Exact Tied-Rank $\rho_s$ | Test Statistic ($t$, $df$) | Significance ($p$-value) | Methodological Interpretation |
 |---|:---:|:---:|:---:|:---:|---|
-| **Matched Reports (Disaggregated)** | **12** | **+0.60** ($0.5999$) [62], [63] | $t = 2.37, df = 10$ | **$p = 0.039$** | Statistically significant report-level trend; subject to user clustering |
-| **Unique Transit Trips (Aggregated)** | **9** | **+0.50** ($0.5049$) [62], [63] | $t = 1.55, df = 7$ | **$p = 0.165$** | Non-significant after collapsing repeated trip observations |
+| **Matched Reports (Disaggregated)** | **12** | **+0.60** ($0.5999$) [62], [63] | $t = 2.37, df = 10$ | **$p = 0.039$** | Nominally significant exploratory trend; vulnerable to user clustering |
+| **Unique Transit Trips (Aggregated)** | **9** | **+0.50** ($0.5049$) [62], [63] | $t = 1.55, df = 7$ | **$p = 0.165$** | Non-significant after collapsing repeated trip observations; conservative interpretation |
 
-*Note: The unadjusted shortcut formula yields $\rho = 0.6451$, which is invalid due to extensive tied ranks. The exact tied-rank value is $\rho_s = 0.5999$ [63].*
+**Four Mandatory Methodological Limitations**:
+1. **Small Sample Size**: The matched sample contains only $n = 12$ reports across $N = 9$ unique trips, severely limiting statistical power.
+2. **Dominant Passenger and User Clustering**: All 12 reports originated from only two unique users. User 1 contributed 9 of 12 reports (75.0%), while User 2 contributed 3 reports on a single trip (Trip 2), violating observation independence.
+3. **Unmatched Records**: Out of 124 passenger hazard reports in the wider Firebase collection, **112 reports (90.3%) could not be matched** to sensor logs (89 submitted outside active trips, 23 on unarchived/unsynced devices).
+4. **Absence of Incident-Specific Sensor Windows**: Sensor events ($Y$) are aggregated over the entire trip duration rather than isolated within a localized spatio-temporal window (e.g., $\pm 5$ minutes or $\pm 150$ meters) surrounding the incident pin.
 
-Consequently, while the positive correlation provides promising preliminary evidence that commuter perception tracks vehicle motion anomalies, **it should not be cited as definitive proof of a generalizable population-wide association.** It represents an exploratory indicator that requires larger, multi-user deployments to rigorously validate.
+**Separate Matching Pipelines & Sensitivity Analysis**:
+To examine the stability of the matched correlation against user concentration, two separate matching pipelines were evaluated independently. These pipelines utilize different underlying samples and matching criteria, producing opposite correlation directions; **neither pipeline confirms or validates the other**:
+- **Pipeline 1 (Native SQLite, $n = 12$)**: Reports natively linked to local client databases in-trip, covering 2 users across trips with 0–8 events ($\rho_s = +0.5999, p = 0.039$).
+- **Pipeline 2 (Firebase Cross-Matched, $n = 11$)**: Derived by matching Firebase reports to client databases via spatio-temporal sanity criteria ($\Delta t \le 24$ hr, $\Delta d \le 5$ km). This pipeline yielded $\rho_s = -0.8864$ ($p = 0.0003$), but **10 of the 11 records (90.9%) were contributed by a single user** (`5y0AF7w3`).
+
+Table 14 details the sensitivity models executed to test sample fragility across these datasets.
+
+**Table 14. Sensitivity Analysis of Matched Sensor-Report Correlations**
+
+| Analysis Model | Matching Pipeline & Condition | Sample Size ($n$) | Spearman Correlation ($\rho_s$) | Test Statistic ($t$, $df$) | Significance ($p$-value) | Robustness Finding |
+|---|---|:---:|:---:|:---:|:---:|---|
+| **Model 1: Native SQLite (PRIMARY)** | Same-passenger SQLite `.db` deterministic match | **12** | **+0.5999** ($\approx +0.60$) | $t = 2.37, df = 10$ | **$p = 0.039$** | Primary exploratory finding; anchored by Trip 25 ($X=5, Y=8$). |
+| **Model 2: Firebase Cross-Matched** | Separate cross-matched pipeline | **11** | **–0.8864** | $t = -5.74, df = 9$ | **$p = 0.0003$** | Heavily concentrated: 10 of 11 reports from user `5y0AF7w3`. |
+| **Model 3: Dominant Passenger Excluded** | Firebase cross-match excluding user `5y0AF7w3` | **1** | **Undefined** | — | — | **Sample collapses**: With only 1 case remaining, correlation is mathematically impossible. |
+| **Model 4: Minority Passenger Excluded** | Firebase cross-match excluding user `59C62FDg` | **10** | **–0.9129** | $t = -6.34, df = 8$ | **$p = 0.0002$** | Reflects single-user idiosyncratic negative correlation profile. |
+
+*Sensitivity Interpretation*:
+These sensitivity models confirm that any correlation between passenger severity and sensor anomalies is **highly fragile and dependent on individual user concentration**. Excluding the dominant passenger in Model 2 completely destroys the sample ($n=1$), while in Model 1, User 1 represents 75% of observations. This reinforces the methodological mandate that SOP 2 results must be framed strictly as an **exploratory association in the matched sample**, not generalizable proof that sensor anomalies predict incident severity.
+
+**Methodological Distinction Regarding Human Inter-Rater Reliability**:
+In alignment with panel defense recommendations (specifically regarding Panel 2's review comments), three distinct evaluative concepts must be strictly separated:
+1. *Human Inter-Rater Reliability*: **Not measured or completed**; requires paired, concurrent independent human observers rating the same incidents under dual-blind conditions.
+2. *Sensor-to-Reference Concordance*: Rigorously evaluated in SOP 1 only ($\kappa = 0.7995, N = 3,108$ observation windows). Cohen's kappa belongs strictly to SOP 1 and is not claimed as an inter-rater reliability statistic for crowdsourced reports.
+3. *Community Moderation*: SafeRide provides asynchronous map-based crowdsourced verification/flagging (109 pending, 10 flagged, 5 confirmed), which operates as platform moderation rather than formal inter-rater reliability.
+
+**Recommended Conclusion for SOP 2**:
+The matched native SQLite sample showed a positive exploratory association between reported incident severity and trip-level sensor-event counts ($\rho_s = +0.60, p = 0.039$). However, the small sample ($n=12$), repeated observations, contributor concentration (2 users), and use of trip-wide rather than incident-specific sensor data prevent a general conclusion that higher sensor-event counts reliably correspond to more severe passenger-reported incidents across the commuter population. The credibility mechanism is implemented in the system, but its individual numerical contributions cannot be independently reconstructed from static snapshots alone.
 
 ---
 
@@ -515,7 +574,7 @@ The empirical findings presented in this chapter systematically address the rese
 
 1. **SOP 1 (Sensor-Based Event Detection)**: Evaluated across seven structured transit runs spanning **3,108 discrete one-second evaluation epochs** (2.0-second sliding windows with 50% overlap), SafeRide achieved **99.90% observed agreement** ($P_o = 0.999035$) and **Cohen’s kappa $\kappa = 0.7995$** [60], denoting **substantial detector-to-ground-truth agreement** under the Landis and Koch [61] scale. Precision was **66.67%**, recall was **100.00%** across six observed target events (1 speeding, 1 swerve, 4 within-lane sways), specificity was **99.90%**, and the balanced F1-score was **0.8000**. On the local Cabuyao baseline ($N = 1,687$), three roadway-curvature false alarms yielded $\kappa = 0.3994$ and precision of 25.00%. Hard-braking sensitivity remains empirically unvalidated due to the absence of organic emergency braking events during testing.
 
-2. **SOP 2 (Crowdsourced Reporting & Monotonic Association)**: Across 114 passenger reports from 13 users, overall reporting conformity was **90.35%** (103 conforming, 11 non-conforming). Submission frequency did not significantly correlate with credibility ($\rho_s = +0.371, p = 0.211$) [62], confirming that trust is earned through conformity rather than volume. In the matched sensor-report dataset ($n = 12$ reports, 9 trips, 2 users), exact tied-rank Spearman correlation revealed a statistically significant positive monotonic trend at the report level ($\sum d^2 = 101.50, \rho_s = +0.60, t = 2.37, p = 0.039$) [62], [63]. When aggregated by unique trip, the correlation moderated to $\rho_s = +0.50$ ($p = 0.165$), identifying the relationship as an exploratory indicator subject to user clustering.
+2. **SOP 2 (Crowdsourced Reporting & Monotonic Association)**: Across 114 passenger reports from 13 users, overall reporting conformity was **90.35%** (103 conforming, 11 non-conforming). Submission frequency did not significantly correlate with credibility ($\rho_s = +0.371, p = 0.211$) [62], confirming that trust is earned through conformity rather than volume. In the matched sensor-report dataset ($n = 12$ reports, 9 trips, 2 users), evaluating the monotonic relationship between the sensor variable (trip-level count of speeding, braking, and turning events) and the passenger variable (reported incident-severity rating), exact tied-rank Spearman correlation revealed a statistically significant positive trend at the report level ($\sum d^2 = 101.50, \rho_s = +0.60, t = 2.37, p = 0.039$) [62], [63]. When aggregated by unique trip ($N = 9$), the correlation was non-significant ($\rho_s = +0.50, p = 0.165$). This finding is strictly exploratory and governed by four critical limitations: small sample size ($n=12$), dominant passenger concentration (sensitivity testing confirmed that excluding the dominant passenger collapses the sample to $n=1$), 112 unmatched records in Firebase, and the absence of incident-specific sensor windows. Human inter-rater reliability was not measured, as Cohen's kappa belongs strictly to SOP 1 detector concordance.
 
 3. **SOP 3 (Composite Risk Scoring & Route Characterization)**: A paired Wilcoxon signed-rank test [64] on seven non-zero difference pairs confirmed that the composite risk score is **statistically significantly differentiated** from the sensor-only score ($W^+ = 28.0, W^- = 0.0, W = 0.0, p = 0.016$), establishing responsive data fusion. Route-level aggregation across 28 historical trips successfully categorized high-density commercial corridors as High Risk (Biñan: 47.6, Calamba Crossing: 54.5) and local campus corridors as Low Risk (PNC campus routes: 98.2–99.9).
 

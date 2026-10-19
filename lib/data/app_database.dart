@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../models/passenger_trust_history.dart';
 import '../models/passenger_trust_metrics.dart';
 import '../models/report.dart';
 import '../models/sync_status.dart';
@@ -31,7 +31,7 @@ class RouteAggregation {
 
 class AppDatabase {
   static const _databaseBaseName = 'saferide';
-  static const _databaseVersion = 5;
+  static const _databaseVersion = 6;
 
   Database? _database;
   String _activeStorageKey = 'signed_out';
@@ -195,6 +195,29 @@ class AppDatabase {
         );
       ''');
     }
+    if (oldVersion < 6 && newVersion >= 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS passenger_trust_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          passenger_id TEXT NOT NULL,
+          report_id TEXT,
+          report_number INTEGER NOT NULL,
+          timestamp TEXT NOT NULL,
+          prior_trust REAL NOT NULL,
+          new_trust REAL NOT NULL,
+          trust_delta REAL NOT NULL,
+          frequency_score REAL NOT NULL,
+          consistency_score REAL NOT NULL,
+          anomaly_score REAL NOT NULL,
+          sensor_alignment_score REAL NOT NULL,
+          reported_severity INTEGER,
+          sensor_event_count INTEGER,
+          sensor_risk REAL,
+          concordance_status TEXT,
+          validation_note TEXT
+        );
+      ''');
+    }
   }
 
   Future<void> _createTrustMetricsTables(Database db) async {
@@ -231,6 +254,28 @@ class AppDatabase {
         sync_status TEXT,
         plate_number TEXT
       ) 
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS passenger_trust_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        passenger_id TEXT NOT NULL,
+        report_id TEXT,
+        report_number INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        prior_trust REAL NOT NULL,
+        new_trust REAL NOT NULL,
+        trust_delta REAL NOT NULL,
+        frequency_score REAL NOT NULL,
+        consistency_score REAL NOT NULL,
+        anomaly_score REAL NOT NULL,
+        sensor_alignment_score REAL NOT NULL,
+        reported_severity INTEGER,
+        sensor_event_count INTEGER,
+        sensor_risk REAL,
+        concordance_status TEXT,
+        validation_note TEXT
+      );
     ''');
   }
 
@@ -612,6 +657,37 @@ class AppDatabase {
       where: 'passenger_id = ?',
       whereArgs: [passengerId],
     );
+  }
+
+  /// Insert an audit ledger entry into passenger_trust_history
+  Future<int> insertTrustHistory(PassengerTrustHistory history) async {
+    if (kIsWeb) return 0;
+    final db = await database;
+    return await db.insert('passenger_trust_history', history.toMap());
+  }
+
+  /// Get complete chronological trust calculation history for a passenger
+  Future<List<PassengerTrustHistory>> getTrustHistory(String passengerId) async {
+    if (kIsWeb) return [];
+    final db = await database;
+    final results = await db.query(
+      'passenger_trust_history',
+      where: 'passenger_id = ?',
+      whereArgs: [passengerId],
+      orderBy: 'report_number ASC, timestamp ASC',
+    );
+    return results.map(PassengerTrustHistory.fromMap).toList();
+  }
+
+  /// Get complete trust calculation history across all passengers
+  Future<List<PassengerTrustHistory>> getAllTrustHistory() async {
+    if (kIsWeb) return [];
+    final db = await database;
+    final results = await db.query(
+      'passenger_trust_history',
+      orderBy: 'passenger_id ASC, report_number ASC, timestamp ASC',
+    );
+    return results.map(PassengerTrustHistory.fromMap).toList();
   }
 }
 

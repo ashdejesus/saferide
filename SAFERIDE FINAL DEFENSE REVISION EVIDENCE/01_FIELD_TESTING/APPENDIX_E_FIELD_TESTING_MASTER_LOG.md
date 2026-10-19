@@ -40,3 +40,18 @@ This appendix provides the master field-testing log and GPS telemetry summary fo
 2. **GPS Record**: Stored in the `trips` table of `saferide.db`, with tracking breadcrumbs stored in latitude/longitude float arrays with Unix epoch timestamps.
 3. **Sensor Record**: Processed using a 2-second sliding window with 50% overlap (1-second step size), segmenting sensor streams into contiguous 1-second evaluation windows.
 4. **Matching Rule**: A temporal tolerance window of ±3 to ±5 seconds is applied between observer timestamps and system event timestamps.
+
+---
+
+### Data-Quality Note: `Verified By` Field in `saferide_passenger_reports.csv`
+
+The `Verified By` column across all 124 records in `saferide_passenger_reports.csv` contains **bare empty values**. This accurately reflects the operational state of the SafeRide deployment: no formal external moderator or second human evaluator was assigned to independently verify individual commuter reports within the study period.
+
+| Field | Value in CSV | Correct Interpretation |
+|---|---|---|
+| `Verified` | 123 = `false`, 1 = `true` | System flag; the one `true` record received community confirmation via in-app moderation |
+| `Verified By` | All 124 = empty | **Missing data — no verifier identity was recorded**; not a data export error |
+| `Verification Count` | All 124 = 0 | Zero independent confirmations; consistent with 109 pending community classifications in the hazard-validation master |
+
+> **Important**: The `Verified By` field must **not** be described as a successfully populated verification field. The study did not implement a dual-observer independent verification protocol for individual passenger reports. This limitation is explicitly acknowledged in Chapter V, Recommendation 4.
+

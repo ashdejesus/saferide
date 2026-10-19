@@ -103,13 +103,13 @@ class ReportWithTrust {
     required this.longitude,
     required this.timestamp,
     required this.passengerTrust,
-    this.isVerified = false,
+    bool isVerified = false,
     this.isFlagged = false,
     this.verificationCount = 0,
     this.plateNumber,
     this.verifiedBy = const [],
     this.flaggedBy = const [],
-  });
+  }) : _isVerified = isVerified;
 
   final int reportId;
   final String? firestoreId;
@@ -121,12 +121,51 @@ class ReportWithTrust {
   final double? longitude;
   final DateTime timestamp;
   final double passengerTrust;
-  final bool isVerified;
+  final bool _isVerified;
+  bool get isVerified => _isVerified || verificationCount > 0 || verifiedBy.isNotEmpty;
   final bool isFlagged;
   final int verificationCount;
   final String? plateNumber;
   final List<String> verifiedBy;
   final List<String> flaggedBy;
+
+  ReportWithTrust copyWith({
+    int? reportId,
+    String? firestoreId,
+    String? passengerId,
+    String? category,
+    int? severity,
+    String? description,
+    double? latitude,
+    double? longitude,
+    DateTime? timestamp,
+    double? passengerTrust,
+    bool? isVerified,
+    bool? isFlagged,
+    int? verificationCount,
+    String? plateNumber,
+    List<String>? verifiedBy,
+    List<String>? flaggedBy,
+  }) {
+    return ReportWithTrust(
+      reportId: reportId ?? this.reportId,
+      firestoreId: firestoreId ?? this.firestoreId,
+      passengerId: passengerId ?? this.passengerId,
+      category: category ?? this.category,
+      severity: severity ?? this.severity,
+      description: description ?? this.description,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      timestamp: timestamp ?? this.timestamp,
+      passengerTrust: passengerTrust ?? this.passengerTrust,
+      isVerified: isVerified ?? _isVerified,
+      isFlagged: isFlagged ?? this.isFlagged,
+      verificationCount: verificationCount ?? this.verificationCount,
+      plateNumber: plateNumber ?? this.plateNumber,
+      verifiedBy: verifiedBy ?? this.verifiedBy,
+      flaggedBy: flaggedBy ?? this.flaggedBy,
+    );
+  }
 
   /// Trust-weighted severity: actual severity * passenger trust
   int get weightedSeverity => (severity * passengerTrust).round().clamp(1, 5);

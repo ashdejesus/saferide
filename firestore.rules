@@ -202,7 +202,18 @@ service cloud.firestore {
       // Allow reading trust metrics for any user (needed for map/community view)
       allow read: if isAuthenticated();
       // Allow the system/authenticated users to update trust metrics 
-      // (in a real app, this should be done via Cloud Functions to prevent tampering)
+      allow write: if isAuthenticated();
+
+      // Subcollection for chronological trust calculation ledger
+      match /history/{historyId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // Top-level Passenger Trust History Audit Ledger
+    match /passenger_trust_history/{historyId} {
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
@@ -211,7 +222,13 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
         && request.resource.data.passengerId == request.auth.uid;
-      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.passengerId == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.passengerId == request.auth.uid);
+      // Author can update their report, OR other authenticated users can verify / flag
+      allow update: if isAdmin() 
+        || (isAuthenticated() && resource.data.passengerId == request.auth.uid)
+        || (isAuthenticated() 
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['verificationCount', 'isVerified', 'verifiedBy', 'flagCount', 'isFlagged', 'flagReason', 'flaggedAt', 'flaggedBy']));
     }
 
     // Collection Group Queries for Community Trips
