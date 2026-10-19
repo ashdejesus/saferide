@@ -134,14 +134,24 @@ Spearman’s rank correlation coefficient ($\rho_s$) was selected as the appropr
 
 To ensure methodological clarity, two distinct passenger-report datasets accumulated during SafeRide's evaluation are distinguished:
 - **Broader Conformity and Trust Dataset ($N = 124$ reports)**: Compiled across all testing phases in Laguna (`saferide_passenger_reports.csv`) to evaluate user reporting frequency, trust-weight distribution, and high-level hazard category distributions across public transport routes.
-- **Matched Sensor-Report Dataset ($n = 12$ reports)**: Formed by strictly pairing reports submitted during trips where continuous smartphone sensor logging was fully active and archived in client SQLite databases. This paired dataset represents the primary sample evaluated for Spearman rank correlation.
+- **Matched Sensor-Report Dataset ($n = 12$ reports)**: Formed by strictly pairing reports submitted during trips where continuous smartphone sensor logging was fully active and archived in client SQLite databases. This paired dataset represents the **primary** sample evaluated for Spearman rank correlation.
 
-**Primary Matching Rule**:
-A report was included in the matched dataset if and only if:
+**Primary Matching Rule (Native SQLite)**:
+A report was included in the primary matched dataset if and only if:
 1. The report's `tripId` corresponded to an existing trip record in the **same passenger's** local SQLite client database (`trips` table in `export data/SR/`); and
 2. The matched trip record contained complete, non-null sensor event counts.
 
-*Note on Sanity Criteria*: In secondary cross-pipeline validation, temporal sanity ($\Delta t \le 24$ hours) and geospatial proximity ($\Delta d \le 5\text{ km}$) checks were enforced to reject erroneous cross-user linkages.
+**Report Count Accounting — Reconciled Unified Framework**:
+
+> [!IMPORTANT]
+> Two separate pipelines use different source datasets and must not be combined into a single matching rate.
+
+| Pipeline | Raw Source | Records Excluded | Eligible | Matched | Unmatched |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Native SQLite (PRIMARY)** | 124 master reports | 112 (89 no active trip tracking + 23 unarchived devices) | 12 | **12** | 112 |
+| **Firebase Cross-Matched (SENSITIVITY)** | 124 master reports → 2 GPS outliers excluded (coordinates outside Philippines) → **122 loaded** | 111 unmatched by Trip ID | 11 | **11** | 111 |
+
+*Note*: The `sop2_spearman_results.txt` file states that 122 reports were loaded after excluding 2 GPS outliers (coordinates identifying San Francisco, CA, USA; Lat ≈ 37.42, Lon ≈ −122.08), and that 11 were matched with 111 unmatched ($11 + 111 = 122$, arithmetic verified). An earlier comment in the script referenced "3 outliers" — the operationally applied exclusion was **2 records**, and all results downstream use the 122-loaded figure. The 124 master export and 122 loaded records are from different processing stages and must not be conflated.
 
 Table 5 presents the 12 matched report-trip records extracted from the client databases, along with their tied ranks and squared differences.
 
@@ -217,18 +227,24 @@ To test the robustness of the matched correlation against passenger concentratio
 
 1. **Pipeline 1: Native SQLite Dataset ($n = 12$, PRIMARY)**:
    Reports natively linked to client databases in-trip, covering 2 users across trips with 0–8 events ($\rho_s = +0.5999, p = 0.039$). Anchored by Trip 25 (severity 5, 8 events). Excluding User 1 leaves only User 2's three reports on Trip 2 (all severity 3, zero sensor events), eliminating all rank variance and causing the correlation to collapse.
-2. **Pipeline 2: Firebase Cross-Matched Pipeline ($n = 11$)**:
-   Derived by matching Firebase reports to client databases via spatio-temporal sanity criteria ($\Delta t \le 24$ hr, $\Delta d \le 5$ km). In this dataset, the raw correlation was strongly negative ($\rho_s = -0.8864, t = -5.74, p = 0.0003$). However, **10 of the 11 reports (90.9%) originated from a single passenger** (`5y0AF7w3`).
+2. **Pipeline 2: Firebase Cross-Matched Pipeline — Cross-Matched Sensitivity Analysis with Unresolved Temporal and Spatial Consistency ($n = 11$)**:
+   Derived by matching Firebase reports to client database trips via Trip ID string matching across user collections (not same-user in-trip logging). Of the 124 master export records, 2 records with GPS coordinates outside the Philippines (Lat ≈ 37.42, Lon ≈ −122.08) were excluded as GPS outliers, leaving **122 loaded records**. Of these, 11 were matched by Trip ID and 111 remained unmatched.
+
+   > [!WARNING]
+   > **Critical Temporal and Spatial Inconsistency — Not Validated Incident-Level Evidence**:
+   > Inspection of `export data/sop2_matched_dataset.csv` reveals large discrepancies between report timestamps and trip-start times, and between report GPS coordinates and trip GPS coordinates. For example, the first matched record shows a report timestamp of approximately **13:26** and a trip start of approximately **20:36** — a difference of approximately **431 minutes (7.2 hours)**. The recorded report location is approximately **1.89 km** from the trip start location. Other rows exhibit similarly large temporal and spatial deltas. While the 11 records share a Trip ID string, Trip IDs alone do not establish that the reported incident and the sensor events occurred during the same journey or at the same location. **Until the source timestamps, time zones, Trip ID mapping, and GPS coordinates are independently verified and reconciled, the 11 matched records must be labeled a cross-matched sensitivity analysis with unresolved temporal and spatial consistency — not validated incident-level evidence.**
+
+   In this cross-matched dataset, the raw correlation is strongly negative ($\rho_s = -0.8864, t = -5.74, p = 0.0003$). However, **10 of the 11 records (90.9%) originated from a single passenger** (`5y0AF7w3`). The trip-level sensitivity yields $N = 8, \rho_s = -0.6325, p = 0.0924$ (not statistically significant).
 3. **Dominant Passenger Exclusion Test**:
    When the sensitivity test was executed by excluding the dominant passenger (`5y0AF7w3`), the sample size **dropped from $n = 11$ to $n = 1$**. With only one observation remaining, the Spearman correlation calculation **completely collapsed (mathematically undefined due to insufficient sample size)**.
 4. **Minority Passenger Exclusion Test**:
    Excluding the single minority passenger (`59C62FDg`) left $n = 10$ reports from passenger `5y0AF7w3`, yielding $\rho_s = -0.9129$ ($p = 0.0002$), which merely reproduced that individual's idiosyncratic rating pattern.
 
 **Recommended Conclusion for SOP 2**:
-The matched native SQLite sample showed a positive exploratory association between reported incident severity and trip-level sensor-event counts ($\rho_s = +0.60, p = 0.039$). However, the small sample ($n=12$), repeated observations, contributor concentration (2 users), and use of trip-wide rather than incident-specific sensor data prevent a general conclusion that higher sensor-event counts reliably correspond to more severe passenger-reported incidents across the commuter population. The credibility mechanism is implemented in the system, but its individual numerical contributions cannot be independently reconstructed from static snapshots alone.
+The matched native SQLite sample showed a positive exploratory association between reported incident severity and trip-level sensor-event counts ($\rho_s = +0.60, p = 0.039$). However, the small sample ($n=12$), repeated observations, contributor concentration (2 users), and use of trip-wide rather than incident-specific sensor data prevent a general conclusion that higher sensor-event counts reliably correspond to more severe passenger-reported incidents across the commuter population. The credibility mechanism is implemented in the system code, but its individual numerical contributions cannot be independently reconstructed from static snapshots alone.
 
 **Sensitivity Conclusion**:
-These sensitivity analyses demonstrate that any matched correlation between SafeRide sensor counts and crowdsourced severity is **extremely fragile and dominated by individual passenger profiles**. This confirms that the observed positive correlation ($\rho_s = +0.60$) is an **exploratory artifact of the matched sample**, not generalizable proof that sensor anomalies predict incident severity across the broader transit population.
+These sensitivity analyses demonstrate that any correlation between SafeRide sensor counts and crowdsourced severity in the cross-matched pipeline is **extremely fragile, temporally/spatially unverified, and dominated by a single passenger's profile**. The native SQLite positive correlation ($\rho_s = +0.60$) is an **exploratory artifact of the matched sample**, not generalizable proof that sensor anomalies predict incident severity across the broader transit population.
 
 ### Methodological Boundaries Regarding Human Inter-Rater Reliability
 
@@ -253,6 +269,7 @@ The study's second specific problem also investigated how commuter credibility i
      $$F(n) = 1 - e^{-n / 15}$$
      where $n$ is the commuter's cumulative report count. This formulation models the principle that credibility increases with sustained participation while saturating asymptotically at higher frequencies (accounting for 20% of the overall trust score).
    - *Data Limitation & Honest Disclosure*: In the archived study datasets (`saferide_trust_metrics.csv`), records reflect static snapshots of final cumulative report counts and computed trust values at export time. **The available study records do not contain a complete history of initial trust values, subsequent trust-score changes, or a report-by-report calculation log. Therefore, the numerical effect of reporting frequency on adaptive credibility scores cannot be independently verified from the available records.**
+   - *Reconstructed Simulation Disclosure*: The file `saferide_trust_calculation_history.csv` was generated by a script that initializes trust at 0.5000 and recalculates scores using assumed cumulative report counts, prior severity values, and sensor event totals. **This file is an algorithmic reconstruction / simulation that demonstrates the calculation procedure; it does not establish that the recorded trust changes occurred in the application at the historical timestamps shown.** It must not be presented as a recovered empirical history or independent verification of actual runtime trust-score changes.
 
 2. **Credibility Based on Sensor Conformity (SOP 2.2)**:
    - *Algorithmic Formulation*: In `TrustScoringService.calculateSensorAlignmentScore()`, report severity is compared against concurrent sensor event frequencies and average sensor risk (contributing 20% of overall trust).

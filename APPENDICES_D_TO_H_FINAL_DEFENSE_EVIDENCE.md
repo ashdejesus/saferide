@@ -191,7 +191,19 @@ The six confirmed target events produce **6 TP + 3 FP + 0 FN + 3,099 TN = 3,108 
 
 The 12 matched records below were extracted from the SQLite client databases located in `export data/SR/`. Two user databases contributed data: `saferide_user_59C62FDg1QPkulakJIkf6ZpsAiD2.db` (User 1, 9 reports across 9 trips) and `saferide_user_XpnGgiP9MzMNTqWGAbpgdnYAaMG3.db` (User 2, 3 reports all on Trip 2).
 
-**Matching rule**: A report was included if and only if (1) the report's `tripId` corresponded to a trip record in the same user's SQLite `trips` table, and (2) the matched trip record contained non-null sensor event counts. The variable $Y$ (Total Sensor Events) equals `speedingCount + brakingCount + turningCount` from the matched trip row. Any evaluator with access to these two `.db` files can reproduce the dataset using this rule.
+**Matching rule**: A report was included if and only if (1) the report's `tripId` corresponded to a trip record in the **same user's** SQLite `trips` table, and (2) the matched trip record contained non-null sensor event counts. The variable $Y$ (Total Sensor Events) equals `speedingCount + brakingCount + turningCount` from the matched trip row. Any evaluator with access to these two `.db` files can reproduce the dataset using this rule.
+
+### Reconciled Report Count Accounting
+
+> [!IMPORTANT]
+> The two matching pipelines use different source datasets and must be tracked independently.
+
+| Pipeline | Master Export | GPS Outliers Excluded | Records Loaded | Matched | Unmatched |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Native SQLite (PRIMARY)** | 124 | — | 124 (in-trip via SQLite) | **12** | 112 |
+| **Firebase Cross-Matched (SENSITIVITY)** | 124 | **2** (SF coordinates: Lat ≈37.42, Lon ≈−122.08) | **122** | **11** | **111** |
+
+*Arithmetic verification (Firebase pipeline)*: $11 + 111 = 122$ ✓. $124 - 2 = 122$ ✓. An earlier script comment referenced "3 outliers" — the operationally applied exclusion count was **2 records**; all downstream results use 122 as the loaded count. These two pipelines apply different matching methods and **must not be merged** into a single matching rate.
 
 ### Table G-1a. Matched Report Source Data (SQLite-Verified)
 
@@ -304,7 +316,11 @@ To establish full academic compliance and empirical transparency, the research p
    - *Limitation*: The available files do not provide a complete report-by-report audit record showing how each sensor concordance or discordance result dynamically altered the user's trust score over time.
    - *Honest Disclosure*: The direct numerical effect of sensor conformity on adaptive credibility **remains unverified** from the available study records.
 
-### Part 3: Sensitivity Analysis and Robustness Checks
+### Part 3: Sensitivity Analysis and Robustness Checks — Cross-Matched Pipeline (Unresolved Temporal/Spatial Consistency)
+
+> [!WARNING]
+> **Critical Issue A — Temporal and Spatial Inconsistency in the Cross-Matched Dataset**:
+> Inspection of `export data/sop2_matched_dataset.csv` reveals large discrepancies between report timestamps and trip-start times, and between report GPS coordinates and trip GPS coordinates. The first matched record shows a report timestamp of approximately **13:26** and a trip start of approximately **20:36** (Δt ≈ **431 minutes / 7.2 hours**). Its recorded report location is approximately **1.89 km** from the trip start location. Other rows exhibit similarly large temporal and spatial deltas. Because matching was performed via Trip ID string matching across user collections, the shared Trip ID string does not establish that the report and sensor events occurred during the same journey. **This dataset must be labeled a cross-matched sensitivity analysis with unresolved temporal and spatial consistency, not validated incident-level evidence.** Results from this pipeline are disclosed for transparency only.
 
 To evaluate the stability of the matched correlation and assess the influence of dominant passenger concentration, two separate matching pipelines were evaluated independently. These pipelines utilize different underlying samples and matching criteria, producing opposite correlation directions; **neither pipeline confirms or validates the other**:
 
@@ -313,12 +329,15 @@ To evaluate the stability of the matched correlation and assess the influence of
 | Analysis Model | Matching Pipeline & Condition | Sample Size ($n$) | Spearman Correlation ($\rho_s$) | Test Statistic ($t$, $df$) | Significance ($p$-value) | Robustness Finding |
 |---|---|:---:|:---:|:---:|:---:|---|
 | **Model 1: Native SQLite (PRIMARY)** | Same-passenger SQLite `.db` deterministic match | **12** | **+0.5999** ($\approx +0.60$) | $t = 2.37, df = 10$ | **$p = 0.039$** | Primary exploratory finding; anchored by Trip 25 ($X=5, Y=8$). |
-| **Model 2: Firebase Cross-Matched** | Separate cross-matched pipeline | **11** | **–0.8864** | $t = -5.74, df = 9$ | **$p = 0.0003$** | Heavily concentrated: 10 of 11 reports from user `5y0AF7w3`. |
+| **Model 2: Firebase Cross-Matched†** | Separate cross-matched pipeline; Trip ID match across user collections | **11** | **–0.8864** | $t = -5.74, df = 9$ | **$p = 0.0003$** | [† Unresolved Δt up to 431 min, Δd ≈1.89 km — not validated incident-level evidence] 10 of 11 reports from user `5y0AF7w3`. |
+| **Model 2b: Firebase Trip-Level†** | Firebase cross-matched, trip-aggregated | **8** | **–0.6325** | $t = -2.13, df = 6$ | **$p = 0.0924$** | Not statistically significant; same temporal/spatial inconsistency caveat applies. |
 | **Model 3: Dominant Passenger Excluded** | Firebase cross-match excluding user `5y0AF7w3` | **1** | **Undefined** | — | — | **Sample collapses**: With only 1 case remaining, correlation is mathematically impossible. |
 | **Model 4: Minority Passenger Excluded** | Firebase cross-match excluding user `59C62FDg` | **10** | **–0.9129** | $t = -6.34, df = 8$ | **$p = 0.0002$** | Reflects single-user idiosyncratic negative correlation profile. |
 
+† *Firebase cross-matched pipeline has unresolved temporal ($\Delta t$ up to 431 min) and spatial ($\Delta d \approx 1.89$ km) inconsistencies. Results are disclosed as a sensitivity demonstration only, not as validated incident-level findings.*
+
 *Sensitivity Interpretation*:
-The sensitivity tests confirm that any correlation between passenger severity and sensor anomalies in SafeRide is **highly fragile and dependent on individual user concentration**. Excluding the dominant passenger in Model 2 completely destroys the sample ($n=1$), while in Model 1, User 1 represents 75% of observations. This reinforces the methodological mandate that SOP 2 results must be framed strictly as an **exploratory association in the matched sample**, not generalizable proof that sensor anomalies predict incident severity.
+The sensitivity tests confirm that any correlation between passenger severity and sensor anomalies in the Firebase cross-matched pipeline is **highly fragile, temporally/spatially unverified, and dependent on individual user concentration**. Excluding the dominant passenger in Model 2 completely destroys the sample ($n=1$), while in Model 1, User 1 represents 75% of observations. This reinforces the methodological mandate that SOP 2 results must be framed strictly as an **exploratory association in the matched sample**, not generalizable proof that sensor anomalies predict incident severity.
 
 **Recommended Conclusion for SOP 2**:
 The matched native SQLite sample showed a positive exploratory association between reported incident severity and trip-level sensor-event counts ($\rho_s = +0.60, p = 0.039$). However, the small sample ($n=12$), repeated observations, contributor concentration (2 users), and use of trip-wide rather than incident-specific sensor data prevent a general conclusion that higher sensor-event counts reliably correspond to more severe passenger-reported incidents across the commuter population. The credibility mechanism is implemented in the system, but its individual numerical contributions cannot be independently reconstructed from static snapshots alone.
@@ -330,7 +349,10 @@ The matched native SQLite sample showed a positive exploratory association betwe
 | **Preliminary positive monotonic association** (Sensor anomaly frequency vs. reported severity) | ✅ **Exploratory** | Supported at report level ($n = 12, \rho_s = +0.60, p = 0.039$); non-significant at trip level ($N = 9, \rho_s = +0.50, p = 0.165$). |
 | **Reproducibility of matched dataset** | ✅ **Verified** | 12 matched records reproducible from `export data/SR/` SQLite databases using deterministic tripId linkage rule. |
 | **Trip-level correlation statistically significant** | ❌ **Not Significant** | $p = 0.165 > 0.05$; hypothesis of generalizable correlation is not conclusively established. |
+| **Firebase cross-matched dataset — temporal/spatial consistency** | ⚠️ **Unresolved** | First record: $\Delta t \approx 431$ min, $\Delta d \approx 1.89$ km. Other rows exhibit similar discrepancies. Must be labeled cross-matched sensitivity analysis with unresolved temporal/spatial consistency. |
+| **Report count reconciliation (124 vs. 122)** | ✅ **Reconciled** | Firebase pipeline: 124 raw → 2 GPS outliers excluded → 122 loaded → 11 matched + 111 unmatched. Native SQLite: 124 raw → 12 in-trip matched + 112 unmatched. Two separate pipelines. |
 | **Sensitivity to dominant passenger** | ⚠️ **Fragile** | Excluding dominant user in cross-pipeline drops $n=11 \rightarrow n=1$, causing correlation calculation to collapse. |
+| **`saferide_trust_calculation_history.csv` status** | ⚠️ **Reconstructed Simulation** | Generated by script initializing trust at 0.5000; demonstrates calculation procedure only. Not an observed historical runtime ledger. Must not be presented as empirical verification of actual trust changes. |
 | **Paired independent-rater classifications for inter-rater reliability** | ❌ **Not Completed** | Unavailable in study records; crowdsourcing gathered primary incident submissions without paired dual-blind observers. Limitation honestly stated. |
 | **Numerical effect of reporting frequency on adaptive credibility (SOP 2.1)** | ❌ **Unverified** | Available study records do not contain initial trust values, subsequent changes, or report-by-report logs; effect cannot be independently verified. |
 | **Numerical effect of sensor conformity on adaptive credibility (SOP 2.2)** | ❌ **Unverified** | Sensor event absence does not invalidate reports; available files lack report-by-report trust change records; direct effect remains unverified. |

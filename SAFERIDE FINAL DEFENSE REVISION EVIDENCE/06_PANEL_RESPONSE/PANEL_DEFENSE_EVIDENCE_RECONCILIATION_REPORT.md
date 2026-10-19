@@ -190,12 +190,26 @@ When evaluating solely the six local urban trips (PL-DZ-01 through PNC-BNY-06), 
 3. **Unmatched Records**: 112 out of 124 passenger reports in Firebase could not be linked to sensor logs because they were submitted outside active trips, retrospectively, or on unarchived devices.
 4. **Absence of Incident-Specific Sensor Windows**: Sensor event counts represent aggregate trip totals rather than localized sensor activity within a narrow window (e.g., $\pm 5$ min or $\pm 150$ m) around the reported incident coordinates.
 
-#### D. Reconciliation: Native SQLite ($n=12$) vs. Firebase Cross-Matched ($n=11$)
+#### D. Reconciliation: Native SQLite ($n=12$) vs. Firebase Cross-Matched ($n=11$) — Critical Remaining Issues
+
+**Critical Issue A — Temporal and Spatial Inconsistency in the Firebase Cross-Matched Dataset**:
+
+A critical review of `export data/sop2_matched_dataset.csv` reveals large discrepancies between report timestamps and trip-start times. The first matched record shows a report timestamp of approximately **13:26** and a trip start of approximately **20:36** — a difference of approximately **431 minutes (7.2 hours)**. Its GPS coordinates are approximately **1.89 km** from the trip start location. Other rows exhibit similarly large temporal and spatial gaps. Because matching was performed via Trip ID string matching across user collections (not same-user in-trip logging), the shared Trip ID does not establish that the report and sensor session correspond to the same incident. **This 11-record dataset must be labeled a cross-matched sensitivity analysis with unresolved temporal and spatial consistency, not validated incident-level evidence.** All results from this pipeline are disclosed for transparency only.
+
+**Critical Issue B — Report Count Reconciliation (124 vs. 122)**:
+
+The `sop2_spearman_results.txt` file states 122 reports were loaded (not 124), because 2 records with GPS coordinates outside the Philippines (San Francisco, CA; Lat ≈37.42, Lon ≈−122.08) were excluded as GPS outliers. Arithmetic verification: $124 - 2 = 122$ (loaded); $11 + 111 = 122$ (matched + unmatched) ✓. An earlier script comment referenced "3 outliers" — the operationally applied exclusion was **2 records**. The two pipelines must be tracked independently:
+
+| Pipeline | Master Export | Excluded | Loaded | Matched | Unmatched |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Native SQLite (PRIMARY)** | 124 | — | 124 | **12** | 112 |
+| **Firebase Cross-Matched (SENSITIVITY)** | 124 | 2 GPS outliers | **122** | **11** | **111** |
+
 A critical audit question concerned the relationship between the primary SQLite finding and the secondary Firebase cross-matched pipeline:
 - **Primary Finding (Native SQLite, $n = 12$)**: Derived directly from SQLite client `.db` files (`saferide_user_*.db`) where `trip_id` was natively logged in-trip. Covers 2 users across trips with 0–8 events (including Trip 25, severity 5, 8 events), yielding $\rho_s = +0.60, p = 0.039$. This represents the primary, reproducible exploratory dataset.
-- **Secondary Pipeline (Firebase Cross-Matched, $n = 11$)**: Derived by matching Firebase crowdsourced reports to `.db` trips via spatial and temporal criteria. This dataset produced $\rho_s = -0.8864, p = 0.0003$, but **10 of the 11 records (90.9%) were contributed by a single user** (`5y0AF7w3`).
+- **Secondary Pipeline (Firebase Cross-Matched, $n = 11$)**: Derived by matching Firebase crowdsourced reports to `.db` trips via Trip ID string matching across user collections. This dataset produced $\rho_s = -0.8864, p = 0.0003$, but **10 of the 11 records (90.9%) were contributed by a single user** (`5y0AF7w3`). Additionally, large temporal ($\Delta t$ up to 431 min) and spatial ($\Delta d \approx 1.89$ km) discrepancies between report timestamps/coordinates and trip-start timestamps/coordinates have been identified. **This pipeline must be labeled as a cross-matched sensitivity analysis with unresolved temporal and spatial consistency.**
 - **Dominant Passenger Sensitivity Test**: When user `5y0AF7w3` is excluded, the usable sample **collapses to $n = 1$**, making correlation calculation mathematically impossible. Excluding the single minority passenger leaves $n = 10$ with $\rho_s = -0.9129$, which simply mirrors that single individual's behavior.
-- **Reconciliation Verdict**: The two datasets represent different underlying subsets, not conflicting calculations on the same data. The native SQLite $n=12$ dataset is retained as the **primary exploratory finding**, while the $n=11$ pipeline serves as a sensitivity demonstration confirming that cross-matched crowdsourced data are heavily dominated by individual user behavior and cannot support generalized predictive claims.
+- **Reconciliation Verdict**: The two datasets represent different underlying subsets using different matching methods. The native SQLite $n=12$ dataset is retained as the **primary exploratory finding**. The $n=11$ pipeline serves as a sensitivity demonstration — one with **unresolved temporal and spatial consistency** — confirming that cross-matched crowdsourced data are heavily dominated by individual user behavior and cannot support generalized predictive claims.
 
 ### SOP 3: Composite Risk Score Differentiation
 - **Statistical Tool**: Wilcoxon Signed-Rank Test on paired differences ($D = \text{Risk}_{\text{trip}} - \text{Risk}_{\text{sens}}$).
@@ -210,7 +224,7 @@ A critical audit question concerned the relationship between the primary SQLite 
 
 ---
 
-## 5. Artifact and Repository Alignment
+### 5. Artifact and Repository Alignment
 
 All datasets and evidence files in the repository have been synchronized and placed in the official evidence folders:
 
@@ -222,5 +236,9 @@ All datasets and evidence files in the repository have been synchronized and pla
    - 13 passenger records, frequency sum reconciled to **exactly 124**.
 4. **`panel_review_csvs/saferide_hazard_validation_master.csv`** & **`SAFERIDE FINAL DEFENSE REVISION EVIDENCE/06_PANEL_RESPONSE/saferide_hazard_validation_master.csv`**:
    - 124 traceable records detailing Rater A (passenger report), Rater B (community moderation: 109 pending, 10 flagged, 5 confirmed), and ground truth (104 inconclusive).
-5. **Manuscript Alignment**:
-   - [CHAPTER_IV_V_FINAL_DEFENSE_REVISION.md](file:///c:/Users/nicho/Documents/GitHub/saferide/CHAPTER_IV_V_FINAL_DEFENSE_REVISION.md) and [APPENDICES_D_TO_H_FINAL_DEFENSE_EVIDENCE.md](file:///c:/Users/nicho/Documents/GitHub/saferide/APPENDICES_D_TO_H_FINAL_DEFENSE_EVIDENCE.md) are 100% aligned with these exact numbers, tables, and academic qualifications.
+5. **`export data/sop2_matched_dataset.csv`** (Firebase Cross-Matched — **Sensitivity Analysis Only with Unresolved Temporal/Spatial Consistency**):
+   - 11 records matched via Trip ID string matching across user collections. **Not validated incident-level evidence.** Large temporal ($\Delta t$ up to 431 min) and spatial ($\Delta d \approx 1.89$ km) discrepancies identified. Must be labeled as a cross-matched sensitivity analysis until source timestamps, time zones, Trip ID mapping, and coordinates are independently verified.
+6. **`saferide_trust_calculation_history.csv`** (Reconstructed Simulation — **Not an Observed Historical Ledger**):
+   - Generated by a script initializing trust scores at 0.5000 and recalculating using assumed cumulative report counts, prior severity values, and sensor events. **This file is an algorithmic reconstruction / simulation that demonstrates the calculation procedure.** It does not establish that the recorded trust changes occurred in the application at the timestamps shown. Must not be presented as a recovered empirical history or independent verification of actual runtime trust-score changes.
+7. **Manuscript Alignment**:
+   - [CHAPTER_IV_V_FINAL_DEFENSE_REVISION.md](file:///c:/Users/nicho/Documents/GitHub/saferide/CHAPTER_IV_V_FINAL_DEFENSE_REVISION.md) and [APPENDICES_D_TO_H_FINAL_DEFENSE_EVIDENCE.md](file:///c:/Users/nicho/Documents/GitHub/saferide/APPENDICES_D_TO_H_FINAL_DEFENSE_EVIDENCE.md) are aligned with these exact numbers, tables, critical-issue disclosures, and academic qualifications.
