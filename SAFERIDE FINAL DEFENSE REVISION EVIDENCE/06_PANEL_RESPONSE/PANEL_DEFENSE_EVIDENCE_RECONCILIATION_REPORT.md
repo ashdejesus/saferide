@@ -2,8 +2,8 @@
 
 **Study Title**: SafeRide: A Multi-Source Public Utility Vehicle Commuter Safety Monitoring and Hazard Reporting System  
 **Document Type**: Panel Defense Evidence Reconciliation, Inter-Rater Reliability Audit, and Statistical Tool Justification  
-**Date of Audit**: October 18, 2026  
-**Status**: 100% Verified, Mathematically Reconciled, and Audited Against Underlying Records  
+**Date of Audit**: October 18, 2026 (Audited & Reconciled October 19, 2026)  
+**Status**: Audit Completed; Selected Findings Verified, with Documented Limitations and Unresolved Data-Consistency Issues  
 
 ---
 
@@ -11,7 +11,7 @@
 
 To address the thesis defense panel's comments regarding inter-rater reliability, ground-truth verification, and the statistical tools used in SOP 1, a comprehensive forensic audit was conducted on all SafeRide datasets, database archives, and export services.
 
-### Evidence Verification Checklist (7 of 7 Complete)
+### Evidence Audit & Verification Checklist (7 Audit Areas Addressed: Verified Evidence & Documented Limitations)
 
 | Checklist Item | Audit Finding | Resolution & Supporting Artifact |
 |---|---|---|
@@ -21,7 +21,17 @@ To address the thesis defense panel's comments regarding inter-rater reliability
 | **[X] 4. Verify report-by-report sensor conformity and non-invalidation by sensor absence (SOP 2.2)** | Absence of a matching sensor event does not invalidate crowdsourced reports (e.g. slow potholes, discourtesy). The files lack report-by-report records showing how each concordance result changed trust scores. | **Limitation Honestly Stated**: The direct numerical effect of sensor conformity on adaptive credibility remains unverified. Documented in Chapter IV and Appendix G. |
 | **[X] 5. Check missing trip IDs and verification fields in passenger-report data** | 35 reports possess valid Trip IDs (submitted during active trip monitoring); 89 are roadside hazard reports. An unquoted comma in Firestore timestamps previously shifted columns in CSV parsers. | Fixed timestamp serialization to ISO-8601; eliminated all column misalignments; properly quoted all text fields; validated 124 records across exactly 14 columns. |
 | **[X] 6. Confirm why report-frequency totals equal 121 while report files contain 124 rows** | 12 of 13 passengers matched exactly. User `59C62FD...` had 53 cached reports in `passenger_trust_metrics` but 56 submitted reports in `passenger_reports` ($56 - 53 = 3$ delta; $121 + 3 = 124$). | Dynamically reconciled `Total Reports (Frequency)` with actual submitted report counts. Frequency sum now equals **exactly 124**. |
-| **[X] 7. Recalculate only statistical measures supported by verified records** | All statistical calculations for SOP 1 (Confusion Matrix, Cohen's $\kappa$), SOP 2 (Tied-rank Spearman $\rho_s$), and SOP 3 (Wilcoxon Signed-Rank Test) were independently audited and verified. | Complete mathematical derivations and reproduction scripts provided in Chapter IV, Appendices D–H, and verification scripts. |
+| **[X] 7. Recalculate only statistical measures supported by verified records** | All statistical calculations for SOP 1 (Confusion Matrix, Cohen's $\kappa$), SOP 2 (Tied-rank Spearman $\rho_s$), and SOP 3 (Wilcoxon Signed-Rank Test) were independently audited and verified. The GPS outlier count in `sop2_spearman_results.txt` was corrected from the erroneous value of 3 (script bug using hardcoded file-line count) to the verified value of **2** (confirmed by direct inspection of `saferide_passenger_reports.csv`). | Complete mathematical derivations and reproduction scripts provided in Chapter IV, Appendices D–H, and verification scripts. |
+
+> [!WARNING]
+> **Documented Limitations and Unresolved Issues — Do Not Claim Complete Verification**
+> The following items remain unverified or unresolved in the available study records:
+> - **Human inter-rater reliability was not measured.** Crowdsourcing gathered primary incident submissions; no paired dual-blind human observer protocol was applied.
+> - **Historical trust-score changes cannot be independently verified.** `saferide_trust_metrics.csv` contains only a static snapshot; `saferide_trust_calculation_history.csv` is an algorithmic reconstruction/simulation, not a runtime ledger.
+> - **The numerical effect of sensor conformity on credibility scores is unverified.** No report-by-report trust-update log exists.
+> - **The Firebase cross-matched dataset has unresolved temporal and spatial inconsistencies.** Time deltas up to 431 minutes and distances up to 1.89 km exist between report and trip records.
+> 
+> These limitations are honestly disclosed throughout this document and the manuscript. They do not invalidate what was verified, but they prevent any claim of 100% complete empirical verification.
 
 ---
 

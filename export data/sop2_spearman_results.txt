@@ -1,6 +1,6 @@
 ════════════════════════════════════════════════════════════
   SAFERIDE SOP 2 — SPEARMAN CORRELATION RESULTS
-  Generated: 2026-10-19 12:04:25.965259
+  Generated: 2026-10-19 13:14:52.526893
 ════════════════════════════════════════════════════════════
 
 [A] REPORT-LEVEL ANALYSIS (each matched report = 1 obs)
@@ -20,7 +20,7 @@
 
 [C] DESCRIPTIVE STATISTICS
   Total Firebase reports loaded:    122
-  GPS outliers excluded:            3
+  GPS outliers excluded:            2
   Matched to sensor trips:          11
   Unmatched (no sensor data):       111
   Match rate:                       9.0%
@@ -47,7 +47,7 @@
   [✓] Sensor anomaly score = speedingCount+brakingCount+turningCount
   [✓] Tie-corrected Spearman rho used (Pearson-on-ranks)
   [✓] p-value computed via t-approximation
-  [✓] Independent verification evidence
+  [✓] Dataset exported & calculations audited for reproducibility (1 report(s) community-flagged; paired human IRR unmeasured)
   [✓] Trust scores joined from saferide_trust_metrics.csv
   [✓] Matched dataset written to CSV for audit
 
